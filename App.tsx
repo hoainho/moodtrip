@@ -8,7 +8,7 @@ import { ApiKeyModal } from './components/ApiKeyModal';
 import { API_KEY_LS_KEY, ITINERARY_LS_KEY } from './constants';
 import type { FormData, ItineraryPlan } from './types';
 import { IconWarning } from './components/icons';
-
+import { Analytics } from "@vercel/analytics/next"
 // Define types for html2pdf.js since it's loaded from a script
 interface Html2PdfOptions {
   margin?: number | number[];
@@ -173,6 +173,7 @@ export default function App() {
         }}
         onSave={handleSaveApiKey}
       />
+      <Analytics />
     </div>
   );
 }
