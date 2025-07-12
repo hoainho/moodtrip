@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { Logo } from './Logo';
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'; // Enables tables and GFM features
 
@@ -7,73 +6,94 @@ interface ReleaseProps {
   onGoHome: () => void;
 }
 
+// Nhúng nội dung CHANGELOG trực tiếp vào component
+const CHANGELOG_CONTENT = `# MoodTrip – Ghi Chú Phát Hành
+
+> **Phiên Bản Tài Liệu:** 2.0  
+> **Cập Nhật Lần Cuối:** 12/07/2025
+
+---
+
+## Phiên Bản 2.0
+
+_12/07/2025_
+
+### Điểm Nổi Bật
+- Nhiều tính năng mới cho quản lý chuyến đi và cá nhân hóa
+- Trải nghiệm người dùng được cải thiện và mở rộng hỗ trợ điểm đến
+
+### Tính Năng Mới
+
+| Tính Năng                                   | Mô Tả                                                                                             |
+|-----------------------------------------------|---------------------------------------------------------------------------------------------------|
+| Lưu Thông Tin Chuyến Đi                     | Người dùng giờ đây có thể lưu lịch trình đã tạo để tham khảo sau này.                            |
+| Mẹo Du Lịch Theo Địa Điểm                  | Bổ sung mẹo du lịch chi tiết cho từng điểm dừng trong lịch trình.                                |
+| Lịch Sử Chuyến Đi                           | Phần mới trên trang chính để xem tất cả các chuyến đi đã lưu.                                    |
+
+### Cải Tiến
+
+| Cải Tiến                                    | Mô Tả                                                                                             |
+|-----------------------------------------------|---------------------------------------------------------------------------------------------------|
+| Lịch Trình Cá Nhân Hóa                      | Người dùng có thể dễ dàng chỉnh sửa thời gian cho từng hoạt động trong lịch trình.               |
+| Nhập Địa Điểm Xuất Phát                    | Thêm trường nhập liệu để người dùng chỉ định địa điểm xuất phát để lập kế hoạch chính xác hơn.   |
+| Hỗ Trợ Điểm Đến Toàn Cầu                    | Giờ đây hỗ trợ các điểm đến trên toàn thế giới.                                                   |
+| Chọn Ngày Khởi Hành                         | Người dùng có thể chọn ngày khởi hành cụ thể cho chuyến đi của họ.                               |
+
+---
+
+## Phiên Bản 1.0
+
+_01/07/2025_
+
+### Điểm Nổi Bật
+- Ra mắt lần đầu với các tính năng lập kế hoạch chuyến đi cơ bản
+
+### Tính Năng
+
+| Tính Năng                                   | Mô Tả                                                                                             |
+|-----------------------------------------------|---------------------------------------------------------------------------------------------------|
+| Tạo Chuyến Đi Nhanh                         | Lập kế hoạch chuyến đi dựa trên tâm trạng, ngân sách và thời gian.                              |
+| Hiển Thị Lịch Trình Chi Tiết               | Xem lịch trình du lịch chi tiết, dễ đọc.                                                         |
+| Giao Diện Hoạt Ảnh                          | Chuyển đổi và hoạt ảnh mượt mà để có trải nghiệm tốt hơn.                                       |
+| Mẹo Du Lịch Chung                           | Mẹo hữu ích cho từng điểm đến.                                                                   |
+| Lập Kế Hoạch Lộ Trình Cụ Thể               | Bao gồm thời gian, ngày tháng và địa điểm cho tất cả các hoạt động.                             |
+| Tải Xuống Lịch Trình                        | Xuất kế hoạch du lịch của bạn dưới dạng PDF.                                                     |
+
+---
+
+_Bản quyền © 2025 MoodTrip. Đã đăng ký bản quyền._`;
+
 export const Release: React.FC<ReleaseProps> = ({ onGoHome }) => {
-  const [changelogContent, setChangelogContent] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchChangelog = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('/CHANGELOG.md');
-        if (!response.ok) {
-          throw new Error('Failed to load changelog');
-        }
-        const content = await response.text();
-        setChangelogContent(content);
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error loading changelog:', err);
-        setError('Không thể tải nội dung changelog. Vui lòng thử lại sau.');
-        setIsLoading(false);
-      }
-    };
-
-    fetchChangelog();
-  }, []);
+  // Không cần fetch từ file nữa, sử dụng nội dung đã nhúng
+  const changelogContent = CHANGELOG_CONTENT;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
       <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Logo onClick={onGoHome} />
+        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+          <div className="text-2xl font-bold text-blue-600">MoodTrip</div>
           <button
             onClick={onGoHome}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
             Quay lại trang chủ
           </button>
         </div>
       </header>
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-6 md:p-8 max-w-4xl mx-auto">
-          {/* Custom Main Title */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
           <h1 className="text-4xl md:text-5xl font-extrabold text-center mb-2 tracking-tight text-blue-700">
-            MoodTrip – Release Notes
+            MoodTrip – Ghi Chú Phát Hành
           </h1>
           {/* Render Markdown Content */}
-          {isLoading ? (
-            <div className="flex justify-center items-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : error ? (
-            <div className="text-center text-red-600 py-10">
-              <p className="text-lg font-medium">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Thử lại
-              </button>
-            </div>
-          ) : (
             <div className="prose max-w-none dark:prose-invert markdown-body">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  span: ({node, className, children}) => {
+                  span: ({className, children}) => {
                     if (className === 'release-date') {
                       return <>{children}</>;
                     }
@@ -86,7 +106,6 @@ export const Release: React.FC<ReleaseProps> = ({ onGoHome }) => {
                 {changelogContent}
               </ReactMarkdown>
             </div>
-          )}
         </div>
       </main>
     </div>

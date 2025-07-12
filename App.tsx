@@ -9,7 +9,7 @@ import { Release } from './components/Release';
 import { API_KEY_LS_KEY, ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
 import type { FormData, ItineraryPlan } from './types';
 import { IconWarning } from './components/icons';
-import { SpeedInsights } from '@vercel/speed-insights/next';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 
 
