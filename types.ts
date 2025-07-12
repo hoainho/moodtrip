@@ -6,10 +6,19 @@ export interface Duration {
 }
 
 export interface FormData {
+  startLocation: string;
   destination: string;
+  startDate: string;
   duration: Duration;
   budget: number;
   mood: Mood;
+}
+
+export interface TravelTip {
+  method: string;
+  duration: string;
+  notes: string;
+  google_maps_link: string;
 }
 
 export interface ScheduleItem {
@@ -17,6 +26,8 @@ export interface ScheduleItem {
   activity: string;
   venue?: string;
   estimated_cost?: string;
+  google_maps_link?: string;
+  travel_tips?: TravelTip[];
 }
 
 export interface DayPlan {
@@ -38,6 +49,7 @@ export interface AccommodationSuggestion {
 }
 
 export interface ItineraryPlan {
+  id?: string | number;
   destination: string;
   overview: string;
   timeline: DayPlan[];

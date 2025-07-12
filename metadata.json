@@ -1,5 +1,6 @@
 {
   "name": "MoodTrip",
   "description": "An application that helps users discover and create short travel itineraries based on their mood, time, budget, and desired destination. MoodTrip automatically sends this information to Gemini AI to generate a detailed itinerary.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "prompt": ""
 }

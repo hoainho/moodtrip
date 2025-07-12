@@ -11,3 +11,4 @@ export const MOOD_OPTIONS: { id: Mood; icon: string; label: string }[] = [
 
 export const API_KEY_LS_KEY = 'moodtrip_api_key';
 export const ITINERARY_LS_KEY = 'moodtrip_saved_itinerary';
+export const SAVED_ITINERARIES_LS_KEY = 'moodtrip_saved_itineraries_list';

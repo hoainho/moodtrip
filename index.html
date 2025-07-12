@@ -4,11 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MoodTrip - Để cảm xúc dẫn đường</title>
+    <link rel="icon" type="image/png" href="./logo.png">
+
+    <!-- SEO & Social Sharing -->
+    <meta name="description" content="Một ứng dụng giúp người dùng khám phá và tạo các lịch trình du lịch ngắn dựa trên tâm trạng, thời gian, ngân sách và điểm đến mong muốn.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="MoodTrip - Để cảm xúc dẫn đường">
+    <meta property="og:description" content="Một ứng dụng giúp người dùng khám phá và tạo các lịch trình du lịch ngắn dựa trên tâm trạng, thời gian, ngân sách và điểm đến mong muốn.">
+    <meta property="og:image" content="https://res.cloudinary.com/dgzdswdgg/image/upload/v1751732691/logo_jkab5l.png">
+    <meta property="og:site_name" content="MoodTrip">
+    <meta property="og:locale" content="vi_VN">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="MoodTrip - Để cảm xúc dẫn đường">
+    <meta name="twitter:description" content="Một ứng dụng giúp người dùng khám phá và tạo các lịch trình du lịch ngắn dựa trên tâm trạng, thời gian, ngân sách và điểm đến mong muốn.">
+    <meta name="twitter:image" content="https://res.cloudinary.com/dgzdswdgg/image/upload/v1751732691/logo_jkab5l.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="icon" type="image/png" href="./logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       body {
@@ -38,6 +56,23 @@
       }
       .bg-animated {
         animation: fadeIn 1.5s ease-out;
+      }
+      /* History Marquee Animation */
+      .marquee-wrapper {
+        -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+      }
+      .marquee {
+        display: flex;
+        width: max-content;
+        animation: marquee-animation 45s linear infinite;
+      }
+      .marquee-wrapper:hover .marquee {
+        animation-play-state: paused;
+      }
+      @keyframes marquee-animation {
+        from { transform: translateX(0%); }
+        to { transform: translateX(-50%); }
       }
     </style>
   <script type="importmap">

@@ -24,60 +24,79 @@ function buildPrompt(data: FormData): string {
       : data.budget < 5000000
       ? 'Trung bình (cân bằng giữa chi phí và trải nghiệm, có thể ăn nhà hàng, ở khách sạn 3 sao)'
       : 'Thoải mái (ưu tiên trải nghiệm cao cấp, ăn uống ở nhà hàng nổi tiếng, ở khách sạn 4-5 sao, resort)';
+  
+  const startDateText = data.startDate ? `\n    - Ngày khởi hành dự kiến: ${data.startDate}` : '';
+  const startLocationText = data.startLocation ? `\n    - Nơi khởi hành: ${data.startLocation}` : '';
 
   return `
     Bạn là một chuyên gia du lịch ảo thông thái và sáng tạo. Nhiệm vụ của bạn là tạo ra một kế hoạch du lịch chi tiết, hấp dẫn và thực tế dựa trên các yêu cầu sau đây.
 
     Yêu cầu của người dùng:
-    - Điểm đến: ${data.destination || 'Việt Nam (hãy gợi ý một địa điểm cụ thể phù hợp)'}
+    - Nơi khởi hành: ${data.startLocation || 'Không xác định.'}
+    - Điểm đến: ${data.destination || 'một địa điểm du lịch thú vị và đặc biệt bất kỳ trên thế giới (hãy gợi ý một địa điểm cụ thể phù hợp)'}${startDateText}
     - Thời gian: ${buildDurationText(data.duration)}
     - Ngân sách mỗi người (ước tính): ${data.budget.toLocaleString('vi-VN')} VNĐ (${budgetDescription})
     - Tâm trạng mong muốn: ${moodTextMap[data.mood]}
 
     Vui lòng tạo một lịch trình chi tiết và trả về dưới dạng một đối tượng JSON duy nhất.
     TUYỆT ĐỐI KHÔNG sử dụng markdown code fences (như \`\`\`json ... \`\`\`).
-    JSON phải có cấu trúc chính xác như sau. Với mỗi hoạt động trong "schedule", hãy cung cấp "venue" (tên địa điểm/quán ăn cụ thể) và "estimated_cost" (chi phí ước tính). Với mỗi ngày trong "timeline", hãy thêm "weather_note" (ghi chú thời tiết và gợi ý trang phục).
+    JSON phải có cấu trúc chính xác như sau. Với mỗi hoạt động trong "schedule", hãy cung cấp "venue", "estimated_cost" và "google_maps_link" cho địa điểm đó. Thêm vào đó, hãy cung cấp một mảng "travel_tips" để gợi ý cách di chuyển từ địa điểm TRƯỚC ĐÓ tới địa điểm hiện tại. Đối với hoạt động đầu tiên trong ngày, điểm xuất phát là nơi ở được gợi ý. Mỗi mẹo trong "travel_tips" phải có "method", "duration", "notes" và "google_maps_link" (URL chỉ đường). Với mỗi ngày trong "timeline", hãy thêm "weather_note".
     {
-      "destination": "Tên địa điểm cụ thể (ví dụ: Đà Lạt, Việt Nam)",
+      "destination": "Tên địa điểm cụ thể (ví dụ: Paris, Pháp)",
       "overview": "Một đoạn văn ngắn (3-4 câu) mô tả tổng quan và truyền cảm hứng về chuyến đi, khơi gợi cảm xúc phù hợp với tâm trạng đã chọn.",
       "timeline": [
         {
           "day": "Ngày 1",
-          "title": "Một tiêu đề hấp dẫn cho ngày, ví dụ: 'Chạm ngõ Đà Lạt mộng mơ'",
+          "title": "Một tiêu đề hấp dẫn cho ngày, ví dụ: 'Chạm ngõ kinh đô ánh sáng'",
           "weather_note": "Dự báo trời se lạnh và có thể có sương mù vào buổi sáng. Nhớ mang theo áo khoác mỏng.",
           "schedule": [
-            { 
-              "time": "08:00 - 09:00", 
-              "activity": "Ăn sáng với món Bánh mì xíu mại đặc trưng.",
-              "venue": "Bánh mì xíu mại Hoàng Diệu",
-              "estimated_cost": "30.000 - 50.000 VNĐ/người"
+            {
+              "time": "08:00 - 09:00",
+              "activity": "Ăn sáng với món croissant và cà phê.",
+              "venue": "Boulangerie-Pâtisserie, khu Montmartre",
+              "estimated_cost": "10 - 15 EUR/người",
+              "google_maps_link": "https://www.google.com/maps/search/?api=1&query=Boulangerie-Pâtisserie+Montmartre+Paris",
+              "travel_tips": [
+                  {
+                      "method": "Đi bộ",
+                      "duration": "Khoảng 10 phút",
+                      "notes": "Đi bộ từ khách sạn để tận hưởng không khí buổi sáng của Paris.",
+                      "google_maps_link": "https://www.google.com/maps/dir/?api=1&origin=Generator+Paris&destination=Boulangerie-Pâtisserie+Montmartre+Paris&travelmode=walking"
+                  }
+              ]
             },
-            { 
-              "time": "09:00 - 12:00", 
-              "activity": "Tham quan Thác Datanla và trải nghiệm máng trượt xuyên rừng.",
-              "venue": "Khu du lịch Thác Datanla",
-              "estimated_cost": "Vé vào cổng: 50.000 VNĐ, Máng trượt: 170.000 VNĐ/khứ hồi"
-            },
-            { 
-              "time": "12:00 - 13:30", 
-              "activity": "Ăn trưa và nghỉ ngơi.",
-              "venue": "Nhà hàng cơm niêu Hương Việt",
-              "estimated_cost": "150.000 - 250.000 VNĐ/người"
+            {
+              "time": "09:00 - 12:00",
+              "activity": "Tham quan bảo tàng Louvre.",
+              "venue": "Bảo tàng Louvre",
+              "estimated_cost": "Vé vào cổng: 17 EUR/người",
+              "google_maps_link": "https://www.google.com/maps/search/?api=1&query=Louvre+Museum+Paris",
+              "travel_tips": [
+                  {
+                      "method": "Tàu điện ngầm (Métro)",
+                      "duration": "Khoảng 20 phút",
+                      "notes": "Sử dụng tuyến 1 hoặc 7 đến trạm Palais Royal-Musée du Louvre. Lựa chọn nhanh và tiện lợi nhất.",
+                      "google_maps_link": "https://www.google.com/maps/dir/?api=1&origin=Boulangerie-Pâtisserie+Montmartre+Paris&destination=Louvre+Museum+Paris&travelmode=transit"
+                  },
+                  {
+                      "method": "Xe buýt",
+                      "duration": "Khoảng 30 phút",
+                      "notes": "Tuyến 69 có lộ trình đi qua nhiều cảnh đẹp, phù hợp để ngắm cảnh.",
+                      "google_maps_link": "https://www.google.com/maps/dir/?api=1&origin=Boulangerie-Pâtisserie+Montmartre+Paris&destination=Louvre+Museum+Paris&travelmode=transit"
+                  }
+              ]
             }
           ]
         }
       ],
       "food": [
-        { "name": "Bánh mì xíu mại", "description": "Một món ăn sáng đặc trưng của Đà Lạt, ăn kèm với giá và rau thơm." },
-        { "name": "Lẩu gà lá é", "description": "Món lẩu thơm nồng vị lá é, rất hợp với thời tiết se lạnh." }
+        { "name": "Croissant", "description": "Bánh sừng bò nổi tiếng của Pháp, thơm bơ và giòn tan." }
       ],
       "accommodation": [
-        { "name": "Ladalat Hotel", "type": "Khách sạn 5 sao", "reason": "Phù hợp với ngân sách thoải mái, cung cấp dịch vụ cao cấp và view đẹp." },
-        { "name": "The Kupid Homestay", "type": "Homestay", "reason": "Lựa chọn tuyệt vời cho ngân sách tiết kiệm, không gian ấm cúng và gần gũi." }
+        { "name": "Generator Paris", "type": "Hostel", "reason": "Lựa chọn tuyệt vời cho ngân sách tiết kiệm, không gian trẻ trung và dễ kết bạn." }
       ],
       "tips": [
-        "Nên mang theo áo khoác mỏng vì thời tiết Đà Lạt thay đổi nhanh.",
-        "Đặt phòng và vé xe trước vào cuối tuần hoặc mùa cao điểm."
+        "Nên mua vé tham quan các địa điểm nổi tiếng trực tuyến để tránh xếp hàng."
       ]
     }
 
@@ -95,7 +114,7 @@ export const generateItinerary = async (formData: FormData, apiKey: string): Pro
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-04-17",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

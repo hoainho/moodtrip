@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import type { FormData, Mood, Duration } from '../types';
 import { MOOD_OPTIONS } from '../constants';
-import { IconMapPin, IconWallet, IconSun, IconMoon, IconChevronLeft, IconChevronRight } from './icons';
+import { IconMapPin, IconWallet, IconSun, IconMoon, IconChevronLeft, IconChevronRight, IconCalendar } from './icons';
 import { Logo } from './Logo';
 
 interface TripFormProps {
   onSubmit: (data: FormData) => void;
   onBack: () => void;
+  onGoHome: () => void;
   error?: string | null;
   initialData?: FormData | null;
 }
@@ -42,18 +43,22 @@ const NumberStepper: React.FC<{
     </div>
 );
 
-export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, initialData }) => {
+export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, initialData, onGoHome }) => {
+  const [startLocation, setStartLocation] = useState('');
   const [destination, setDestination] = useState('');
+  const [startDate, setStartDate] = useState('');
   const [duration, setDuration] = useState<Duration>({ days: 2, nights: 1 });
   const [budget, setBudget] = useState(3000000);
   const [mood, setMood] = useState<Mood>('explore');
 
   useEffect(() => {
     if (initialData) {
+      setStartLocation(initialData.startLocation || '');
       setDestination(initialData.destination);
       setDuration(initialData.duration);
       setBudget(initialData.budget);
       setMood(initialData.mood);
+      setStartDate(initialData.startDate || '');
     }
   }, [initialData]);
 
@@ -80,14 +85,14 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ destination, duration, budget, mood });
+    onSubmit({ startLocation, destination, startDate, duration, budget, mood });
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-sky-100 p-4">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 md:p-12 space-y-8 transform transition-all duration-500">
         <div className="text-center">
-            <Logo className="text-teal-700 inline-flex mb-4" />
+            <Logo className="text-teal-700 inline-flex mb-4" onClick={onGoHome}/>
             <h2 className="text-3xl font-bold text-teal-700">Lên kế hoạch cho chuyến đi mơ ước</h2>
             <p className="text-slate-500 mt-2">Chỉ cần vài lựa chọn, AI sẽ lo phần còn lại!</p>
         </div>
@@ -100,6 +105,22 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+           {/* Start Location */}
+           <div>
+            <label htmlFor="startLocation" className="block text-lg font-medium text-slate-700 mb-2">Nơi bắt đầu</label>
+            <div className="relative">
+              <IconMapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                id="startLocation"
+                value={startLocation}
+                onChange={(e) => setStartLocation(e.target.value)}
+                placeholder="Nhập thành phố khởi hành (tùy chọn)"
+                className="w-full pl-10 pr-4 py-3 bg-slate-800 text-white border border-slate-600 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition placeholder-slate-400"
+              />
+            </div>
+          </div>
+          
           {/* Destination */}
           <div>
             <label htmlFor="destination" className="block text-lg font-medium text-slate-700 mb-2">Điểm đến</label>
@@ -112,6 +133,23 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                 onChange={(e) => setDestination(e.target.value)}
                 placeholder="Nhập địa điểm (hoặc để trống)"
                 className="w-full pl-10 pr-4 py-3 bg-slate-800 text-white border border-slate-600 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition placeholder-slate-400"
+              />
+            </div>
+          </div>
+          
+          {/* Start Date */}
+          <div>
+            <label htmlFor="startDate" className="block text-lg font-medium text-slate-700 mb-2">Ngày khởi hành (tùy chọn)</label>
+            <div className="relative">
+              <IconCalendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="date"
+                id="startDate"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                className="w-full pl-10 pr-4 py-3 bg-slate-800 text-white border border-slate-600 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition placeholder-slate-400"
+                style={{ colorScheme: 'dark' }}
               />
             </div>
           </div>

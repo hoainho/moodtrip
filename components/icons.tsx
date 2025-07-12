@@ -181,3 +181,54 @@ export const IconInfo = (props: React.SVGProps<SVGSVGElement>) => (
         <line x1="12" x2="12.01" y1="8" y2="8" />
     </SvgIcon>
 );
+
+export const IconX = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M18 6L6 18M6 6l12 12"/>
+    </SvgIcon>
+);
+
+export const IconBike = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="5.5" cy="17.5" r="3.5"/>
+        <circle cx="18.5" cy="17.5" r="3.5"/>
+        <path d="M15 17.5h-5l4-4-2-3h3.5"/>
+        <path d="m6.5 14 3-3 2 3h4"/>
+    </SvgIcon>
+);
+
+export const IconCar = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10h-3.2c-.7 0-1.3.4-1.6.9L10 14H5a1 1 0 0 0-1 1v3c0 .6.4 1 1 1h2"/>
+        <circle cx="7" cy="17" r="2"/>
+        <circle cx="17" cy="17" r="2"/>
+    </SvgIcon>
+);
+
+export const IconWalk = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="12" cy="4" r="1"/>
+        <path d="M17.5 12.5 14 9.5l-3 3-3-3-2.5 2.5"/>
+        <path d="m14 22-3-3-3 3"/>
+        <path d="M4.5 12.5 8 16l3-4-2-3"/>
+    </SvgIcon>
+);
+
+export const IconEdit = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        <path d="m15 5 4 4"/>
+    </SvgIcon>
+);
+
+export const IconBookmark = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+    </SvgIcon>
+);
+
+export const IconCheck = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M20 6 9 17l-5-5"/>
+    </SvgIcon>
+);
