@@ -9,6 +9,9 @@ import { Release } from './components/Release';
 import { API_KEY_LS_KEY, ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
 import type { FormData, ItineraryPlan } from './types';
 import { IconWarning } from './components/icons';
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/react';
+
 
 // Define types for html2pdf.js since it's loaded from a script
 interface Html2PdfOptions {
@@ -235,6 +238,8 @@ setShowApiKeyModal(true);
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Analytics />
+      <SpeedInsights />
       <main>{renderContent()}</main>
       {toastMessage && (
         <div className="fixed bottom-5 right-5 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-up">
