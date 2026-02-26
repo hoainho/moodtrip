@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import type { FormData, Mood, Duration } from '../types';
 import { MOOD_OPTIONS } from '../constants';
-import { IconMapPin, IconWallet, IconSun, IconMoon, IconChevronLeft, IconChevronRight, IconCalendar } from './icons';
+import { IconMapPin, IconWallet, IconChevronLeft, IconChevronRight, IconCalendar, IconCompass, IconSparkles } from './icons';
 import { Logo } from './Logo';
+import { motion } from 'motion/react';
 
 interface TripFormProps {
   onSubmit: (data: FormData) => void;
@@ -12,35 +13,45 @@ interface TripFormProps {
   initialData?: FormData | null;
 }
 
+const fadeUp = (delay: number) => ({
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.5, delay, ease: 'easeOut' as const },
+});
+
 const NumberStepper: React.FC<{
-    value: number;
-    onChange: (value: number) => void;
-    min: number;
-    max: number;
-    label: string;
-}> = ({ value, onChange, min, max, label }) => (
-    <div className="flex items-center justify-between p-3 bg-slate-100 rounded-lg">
-        <span className="font-semibold text-slate-800">{label}</span>
-        <div className="flex items-center space-x-3">
-            <button
-                type="button"
-                onClick={() => onChange(value - 1)}
-                disabled={value <= min}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-                <IconChevronLeft className="w-5 h-5" />
-            </button>
-            <span className="font-bold text-lg text-teal-700 w-8 text-center">{value}</span>
-            <button
-                type="button"
-                onClick={() => onChange(value + 1)}
-                disabled={value >= max}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-                <IconChevronRight className="w-5 h-5" />
-            </button>
-        </div>
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  label: string;
+  icon: React.ReactNode;
+}> = ({ value, onChange, min, max, label, icon }) => (
+  <div className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/[0.06] hover:border-white/10 transition-colors">
+    <div className="flex items-center gap-2.5">
+      <span className="text-teal-400/70">{icon}</span>
+      <span className="font-medium text-slate-300 text-sm">{label}</span>
     </div>
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onChange(value - 1)}
+        disabled={value <= min}
+        className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06] text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+      >
+        <IconChevronLeft className="w-4 h-4" />
+      </button>
+      <span className="font-bold text-xl text-white w-8 text-center tabular-nums">{value}</span>
+      <button
+        type="button"
+        onClick={() => onChange(value + 1)}
+        disabled={value >= max}
+        className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06] text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+      >
+        <IconChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  </div>
 );
 
 export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, initialData, onGoHome }) => {
@@ -62,26 +73,25 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
     }
   }, [initialData]);
 
-
   const handleDaysChange = (newDays: number) => {
-    const clampedDays = Math.max(1, Math.min(30, newDays)); // 1 to 30 days
+    const clampedDays = Math.max(1, Math.min(30, newDays));
     const newNights = Math.min(duration.nights, Math.max(0, clampedDays - 1));
     setDuration({ days: clampedDays, nights: newNights });
   };
-  
+
   const handleNightsChange = (newNights: number) => {
     const clampedNights = Math.max(0, Math.min(duration.days > 0 ? duration.days - 1 : 0, newNights));
     setDuration({ ...duration, nights: clampedNights });
   };
 
   const handleBudgetChange = (value: number | string) => {
-      const numericValue = typeof value === 'string' ? parseInt(value.replace(/\D/g, ''), 10) : value;
-      if (!isNaN(numericValue)) {
-          setBudget(Math.max(0, numericValue));
-      } else if (value === '') {
-          setBudget(0);
-      }
-  }
+    const numericValue = typeof value === 'string' ? parseInt(value.replace(/\D/g, ''), 10) : value;
+    if (!isNaN(numericValue)) {
+      setBudget(Math.max(0, numericValue));
+    } else if (value === '') {
+      setBudget(0);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,138 +99,213 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-sky-100 p-4">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 md:p-12 space-y-8 transform transition-all duration-500">
-        <div className="text-center">
-            <Logo className="text-teal-700 inline-flex mb-4" onClick={onGoHome}/>
-            <h2 className="text-3xl font-bold text-teal-700">Lên kế hoạch cho chuyến đi mơ ước</h2>
-            <p className="text-slate-500 mt-2">Chỉ cần vài lựa chọn, AI sẽ lo phần còn lại!</p>
-        </div>
-        
+    <div className="min-h-screen flex items-center justify-center p-4 py-8 md:py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="w-full max-w-3xl"
+      >
+        {/* Header */}
+        <motion.div {...fadeUp(0)} className="text-center mb-8">
+          <Logo className="text-white inline-flex mb-5" onClick={onGoHome} />
+          <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight text-shadow-md">
+            Lên kế hoạch cho chuyến đi
+          </h2>
+          <p className="text-slate-300 mt-3 text-lg text-shadow-sm">
+            Chọn phong cách, để AI thiết kế hành trình hoàn hảo cho bạn
+          </p>
+        </motion.div>
+
         {error && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 rounded-r-lg shadow-md" role="alert">
-                <p className="font-bold">Lỗi</p>
-                <p>{error}</p>
-            </div>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mb-6 bg-red-500/10 border border-red-500/20 text-red-300 p-4 rounded-2xl"
+            role="alert"
+          >
+            <p className="font-semibold">Lỗi</p>
+            <p className="text-red-400/80 text-sm mt-1">{error}</p>
+          </motion.div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-           {/* Start Location */}
-           <div>
-            <label htmlFor="startLocation" className="block text-lg font-medium text-slate-700 mb-2">Nơi bắt đầu</label>
-            <div className="relative">
-              <IconMapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                id="startLocation"
-                value={startLocation}
-                onChange={(e) => setStartLocation(e.target.value)}
-                placeholder="Nhập thành phố khởi hành (tùy chọn)"
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 text-white border border-slate-600 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition placeholder-slate-400"
-              />
+          {/* Location Section */}
+          <motion.div {...fadeUp(0.1)} className="glass-dark p-6 md:p-8 space-y-5">
+            <div className="flex items-center gap-2 mb-1">
+              <IconCompass className="w-5 h-5 text-teal-400" />
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Địa điểm</h3>
             </div>
-          </div>
-          
-          {/* Destination */}
-          <div>
-            <label htmlFor="destination" className="block text-lg font-medium text-slate-700 mb-2">Điểm đến</label>
-            <div className="relative">
-              <IconMapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                id="destination"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                placeholder="Nhập địa điểm (hoặc để trống)"
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 text-white border border-slate-600 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition placeholder-slate-400"
-              />
-            </div>
-          </div>
-          
-          {/* Start Date */}
-          <div>
-            <label htmlFor="startDate" className="block text-lg font-medium text-slate-700 mb-2">Ngày khởi hành (tùy chọn)</label>
-            <div className="relative">
-              <IconCalendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="date"
-                id="startDate"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                min={new Date().toISOString().split("T")[0]}
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 text-white border border-slate-600 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition placeholder-slate-400"
-                style={{ colorScheme: 'dark' }}
-              />
-            </div>
-          </div>
 
-          {/* Duration */}
-          <div>
-              <label className="block text-lg font-medium text-slate-700 mb-3">Thời gian</label>
-              <div className="grid grid-cols-2 gap-4">
-                <NumberStepper label="Số ngày" value={duration.days} onChange={handleDaysChange} min={1} max={30} />
-                <NumberStepper label="Số đêm" value={duration.nights} onChange={handleNightsChange} min={0} max={duration.days > 0 ? duration.days - 1 : 0} />
-              </div>
-          </div>
-          
-          {/* Budget */}
-          <div>
-              <label htmlFor="budget" className="block text-lg font-medium text-slate-700 mb-2">Ngân sách (mỗi người)</label>
-              <div className="space-y-3">
-                  <div className="relative">
-                      <IconWallet className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input
-                          type="text"
-                          value={budget > 0 ? budget.toLocaleString('vi-VN') : ''}
-                          onChange={(e) => handleBudgetChange(e.target.value)}
-                          placeholder="0"
-                          className="w-full pl-10 pr-12 py-3 bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition font-semibold text-slate-800"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">VNĐ</span>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="startLocation" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Nơi khởi hành</label>
+                <div className="relative group">
+                  <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
                   <input
-                      type="range"
-                      id="budget"
-                      min="500000"
-                      max="20000000"
-                      step="500000"
-                      value={budget}
-                      onChange={(e) => handleBudgetChange(Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer custom-range"
+                    type="text"
+                    id="startLocation"
+                    value={startLocation}
+                    onChange={(e) => setStartLocation(e.target.value)}
+                    placeholder="Thành phố (tùy chọn)"
+                    className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
                   />
+                </div>
               </div>
-          </div>
-
-          {/* Mood */}
-          <div>
-              <label className="block text-lg font-medium text-slate-700 mb-3">Tâm trạng của bạn?</label>
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                  {MOOD_OPTIONS.map((opt) => (
-                      <button type="button" key={opt.id} onClick={() => setMood(opt.id)} className={`p-3 text-center rounded-lg border-2 transition-all duration-200 ${mood === opt.id ? 'border-teal-500 bg-teal-50 scale-105 shadow-lg' : 'border-transparent bg-slate-100 hover:bg-slate-200'}`}>
-                          <span className="text-3xl md:text-4xl">{opt.icon}</span>
-                          <p className="font-semibold mt-1 text-sm text-slate-800">{opt.label}</p>
-                      </button>
-                  ))}
+              <div>
+                <label htmlFor="destination" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Điểm đến</label>
+                <div className="relative group">
+                  <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                  <input
+                    type="text"
+                    id="destination"
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    placeholder="Địa điểm (hoặc để AI gợi ý)"
+                    className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
+                  />
+                </div>
               </div>
-          </div>
+            </div>
+          </motion.div>
 
-          <div className="pt-4 flex justify-between items-center">
-            <button
-                type="button"
-                onClick={onBack}
-                className="px-6 py-2 text-slate-600 font-semibold rounded-lg hover:bg-slate-100 transition-colors"
+          {/* Date & Duration Section */}
+          <motion.div {...fadeUp(0.2)} className="glass-dark p-6 md:p-8 space-y-5">
+            <div className="flex items-center gap-2 mb-1">
+              <IconCalendar className="w-5 h-5 text-teal-400" />
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Thời gian</h3>
+            </div>
+
+            <div>
+              <label htmlFor="startDate" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Ngày khởi hành (tùy chọn)</label>
+              <div className="relative group">
+                <IconCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                <input
+                  type="date"
+                  id="startDate"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
+                  style={{ colorScheme: 'dark' }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <NumberStepper label="Ngày" value={duration.days} onChange={handleDaysChange} min={1} max={30} icon={<IconCalendar className="w-4 h-4" />} />
+              <NumberStepper label="Đêm" value={duration.nights} onChange={handleNightsChange} min={0} max={duration.days > 0 ? duration.days - 1 : 0} icon={<IconCalendar className="w-4 h-4" />} />
+            </div>
+          </motion.div>
+
+          {/* Budget Section */}
+          <motion.div {...fadeUp(0.3)} className="glass-dark p-6 md:p-8 space-y-5">
+            <div className="flex items-center gap-2 mb-1">
+              <IconWallet className="w-5 h-5 text-teal-400" />
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Ngân sách mỗi người</h3>
+            </div>
+
+            <div className="text-center py-2">
+              <span className="text-4xl md:text-5xl font-bold text-white tabular-nums tracking-tight">
+                {budget > 0 ? budget.toLocaleString('vi-VN') : '0'}
+              </span>
+              <span className="text-lg text-slate-500 ml-2 font-medium">VND</span>
+            </div>
+
+            <div className="px-1">
+              <input
+                type="range"
+                id="budget"
+                min="500000"
+                max="20000000"
+                step="500000"
+                value={budget}
+                onChange={(e) => handleBudgetChange(Number(e.target.value))}
+                className="w-full h-2 bg-white/[0.06] rounded-full appearance-none cursor-pointer custom-range"
+              />
+              <div className="flex justify-between mt-2">
+                <span className="text-xs text-slate-600">500K</span>
+                <span className="text-xs text-slate-600">20M</span>
+              </div>
+            </div>
+
+            <div className="relative group">
+              <IconWallet className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+              <input
+                type="text"
+                value={budget > 0 ? budget.toLocaleString('vi-VN') : ''}
+                onChange={(e) => handleBudgetChange(e.target.value)}
+                placeholder="Nhập số tiền"
+                className="w-full pl-10 pr-16 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all font-semibold outline-none text-sm"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 font-medium text-xs uppercase tracking-wider">VND</span>
+            </div>
+          </motion.div>
+
+          {/* Mood Section */}
+          <motion.div {...fadeUp(0.4)} className="glass-dark p-6 md:p-8 space-y-5">
+            <div className="flex items-center gap-2 mb-1">
+              <IconSparkles className="w-5 h-5 text-teal-400" />
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Tâm trạng của bạn</h3>
+            </div>
+
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+              {MOOD_OPTIONS.map((opt) => (
+                <motion.button
+                  type="button"
+                  key={opt.id}
+                  onClick={() => setMood(opt.id)}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  className={`relative p-4 text-center rounded-2xl border transition-all duration-300 ${
+                    mood === opt.id
+                      ? 'border-teal-400/60 bg-teal-400/10 shadow-lg shadow-teal-400/10'
+                      : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                  }`}
+                >
+                  {mood === opt.id && (
+                    <motion.div
+                      layoutId="moodGlow"
+                      className="absolute inset-0 rounded-2xl bg-teal-400/5 border border-teal-400/30"
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                  <div className={`flex justify-center items-center h-10 md:h-12 relative z-10 ${mood === opt.id ? 'text-teal-300' : 'text-slate-400'}`}>
+                    {opt.icon}
+                  </div>
+                  <p className={`font-medium mt-1.5 text-xs relative z-10 ${mood === opt.id ? 'text-teal-300' : 'text-slate-500'}`}>
+                    {opt.label}
+                  </p>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Action Buttons */}
+          <motion.div {...fadeUp(0.5)} className="flex flex-col gap-3 pt-2">
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.01, boxShadow: '0 0 40px rgba(13, 148, 136, 0.2)' }}
+              whileTap={{ scale: 0.99 }}
+              className="w-full py-4 gradient-nature text-white font-bold text-lg rounded-2xl shadow-lg shadow-teal-500/20 transition-all duration-300 flex items-center justify-center gap-2"
             >
-                Quay lại
-            </button>
-            <button
-                type="submit"
-                className="px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+              <IconSparkles className="w-5 h-5" />
+              Tạo hành trình
+            </motion.button>
+
+            <motion.button
+              type="button"
+              onClick={onBack}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              className="w-full py-3 text-slate-500 font-medium rounded-xl hover:bg-white/[0.03] hover:text-slate-400 transition-all flex items-center justify-center gap-1.5"
             >
-                Tạo hành trình
-            </button>
-          </div>
+              <IconChevronLeft className="w-4 h-4" />
+              Quay lại
+            </motion.button>
+          </motion.div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import type { ItineraryPlan, TravelTip } from '../types';
 import { IconFood, IconHotel, IconTip, IconMapPin, IconDownload, IconRestart, IconSun, IconMoon, IconInfo, IconWallet, IconEdit, IconBookmark, IconCheck, IconX } from './icons';
 import { Logo } from './Logo';
 import { TravelTipsModal } from './TravelTipsModal';
-
+import { motion } from 'motion/react';
 
 interface ItineraryDisplayProps {
   itinerary: ItineraryPlan;
@@ -13,21 +13,28 @@ interface ItineraryDisplayProps {
   onItineraryChange: (newItinerary: ItineraryPlan) => void;
   onGoHome: () => void;
   isSaved: boolean;
+  isExportingPDF?: boolean;
 }
 
 const InfoCard: React.FC<{ icon: React.ReactNode, title: string, children: React.ReactNode }> = ({ icon, title, children }) => (
-    <div className="bg-white rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl hover:scale-105">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.4 }}
+      className="glass-dark rounded-3xl p-6 transition-all duration-300 border border-white/5 hover:border-teal-500/20 hover:shadow-lg hover:shadow-teal-500/5"
+    >
         <div className="flex items-center mb-4">
-            <div className="bg-teal-100 text-teal-600 rounded-full p-2 mr-4">
+            <div className="gradient-nature text-white rounded-full p-2.5 mr-4">
                 {icon}
             </div>
-            <h3 className="text-xl font-bold text-teal-800">{title}</h3>
+            <h3 className="text-xl font-bold text-white">{title}</h3>
         </div>
         <div>{children}</div>
-    </div>
+    </motion.div>
 );
 
-export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, onReset, onExportPDF, onSaveToList, onItineraryChange, onGoHome, isSaved }) => {
+export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, onReset, onExportPDF, onSaveToList, onItineraryChange, onGoHome, isSaved, isExportingPDF }) => {
   const [activeTips, setActiveTips] = useState<{ tips: TravelTip[], venue: string } | null>(null);
   const [editingTime, setEditingTime] = useState<{ dayIndex: number, itemIndex: number} | null>(null);
   const [currentTimeValue, setCurrentTimeValue] = useState('');
@@ -43,7 +50,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
 
   const handleTimeSave = (dayIndex: number, itemIndex: number) => {
     if (!itinerary) return;
-    const newItinerary = JSON.parse(JSON.stringify(itinerary)); // Deep copy to avoid mutation issues
+    const newItinerary = JSON.parse(JSON.stringify(itinerary));
     newItinerary.timeline[dayIndex].schedule[itemIndex].time = currentTimeValue;
     onItineraryChange(newItinerary);
     setEditingTime(null);
@@ -61,72 +68,114 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
     }
   };
 
-
   return (
-    <div className="bg-slate-50 min-h-screen">
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg shadow-sm">
+    <div className="min-h-screen">
+      {/* Header */}
+      <header className="sticky top-0 z-30 glass-dark border-b border-white/5">
         <div className="container mx-auto px-4 py-3 relative flex justify-between items-center">
-          <Logo className="text-teal-700" onClick={onGoHome} />
+          <Logo className="text-white" onClick={onGoHome} />
           
           <div className="hidden md:block absolute left-1/2 -translate-x-1/2">
-             <h1 className="text-lg font-bold text-slate-700 flex items-center whitespace-nowrap">
-                <IconMapPin className="w-5 h-5 mr-2 text-slate-500" />
+             <h1 className="text-lg font-bold text-white flex items-center whitespace-nowrap">
+                <IconMapPin className="w-5 h-5 mr-2 text-teal-400" />
                 {itinerary.destination}
              </h1>
           </div>
 
           <div className="flex items-center space-x-3">
             {!isSaved && (
-              <button onClick={onSaveToList} title="Lưu lại lịch trình" className="p-2.5 rounded-full bg-yellow-500 text-white shadow-lg hover:bg-yellow-600 transform hover:scale-105 transition-all duration-300">
+              <motion.button 
+                onClick={onSaveToList} 
+                title="Lưu lại lịch trình" 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="p-2.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-all"
+              >
                 <IconBookmark className="w-5 h-5" />
-              </button>
+              </motion.button>
             )}
-            <button onClick={onExportPDF} title="Xuất ra PDF" className="p-2.5 rounded-full bg-teal-500 text-white shadow-lg hover:bg-teal-600 transform hover:scale-105 transition-all duration-300">
-              <IconDownload className="w-5 h-5" />
-            </button>
-            <button onClick={onReset} title="Tạo chuyến đi mới" className="p-2.5 rounded-full bg-red-500 text-white shadow-lg hover:bg-red-600 transform hover:scale-105 transition-all duration-300">
+            <motion.button 
+              onClick={onExportPDF} 
+              title="Xuất ra PDF"
+              disabled={isExportingPDF}
+              whileHover={isExportingPDF ? {} : { scale: 1.1 }}
+              whileTap={isExportingPDF ? {} : { scale: 0.9 }}
+              className={`p-2.5 rounded-full border transition-all ${isExportingPDF ? 'bg-teal-500/10 text-teal-400/50 border-teal-500/20 cursor-wait' : 'bg-teal-500/20 text-teal-400 border-teal-500/30 hover:bg-teal-500/30'}`}
+            >
+              {isExportingPDF ? (
+                <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              ) : (
+                <IconDownload className="w-5 h-5" />
+              )}
+            </motion.button>
+            <motion.button 
+              onClick={onReset} 
+              title="Tạo chuyến đi mới" 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="p-2.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all"
+            >
               <IconRestart className="w-5 h-5" />
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>
 
       <main id="itinerary-to-print" className="container mx-auto p-4 md:p-8">
         {/* Overview */}
-        <div className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-2xl p-8 mb-8 text-center shadow-xl">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="gradient-ocean text-white rounded-2xl p-8 mb-8 text-center shadow-xl shadow-cyan-500/10 border border-white/10"
+        >
           <h2 className="text-3xl font-bold mb-4">Hành trình của bạn đã sẵn sàng!</h2>
-          <p className="text-lg opacity-90 max-w-3xl mx-auto">{itinerary.overview}</p>
-        </div>
+          <p className="text-lg opacity-90 max-w-3xl mx-auto leading-relaxed">{itinerary.overview}</p>
+        </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Timeline */}
           <div className="md:col-span-2 space-y-8">
              {itinerary.timeline.map((day, dayIndex) => (
-                <div key={dayIndex} className="bg-white rounded-xl shadow-lg p-6">
-                   <div className="flex items-center mb-4 border-b pb-3 border-slate-200">
-                      <div className="flex items-center justify-center w-12 h-12 bg-teal-100 rounded-full mr-4">
-                          {day.title.toLowerCase().includes('tối') || day.title.toLowerCase().includes('đêm') ? <IconMoon className="w-6 h-6 text-teal-600"/> : <IconSun className="w-6 h-6 text-teal-600"/>}
+                <motion.div
+                  key={dayIndex}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: dayIndex * 0.15 }}
+                  className="glass-dark rounded-3xl p-6 border border-white/5"
+                >
+                   <div className="flex items-center mb-4 border-b pb-3 border-white/10">
+                      <div className="flex items-center justify-center w-12 h-12 gradient-nature rounded-full mr-4">
+                          {day.title.toLowerCase().includes('toi') || day.title.toLowerCase().includes('dem') ? <IconMoon className="w-6 h-6 text-white"/> : <IconSun className="w-6 h-6 text-white"/>}
                       </div>
                       <div>
-                          <p className="font-semibold text-slate-500">{day.day}</p>
-                          <h3 className="text-2xl font-bold text-teal-800">{day.title}</h3>
+                          <p className="font-medium text-slate-400 text-sm">{day.day}</p>
+                          <h3 className="text-2xl font-bold text-white">{day.title}</h3>
                       </div>
                    </div>
                    
                    {day.weather_note && (
-                        <div className="flex items-start bg-sky-50 text-sky-800 rounded-lg p-3 mb-4 text-sm">
-                           <IconInfo className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 text-sky-600" />
+                        <div className="flex items-start bg-sky-500/10 text-sky-300 rounded-xl p-3 mb-4 text-sm border border-sky-500/20">
+                           <IconInfo className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 text-sky-400" />
                            <p>{day.weather_note}</p>
                         </div>
                    )}
                    
                    <div className="relative pl-6">
-                        <div className="absolute left-0 top-0 h-full w-0.5 bg-teal-200"></div>
+                        <div className="absolute left-0 top-0 h-full w-0.5 bg-teal-900"></div>
                         {day.schedule.map((item, itemIndex) => {
                             const isEditing = editingTime?.dayIndex === dayIndex && editingTime.itemIndex === itemIndex;
                             return (
-                                <div key={itemIndex} className="relative mb-6 pl-4">
-                                <div className="absolute -left-1.5 top-1 w-3 h-3 bg-teal-500 rounded-full border-2 border-white"></div>
+                                <motion.div
+                                  key={itemIndex}
+                                  initial={{ opacity: 0, x: -15 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: itemIndex * 0.08 }}
+                                  className="relative mb-6 pl-4"
+                                >
+                                <div className="absolute -left-1.5 top-1 w-3 h-3 bg-teal-500 rounded-full border-2 border-[#0a0e1a] shadow-lg shadow-teal-500/30"></div>
                                 
                                 <div className="flex items-center gap-2">
                                   {isEditing ? (
@@ -137,32 +186,32 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                                         onChange={handleTimeChange}
                                         onKeyDown={(e) => handleInputKeyDown(e, dayIndex, itemIndex)}
                                         autoFocus
-                                        className="font-bold text-slate-700 bg-slate-100 rounded px-2 py-1 border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                                        className="font-bold text-white bg-white/10 rounded-lg px-3 py-1.5 border border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
                                       />
-                                      <button onClick={() => handleTimeSave(dayIndex, itemIndex)} className="text-green-500 hover:text-green-700"><IconCheck className="w-5 h-5"/></button>
-                                      <button onClick={handleTimeCancel} className="text-red-500 hover:text-red-700"><IconX className="w-5 h-5"/></button>
+                                      <button onClick={() => handleTimeSave(dayIndex, itemIndex)} className="text-green-400 hover:text-green-300 transition"><IconCheck className="w-5 h-5"/></button>
+                                      <button onClick={handleTimeCancel} className="text-red-400 hover:text-red-300 transition"><IconX className="w-5 h-5"/></button>
                                     </div>
                                   ) : (
                                     <>
-                                      <p className="font-bold text-slate-700">{item.time}</p>
-                                      <button onClick={() => handleEditClick(dayIndex, itemIndex, item.time)} className="text-slate-400 hover:text-teal-600">
+                                      <p className="font-bold text-white">{item.time}</p>
+                                      <button onClick={() => handleEditClick(dayIndex, itemIndex, item.time)} className="text-slate-600 hover:text-teal-400 transition">
                                         <IconEdit className="w-4 h-4" />
                                       </button>
                                     </>
                                   )}
                                 </div>
 
-                                <p className="text-slate-600 mb-2">{item.activity}</p>
+                                <p className="text-slate-300 mb-2">{item.activity}</p>
                                 <div className="space-y-2 text-sm">
                                   {item.venue && (
-                                      <div className="flex items-center text-slate-500">
-                                          <IconMapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                                      <div className="flex items-center text-slate-400">
+                                          <IconMapPin className="w-4 h-4 mr-2 flex-shrink-0 text-teal-500" />
                                           {item.google_maps_link ? (
                                               <a 
                                                   href={item.google_maps_link} 
                                                   target="_blank" 
                                                   rel="noopener noreferrer" 
-                                                  className="hover:underline hover:text-teal-600 transition-colors font-medium"
+                                                  className="hover:underline hover:text-teal-400 transition-colors font-medium"
                                                   title={`Mở vị trí của ${item.venue} trên Google Maps`}
                                               >
                                                   {item.venue}
@@ -173,16 +222,16 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                                       </div>
                                   )}
                                   {item.estimated_cost && (
-                                      <div className="flex items-center text-slate-500">
-                                          <IconWallet className="w-4 h-4 mr-2 flex-shrink-0" />
-                                          <span>Chi phí: {item.estimated_cost}</span>
+                                      <div className="flex items-center text-slate-400">
+                                          <IconWallet className="w-4 h-4 mr-2 flex-shrink-0 text-yellow-500" />
+                                          <span>Chi phi: {item.estimated_cost}</span>
                                       </div>
                                   )}
                                   {item.travel_tips && item.travel_tips.length > 0 && (
                                       <div className="pt-1">
                                           <button
                                               onClick={() => setActiveTips({ tips: item.travel_tips as TravelTip[], venue: item.venue || 'địa điểm' })}
-                                              className="inline-flex items-center text-xs bg-teal-50 text-teal-600 font-semibold px-2.5 py-1 rounded-full hover:bg-teal-100 transition-transform transform hover:scale-105"
+                                              className="inline-flex items-center text-xs bg-teal-500/10 text-teal-400 font-semibold px-3 py-1.5 rounded-full hover:bg-teal-500/20 transition-all border border-teal-500/20"
                                               title="Xem mẹo di chuyển"
                                           >
                                               <IconTip className="w-4 h-4 mr-1.5" />
@@ -191,11 +240,11 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                                       </div>
                                   )}
                                 </div>
-                              </div>
-                            )
+                              </motion.div>
+                            );
                         })}
                    </div>
-                </div>
+                </motion.div>
              ))}
           </div>
 
@@ -203,9 +252,9 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           <InfoCard icon={<IconFood className="w-6 h-6"/>} title="Món ăn nên thử">
             <ul className="space-y-3">
               {itinerary.food.map((item, index) => (
-                <li key={index} className="p-3 bg-slate-50 rounded-lg">
-                  <p className="font-bold text-slate-800">{item.name}</p>
-                  <p className="text-sm text-slate-600">{item.description}</p>
+                <li key={index} className="p-3 bg-white/5 rounded-xl border border-white/5">
+                  <p className="font-bold text-white">{item.name}</p>
+                  <p className="text-sm text-slate-400">{item.description}</p>
                 </li>
               ))}
             </ul>
@@ -215,9 +264,9 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           <InfoCard icon={<IconHotel className="w-6 h-6"/>} title="Gợi ý chỗ nghỉ">
             <ul className="space-y-3">
               {itinerary.accommodation.map((item, index) => (
-                <li key={index} className="p-3 bg-slate-50 rounded-lg">
-                  <p className="font-bold text-slate-800">{item.name} <span className="text-sm font-normal text-slate-500">({item.type})</span></p>
-                  <p className="text-sm text-slate-600">{item.reason}</p>
+                <li key={index} className="p-3 bg-white/5 rounded-xl border border-white/5">
+                  <p className="font-bold text-white">{item.name} <span className="text-sm font-normal text-slate-500">({item.type})</span></p>
+                  <p className="text-sm text-slate-400">{item.reason}</p>
                 </li>
               ))}
             </ul>
@@ -226,8 +275,13 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           {/* Tips */}
           <div className="md:col-span-2">
             <InfoCard icon={<IconTip className="w-6 h-6"/>} title="Mẹo du lịch hữu ích">
-              <ul className="list-disc list-inside space-y-2 text-slate-600">
-                {itinerary.tips.map((tip, index) => <li key={index}>{tip}</li>)}
+              <ul className="space-y-2 text-slate-300">
+                {itinerary.tips.map((tip, index) => (
+                  <li key={index} className="flex items-start gap-3 p-2">
+                    <span className="text-teal-400 mt-0.5">•</span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
               </ul>
             </InfoCard>
           </div>
