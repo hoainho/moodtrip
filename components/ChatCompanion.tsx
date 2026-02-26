@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { IconMessageCircle, IconSend, IconX, IconSparkles } from './icons';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessage {
   id: string;
@@ -22,7 +24,14 @@ Nhiệm vụ của bạn:
 - Trả lời bằng tiếng Việt, thân thiện, ngắn gọn nhưng đầy đủ
 - Sử dụng kiến thức mới nhất về du lịch
 
-Phong cách: Nhiệt tình, chuyên nghiệp, thân thiện. Trả lời ngắn gọn (2-4 câu cho câu hỏi đơn giản, chi tiết hơn khi cần). KHÔNG sử dụng markdown code fences.`;
+Định dạng trả lời:
+- Sử dụng **in đậm** để nhấn mạnh điểm quan trọng
+- Sử dụng danh sách có số thứ tự (1. 2. 3.) hoặc gạch đầu dòng (-) khi liệt kê
+- Sử dụng bảng markdown khi so sánh (ví dụ: so sánh điểm đến, chi phí)
+- Sử dụng ### tiêu đề phụ khi câu trả lời dài và có nhiều phần
+- KHÔNG sử dụng code fences (\`\`\`)
+
+Phong cách: Nhiệt tình, chuyên nghiệp, thân thiện. Trả lời ngắn gọn (2-4 câu cho câu hỏi đơn giản, chi tiết hơn khi cần).`;
 
 async function sendChatMessage(messages: { role: string; content: string }[]): Promise<string> {
   const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
@@ -223,7 +232,15 @@ export const ChatCompanion: React.FC = () => {
                         : 'bg-white/5 text-slate-200 rounded-2xl rounded-bl-md border border-white/5'
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : (
+                      <div className="chat-markdown">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}

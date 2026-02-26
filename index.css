@@ -285,3 +285,83 @@ body {
   font-weight: bold;
   text-align: left;
 }
+
+/* ===== Chat Markdown Styles ===== */
+.chat-markdown {
+  line-height: 1.6;
+}
+.chat-markdown p {
+  margin-bottom: 0.5rem;
+}
+.chat-markdown p:last-child {
+  margin-bottom: 0;
+}
+.chat-markdown strong {
+  color: #fff;
+  font-weight: 600;
+}
+.chat-markdown em {
+  color: #94a3b8;
+  font-style: italic;
+}
+.chat-markdown h3 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #5eead4;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+.chat-markdown h3:first-child {
+  margin-top: 0;
+}
+.chat-markdown ul, .chat-markdown ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.chat-markdown ul {
+  list-style-type: disc;
+}
+.chat-markdown ol {
+  list-style-type: decimal;
+}
+.chat-markdown li {
+  margin-bottom: 0.25rem;
+}
+.chat-markdown li::marker {
+  color: #2dd4bf;
+}
+.chat-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.8rem;
+}
+.chat-markdown th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  background: rgba(13, 148, 136, 0.15);
+  color: #5eead4;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.chat-markdown td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: #cbd5e1;
+}
+.chat-markdown tr:last-child td {
+  border-bottom: none;
+}
+.chat-markdown hr {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  margin: 0.5rem 0;
+}
+.chat-markdown a {
+  color: #2dd4bf;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-markdown a:hover {
+  color: #5eead4;
+}
