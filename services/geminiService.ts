@@ -1,5 +1,8 @@
-import { GoogleGenAI } from "@google/genai";
 import type { FormData, ItineraryPlan, Duration } from '../types';
+
+const PROXY_URL = 'https://proxy.hoainho.info';
+const PROXY_API_KEY = 'hoainho';
+const MODEL = 'gemini-2.5-flash';
 
 function buildDurationText(duration: Duration): string {
     if (duration.days <= 0) return 'Chuyến đi trong ngày';
@@ -26,7 +29,6 @@ function buildPrompt(data: FormData): string {
       : 'Thoải mái (ưu tiên trải nghiệm cao cấp, ăn uống ở nhà hàng nổi tiếng, ở khách sạn 4-5 sao, resort)';
   
   const startDateText = data.startDate ? `\n    - Ngày khởi hành dự kiến: ${data.startDate}` : '';
-  const startLocationText = data.startLocation ? `\n    - Nơi khởi hành: ${data.startLocation}` : '';
 
   return `
     Bạn là một chuyên gia du lịch ảo thông thái và sáng tạo. Nhiệm vụ của bạn là tạo ra một kế hoạch du lịch chi tiết, hấp dẫn và thực tế dựa trên các yêu cầu sau đây.
@@ -64,27 +66,6 @@ function buildPrompt(data: FormData): string {
                       "google_maps_link": "https://www.google.com/maps/dir/?api=1&origin=Generator+Paris&destination=Boulangerie-Pâtisserie+Montmartre+Paris&travelmode=walking"
                   }
               ]
-            },
-            {
-              "time": "09:00 - 12:00",
-              "activity": "Tham quan bảo tàng Louvre.",
-              "venue": "Bảo tàng Louvre",
-              "estimated_cost": "Vé vào cổng: 17 EUR/người",
-              "google_maps_link": "https://www.google.com/maps/search/?api=1&query=Louvre+Museum+Paris",
-              "travel_tips": [
-                  {
-                      "method": "Tàu điện ngầm (Métro)",
-                      "duration": "Khoảng 20 phút",
-                      "notes": "Sử dụng tuyến 1 hoặc 7 đến trạm Palais Royal-Musée du Louvre. Lựa chọn nhanh và tiện lợi nhất.",
-                      "google_maps_link": "https://www.google.com/maps/dir/?api=1&origin=Boulangerie-Pâtisserie+Montmartre+Paris&destination=Louvre+Museum+Paris&travelmode=transit"
-                  },
-                  {
-                      "method": "Xe buýt",
-                      "duration": "Khoảng 30 phút",
-                      "notes": "Tuyến 69 có lộ trình đi qua nhiều cảnh đẹp, phù hợp để ngắm cảnh.",
-                      "google_maps_link": "https://www.google.com/maps/dir/?api=1&origin=Boulangerie-Pâtisserie+Montmartre+Paris&destination=Louvre+Museum+Paris&travelmode=transit"
-                  }
-              ]
             }
           ]
         }
@@ -104,25 +85,53 @@ function buildPrompt(data: FormData): string {
   `;
 }
 
-export const generateItinerary = async (formData: FormData, apiKey: string): Promise<ItineraryPlan> => {
-  if (!apiKey) {
-    throw new Error('API_KEY_MISSING');
-  }
-  const ai = new GoogleGenAI({ apiKey });
-
+export const generateItinerary = async (formData: FormData): Promise<ItineraryPlan> => {
   const prompt = buildPrompt(formData);
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
+    const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PROXY_API_KEY}`,
       },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'Bạn là một chuyên gia du lịch. Luôn trả về JSON hợp lệ theo cấu trúc được yêu cầu. KHÔNG sử dụng markdown code fences.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 8192,
+        temperature: 0.7,
+      }),
     });
 
-    let jsonStr = response.text.trim();
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('API_KEY_INVALID');
+      }
+      if (response.status === 429) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
+      throw new Error(`Proxy error: ${response.status} ${response.statusText}`);
+    }
+
+    const responseData = await response.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const content = responseData.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('Phản hồi rỗng từ AI.');
+    }
+
+    let jsonStr = content.trim();
     const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
     const match = jsonStr.match(fenceRegex);
     if (match && match[2]) {
@@ -137,14 +146,10 @@ export const generateItinerary = async (formData: FormData, apiKey: string): Pro
 
     return parsedData;
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
+    console.error("Error calling Proxy API:", error);
     if (error instanceof Error) {
-        const errorMessage = (error as any).message || '';
-        if (errorMessage.includes('API key not valid') || errorMessage.includes('permission denied')) {
-            throw new Error('API_KEY_INVALID');
-        }
-        if (errorMessage.includes('[429]')) {
-            throw new Error('RATE_LIMIT_EXCEEDED');
+        if (error.message === 'API_KEY_INVALID' || error.message === 'RATE_LIMIT_EXCEEDED') {
+            throw error;
         }
     }
     throw new Error("Không thể tạo lịch trình. AI có thể đang bận. Vui lòng thử lại sau.");
