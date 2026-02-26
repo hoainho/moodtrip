@@ -1,17 +1,48 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Component, Suspense, lazy } from 'react';
+import type { ReactNode } from 'react';
 import { generateItinerary } from './services/geminiService';
 import { Hero } from './components/Hero';
 import { TripForm } from './components/TripForm';
 import { LoadingAnimation } from './components/LoadingAnimation';
 import { ItineraryDisplay } from './components/ItineraryDisplay';
-import { ApiKeyModal } from './components/ApiKeyModal';
+import { IntroScreen } from './components/IntroScreen';
 import { Release } from './components/Release';
-import { API_KEY_LS_KEY, ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
+import { TipsPage } from './components/TipsPage';
+import { AboutPage } from './components/AboutPage';
+import { Footer } from './components/Footer';
+import { ChatCompanion } from './components/ChatCompanion';
+import { ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
 import type { FormData, ItineraryPlan } from './types';
 import { IconWarning } from './components/icons';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
+import { AnimatePresence, motion } from 'motion/react';
 
+// Lazy load Three.js scene to prevent blocking initial render
+const NatureScene = lazy(() => import('./components/three/NatureScene'));
+
+// Error boundary to catch Three.js crashes without killing the whole app
+class SceneErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('[MoodTrip] 3D scene error (non-fatal):', error.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null; // Silently fail — app works without 3D background
+    }
+    return this.props.children;
+  }
+}
 
 // Define types for html2pdf.js since it's loaded from a script
 interface Html2PdfOptions {
@@ -25,7 +56,7 @@ interface Html2PdfOptions {
 interface Html2Pdf {
   from(element: HTMLElement): Html2Pdf;
   set(options: Html2PdfOptions): Html2Pdf;
-  save(): void;
+  save(): Promise<void>;
 }
 
 declare global {
@@ -34,26 +65,22 @@ declare global {
   }
 }
 
-type View = 'hero' | 'form' | 'loading' | 'result' | 'error' | 'release';
+type View = 'hero' | 'form' | 'loading' | 'result' | 'error' | 'release' | 'tips' | 'about';
 
 export default function App() {
+  const [showIntro, setShowIntro] = useState(true);
+  const [sceneReady, setSceneReady] = useState(false);
   const [view, setView] = useState<View>('hero');
   const [itinerary, setItinerary] = useState<ItineraryPlan | null>(null);
   const [savedItineraries, setSavedItineraries] = useState<ItineraryPlan[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKey, setApiKey] = useState<string>('');
   const [lastFormData, setLastFormData] = useState<FormData | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   useEffect(() => {
-    const storedApiKey = localStorage.getItem(API_KEY_LS_KEY);
     const storedItinerary = localStorage.getItem(ITINERARY_LS_KEY);
     const storedSavedItineraries = localStorage.getItem(SAVED_ITINERARIES_LS_KEY);
-
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
-    }
 
     if (storedItinerary) {
       try {
@@ -76,6 +103,14 @@ export default function App() {
     }
   }, []);
 
+  // Delay 3D scene mount so it doesn't block initial content render
+  useEffect(() => {
+    if (!showIntro) {
+      const timer = setTimeout(() => setSceneReady(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showIntro]);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => {
@@ -89,8 +124,7 @@ export default function App() {
     setLastFormData(formData);
 
     try {
-      const keyToUse = apiKey || process.env.API_KEY || '';
-      const result = await generateItinerary(formData, keyToUse);
+      const result = await generateItinerary(formData);
       
       const resultWithId = { ...result, id: `${result.destination}-${Date.now()}` };
       setItinerary(resultWithId);
@@ -99,36 +133,23 @@ export default function App() {
       setLastFormData(null);
     } catch (e: unknown) {
       const err = e as Error;
-      const knownApiErrors = ['API_KEY_INVALID', 'RATE_LIMIT_EXCEEDED', 'API_KEY_MISSING'];
+      const knownApiErrors = ['API_KEY_INVALID', 'RATE_LIMIT_EXCEEDED'];
 
       if (knownApiErrors.includes(err.message)) {
-          let userMessage = 'Đã có lỗi xảy ra. Vui lòng cung cấp API Key hợp lệ.';
+          let userMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
           if (err.message === 'API_KEY_INVALID') {
-              userMessage = 'API Key của bạn không hợp lệ hoặc đã bị vô hiệu hóa. Vui lòng kiểm tra lại.';
+              userMessage = 'Lỗi xác thực với hệ thống AI. Vui lòng thử lại sau.';
           } else if (err.message === 'RATE_LIMIT_EXCEEDED') {
-              userMessage = 'Bạn đã đạt đến giới hạn yêu cầu. Vui lòng thử lại sau hoặc sử dụng API Key khác.';
-          } else if (err.message === 'API_KEY_MISSING') {
-              userMessage = 'Vui lòng cung cấp API Key của bạn để tạo hành trình.';
+              userMessage = 'Hệ thống đang bận. Vui lòng thử lại sau ít phút.';
           }
           setError(userMessage);
-setShowApiKeyModal(true);
           setView('form');
       } else {
         setError(err.message || 'Đã có lỗi xảy ra không mong muốn. Vui lòng thử lại.');
         setView('error');
       }
     }
-  }, [apiKey]);
-
-  const handleSaveApiKey = (newKey: string) => {
-    if (newKey) {
-      setApiKey(newKey);
-      localStorage.setItem(API_KEY_LS_KEY, newKey);
-      setShowApiKeyModal(false);
-      setError(null); // Clear previous error
-      setView('form'); // Ensure user is on the form view to try again
-    }
-  };
+  }, []);
 
   const handleReset = () => {
     localStorage.removeItem(ITINERARY_LS_KEY);
@@ -147,9 +168,20 @@ setShowApiKeyModal(true);
     setView('release');
   };
 
-  const handleExportPDF = () => {
+  const handleGoToTips = () => {
+    setView('tips');
+  };
+
+  const handleGoToAbout = () => {
+    setView('about');
+  };
+
+  const handleExportPDF = async () => {
     const element = document.getElementById('itinerary-to-print');
-    if (element && window.html2pdf) {
+    if (!element || !window.html2pdf) return;
+    
+    setIsExportingPDF(true);
+    try {
       const opt: Html2PdfOptions = {
         margin:       0.5,
         filename:     `MoodTrip_${itinerary?.destination.replace(/ /g, '_')}.pdf`,
@@ -157,7 +189,12 @@ setShowApiKeyModal(true);
         html2canvas:  { scale: 2, useCORS: true },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
       };
-      window.html2pdf().from(element).set(opt).save();
+      await window.html2pdf().from(element).set(opt).save();
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      showToast('Xuất PDF thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsExportingPDF(false);
     }
   };
 
@@ -186,74 +223,242 @@ setShowApiKeyModal(true);
     localStorage.setItem(ITINERARY_LS_KEY, JSON.stringify(itineraryToLoad));
   };
 
+  const handleIntroComplete = () => {
+    setShowIntro(false);
+  };
+
+  if (showIntro) {
+    return <IntroScreen onComplete={handleIntroComplete} />;
+  }
+
   const renderContent = () => {
     switch (view) {
       case 'hero':
-        return <Hero onStart={() => setView('form')} savedItineraries={savedItineraries} onLoadItinerary={handleLoadItinerary} onGoHome={handleGoHome} onGoToRelease={handleGoToRelease} />;
+        return (
+          <motion.div
+            key="hero"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{ minHeight: '100vh' }}
+          >
+            <Hero 
+              onStart={() => setView('form')} 
+              savedItineraries={savedItineraries} 
+              onLoadItinerary={handleLoadItinerary} 
+              onGoHome={handleGoHome} 
+              onGoToRelease={handleGoToRelease}
+              onGoToTips={handleGoToTips}
+              onGoToAbout={handleGoToAbout}
+            />
+          </motion.div>
+        );
       case 'form':
-        return <TripForm
-                  onSubmit={handleGenerateItinerary}
-                  onBack={() => itinerary ? setView('result') : setView('hero')}
-                  error={error}
-                  initialData={lastFormData}
-                  onGoHome={handleGoHome}
-                />;
+        return (
+          <motion.div
+            key="form"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            transition={{ duration: 0.5 }}
+          >
+            <TripForm
+              onSubmit={handleGenerateItinerary}
+              onBack={() => itinerary ? setView('result') : setView('hero')}
+              error={error}
+              initialData={lastFormData}
+              onGoHome={handleGoHome}
+            />
+          </motion.div>
+        );
       case 'loading':
-        return <LoadingAnimation />;
+        return (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.5 }}
+          >
+            <LoadingAnimation />
+          </motion.div>
+        );
       case 'result': {
         if (!itinerary) return null;
         const isSaved = savedItineraries.some(i => i.id === itinerary.id);
         return (
-          <ItineraryDisplay 
-            itinerary={itinerary} 
-            onReset={handleReset} 
-            onExportPDF={handleExportPDF} 
-            onSaveToList={handleSaveItineraryToList}
-            onItineraryChange={handleItineraryChange}
-            onGoHome={handleGoHome}
-            isSaved={isSaved}
-          />
+          <motion.div
+            key="result"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <ItineraryDisplay 
+              itinerary={itinerary} 
+              onReset={handleReset} 
+              onExportPDF={handleExportPDF} 
+              onSaveToList={handleSaveItineraryToList}
+              onItineraryChange={handleItineraryChange}
+              onGoHome={handleGoHome}
+              isSaved={isSaved}
+              isExportingPDF={isExportingPDF}
+            />
+          </motion.div>
         );
       }
       case 'release':
-        return <Release onGoHome={handleGoHome} />;
+        return (
+          <motion.div
+            key="release"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Release onGoHome={handleGoHome} />
+          </motion.div>
+        );
+      case 'tips':
+        return (
+          <motion.div
+            key="tips"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.4 }}
+          >
+            <TipsPage onGoHome={handleGoHome} />
+          </motion.div>
+        );
+      case 'about':
+        return (
+          <motion.div
+            key="about"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.4 }}
+          >
+            <AboutPage onGoHome={handleGoHome} />
+          </motion.div>
+        );
       case 'error':
         return (
-          <div className="text-center p-8 flex flex-col items-center justify-center h-screen bg-red-50 text-red-700">
-            <IconWarning className="w-16 h-16 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Ối, có lỗi rồi!</h2>
-            <p className="max-w-md mb-6">{error}</p>
-            <button
-              onClick={handleReset}
-              className="px-6 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors"
-            >
-              Thử lại
-            </button>
-          </div>
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="text-center p-8 flex flex-col items-center justify-center h-screen">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+              >
+                <IconWarning className="w-20 h-20 mb-6 text-red-400" />
+              </motion.div>
+              <h2 className="text-3xl font-bold mb-3 text-white">Ối, có lỗi rồi!</h2>
+              <p className="max-w-md mb-8 text-slate-400">{error}</p>
+              <motion.button
+                onClick={handleReset}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-8 py-3 bg-red-500 text-white font-bold rounded-xl shadow-lg shadow-red-500/30 hover:bg-red-600 transition-colors"
+              >
+                Thử lại
+              </motion.button>
+            </div>
+          </motion.div>
         );
       default:
-        return <Hero onStart={() => setView('form')} savedItineraries={savedItineraries} onLoadItinerary={handleLoadItinerary} onGoHome={handleGoHome} onGoToRelease={handleGoToRelease} />;
+        return (
+          <Hero 
+            onStart={() => setView('form')} 
+            savedItineraries={savedItineraries} 
+            onLoadItinerary={handleLoadItinerary} 
+            onGoHome={handleGoHome} 
+            onGoToRelease={handleGoToRelease}
+            onGoToTips={handleGoToTips}
+            onGoToAbout={handleGoToAbout}
+          />
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div
+      className="min-h-screen relative"
+      style={{
+        backgroundColor: '#0a0e1a',
+        minHeight: '100vh',
+        position: 'relative',
+      }}
+    >
+      {/* 3D Background Scene — delayed mount, lazy loaded, error-safe */}
+      {sceneReady && (
+        <SceneErrorBoundary>
+          <Suspense fallback={null}>
+            <NatureScene />
+          </Suspense>
+        </SceneErrorBoundary>
+      )}
+
+      {/* Dark vignette overlay for text readability */}
+      <div
+        className="content-overlay fixed inset-0 z-[1]"
+        aria-hidden="true"
+      />
+
+      {/* Analytics */}
       <Analytics />
       <SpeedInsights />
-      <main>{renderContent()}</main>
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-up">
-          {toastMessage}
-        </div>
-      )}
-      <ApiKeyModal
-        isOpen={showApiKeyModal}
-        onClose={() => {
-          setShowApiKeyModal(false);
-          setError(null); // Clear error message when closing modal manually
+
+      {/* Main Content — inline styles ensure visibility even if CSS fails */}
+      <main
+        className="relative z-10"
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          minHeight: '100vh',
         }}
-        onSave={handleSaveApiKey}
-      />
+      >
+        <AnimatePresence mode="wait">
+          {renderContent()}
+        </AnimatePresence>
+      </main>
+
+      {/* Footer — show on content views, not hero/loading/error */}
+      {view !== 'hero' && view !== 'loading' && view !== 'error' && (
+        <Footer
+          onGoHome={handleGoHome}
+          onGoToRelease={handleGoToRelease}
+          onGoToTips={handleGoToTips}
+          onGoToAbout={handleGoToAbout}
+        />
+      )}
+
+
+      {/* Chat Companion */}
+      <ChatCompanion />
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed bottom-6 left-6 glass-dark px-6 py-3 rounded-xl shadow-2xl z-40 text-white font-medium border border-teal-500/20"
+          >
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -232,3 +232,86 @@ export const IconCheck = (props: React.SVGProps<SVGSVGElement>) => (
         <path d="M20 6 9 17l-5-5"/>
     </SvgIcon>
 );
+
+export const IconHeart = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </SvgIcon>
+);
+
+export const IconCompass = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </SvgIcon>
+);
+
+export const IconFlame = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+    </SvgIcon>
+);
+
+export const IconLandmark = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <line x1="3" x2="21" y1="22" y2="22" />
+        <line x1="6" x2="6" y1="18" y2="11" />
+        <line x1="10" x2="10" y1="18" y2="11" />
+        <line x1="14" x2="14" y1="18" y2="11" />
+        <line x1="18" x2="18" y1="18" y2="11" />
+        <polygon points="12 2 20 7 4 7" />
+    </SvgIcon>
+);
+
+export const IconSparkles = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="m12 3-1.9 5.8-5.8 1.9 5.8 1.9 1.9 5.8 1.9-5.8 5.8-1.9-5.8-1.9Z" />
+        <path d="M5 3v4" />
+        <path d="M19 17v4" />
+        <path d="M3 5h4" />
+        <path d="M17 19h4" />
+    </SvgIcon>
+);
+
+export const IconGlobe = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+        <path d="M2 12h20" />
+    </SvgIcon>
+);
+
+export const IconShield = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+    </SvgIcon>
+);
+
+export const IconUsers = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </SvgIcon>
+);
+
+export const IconMessageCircle = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+    </SvgIcon>
+);
+
+export const IconCopyright = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M14.83 14.83a4 4 0 1 1 0-5.66" />
+    </SvgIcon>
+);
+
+export const IconSend = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <line x1="22" y1="2" x2="11" y2="13" />
+        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </SvgIcon>
+);
