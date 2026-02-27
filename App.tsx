@@ -11,7 +11,6 @@ import { TipsPage } from './components/TipsPage';
 import { AboutPage } from './components/AboutPage';
 import { Footer } from './components/Footer';
 import { ChatCompanion } from './components/ChatCompanion';
-import { InstallPrompt } from './components/InstallPrompt';
 import { ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
 import type { FormData, ItineraryPlan } from './types';
 import { IconWarning } from './components/icons';
@@ -526,8 +525,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* PWA Install Prompt */}
-      <InstallPrompt />
     </div>
   );
 }
