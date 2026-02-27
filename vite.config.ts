@@ -69,6 +69,50 @@ export default defineConfig({
               purpose: 'maskable',
             },
           ],
+          screenshots: [
+            {
+              src: 'screenshot-narrow-1.png',
+              sizes: '540x720',
+              type: 'image/png',
+              form_factor: 'narrow',
+              label: 'MoodTrip - Trang chủ',
+            },
+            {
+              src: 'screenshot-narrow-2.png',
+              sizes: '540x720',
+              type: 'image/png',
+              form_factor: 'narrow',
+              label: 'MoodTrip - Lên kế hoạch',
+            },
+            {
+              src: 'screenshot-wide-1.png',
+              sizes: '1024x593',
+              type: 'image/png',
+              form_factor: 'wide',
+              label: 'MoodTrip - Trang chủ Desktop',
+            },
+            {
+              src: 'screenshot-wide-2.png',
+              sizes: '1024x593',
+              type: 'image/png',
+              form_factor: 'wide',
+              label: 'MoodTrip - Lịch trình chi tiết',
+            },
+          ],
+          shortcuts: [
+            {
+              name: 'Tạo lịch trình mới',
+              short_name: 'Lịch trình',
+              url: '/?action=new-trip',
+              icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+            },
+            {
+              name: 'Mẹo du lịch',
+              short_name: 'Mẹo',
+              url: '/?view=tips',
+              icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+            },
+          ],
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,png,jpg,jpeg,svg,woff2}'],
