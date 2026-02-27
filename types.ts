@@ -30,10 +30,49 @@ export interface ScheduleItem {
   travel_tips?: TravelTip[];
 }
 
+export interface WeatherInfo {
+  temperature: string;
+  condition: string;
+  humidity?: string;
+  wind?: string;
+  note: string;
+}
+
+export interface PackingSuggestion {
+  item: string;
+  reason: string;
+}
+
+export interface TrafficAlert {
+  area: string;
+  issue: string;
+  suggestion: string;
+}
+
+export interface SafetyAlert {
+  type: 'festival' | 'religious' | 'safety' | 'event';
+  title: string;
+  description: string;
+  advice: string;
+}
+
+export interface BudgetItem {
+  category: string;
+  amount: string;
+  note?: string;
+}
+
+export interface BudgetSummary {
+  total_estimated: string;
+  breakdown: BudgetItem[];
+  vs_budget_note: string;
+}
+
 export interface DayPlan {
   day: string;
   title: string;
   weather_note?: string;
+  weather?: WeatherInfo;
   schedule: ScheduleItem[];
 }
 
@@ -56,4 +95,8 @@ export interface ItineraryPlan {
   food: FoodSuggestion[];
   accommodation: AccommodationSuggestion[];
   tips: string[];
+  packing_suggestions?: PackingSuggestion[];
+  traffic_alerts?: TrafficAlert[];
+  safety_alerts?: SafetyAlert[];
+  budget_summary?: BudgetSummary;
 }

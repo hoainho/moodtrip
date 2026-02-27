@@ -41,29 +41,49 @@ function buildPrompt(data: FormData): string {
     - Tâm trạng mong muốn: ${moodTextMap[data.mood]}
 
     Vui lòng tạo một lịch trình chi tiết và trả về dưới dạng một đối tượng JSON duy nhất.
-    TUYỆT ĐỐI KHÔNG sử dụng markdown code fences (như \`\`\`json ... \`\`\`).
-    JSON phải có cấu trúc chính xác như sau. Với mỗi hoạt động trong "schedule", hãy cung cấp "venue", "estimated_cost" và "google_maps_link" cho địa điểm đó. Thêm vào đó, hãy cung cấp một mảng "travel_tips" để gợi ý cách di chuyển từ địa điểm TRƯỚC ĐÓ tới địa điểm hiện tại. Đối với hoạt động đầu tiên trong ngày, điểm xuất phát là nơi ở được gợi ý. Mỗi mẹo trong "travel_tips" phải có "method", "duration", "notes" và "google_maps_link" (URL chỉ đường). Với mỗi ngày trong "timeline", hãy thêm "weather_note".
+    TUYỆT ĐỐI KHÔNG sử dụng markdown code fences (như ${'```'}json ... ${'```'}).
+    JSON phải có cấu trúc chính xác như sau.
+
+    Với mỗi hoạt động trong "schedule", hãy cung cấp "venue", "estimated_cost" và "google_maps_link" cho địa điểm đó. Thêm vào đó, hãy cung cấp một mảng "travel_tips" để gợi ý cách di chuyển từ địa điểm TRƯỚC ĐÓ tới địa điểm hiện tại. Đối với hoạt động đầu tiên trong ngày, điểm xuất phát là nơi ở được gợi ý. Mỗi mẹo trong "travel_tips" phải có "method", "duration", "notes" và "google_maps_link" (URL chỉ đường).
+
+    Với mỗi ngày trong "timeline", hãy cung cấp:
+    - "weather_note": mô tả ngắn về thời tiết
+    - "weather": object chi tiết gồm "temperature" (ví dụ: "25-30°C"), "condition" (ví dụ: "Nắng nhẹ, ít mây"), "humidity" (ví dụ: "65%"), "wind" (ví dụ: "Gió nhẹ 10-15 km/h"), và "note" (lời khuyên ngắn về thời tiết)
+
+    Ngoài ra, JSON phải bao gồm các section mới:
+    - "packing_suggestions": mảng gợi ý trang phục và phụ kiện DỰA TRÊN THỜI TIẾT thực tế tại điểm đến trong thời gian đi. Mỗi item gồm "item" (tên đồ vật) và "reason" (lý do mang theo).
+    - "traffic_alerts": mảng cảnh báo giao thông, đường cấm, đường đang sửa chữa, khu vực hay kẹt xe tại điểm đến. Mỗi item gồm "area" (khu vực), "issue" (vấn đề), "suggestion" (gợi ý thay thế). NẾU KHÔNG CÓ thì trả mảng rỗng [].
+    - "safety_alerts": mảng cảnh báo về lễ hội, sự kiện tôn giáo, vấn đề an ninh, hoặc sự kiện đặc biệt đang diễn ra tại điểm đến. Mỗi item gồm "type" (giá trị: "festival", "religious", "safety", hoặc "event"), "title" (tên sự kiện/cảnh báo), "description" (mô tả ngắn), "advice" (lời khuyên cho du khách). NẾU KHÔNG CÓ thì trả mảng rỗng [].
+    - "budget_summary": tổng hợp chi phí ước tính cho TOÀN BỘ chuyến đi, gồm "total_estimated" (tổng tiền dạng chuỗi, ví dụ: "4.500.000 VNĐ"), "breakdown" (mảng gồm các {"category": "Ăn uống", "amount": "1.200.000 VNĐ", "note": "ghi chú"}), và "vs_budget_note" (so sánh với ngân sách người dùng đã đặt, ví dụ: "Phù hợp ngân sách" hoặc "Vượt ngân sách khoảng 500.000 VNĐ").
+
     {
       "destination": "Tên địa điểm cụ thể (ví dụ: Paris, Pháp)",
-      "overview": "Một đoạn văn ngắn (3-4 câu) mô tả tổng quan và truyền cảm hứng về chuyến đi, khơi gợi cảm xúc phù hợp với tâm trạng đã chọn.",
+      "overview": "Một đoạn văn ngắn (3-4 câu) mô tả tổng quan và truyền cảm hứng về chuyến đi.",
       "timeline": [
         {
           "day": "Ngày 1",
-          "title": "Một tiêu đề hấp dẫn cho ngày, ví dụ: 'Chạm ngõ kinh đô ánh sáng'",
-          "weather_note": "Dự báo trời se lạnh và có thể có sương mù vào buổi sáng. Nhớ mang theo áo khoác mỏng.",
+          "title": "Chạm ngõ kinh đô ánh sáng",
+          "weather_note": "Trời se lạnh, có thể có sương mù buổi sáng.",
+          "weather": {
+            "temperature": "12-18°C",
+            "condition": "Se lạnh, sương mù buổi sáng, nắng nhẹ chiều",
+            "humidity": "75%",
+            "wind": "Gió nhẹ 8-12 km/h",
+            "note": "Nên mặc áo khoác mỏng, mang theo ô phòng mưa nhỏ."
+          },
           "schedule": [
             {
               "time": "08:00 - 09:00",
               "activity": "Ăn sáng với món croissant và cà phê.",
               "venue": "Boulangerie-Pâtisserie, khu Montmartre",
               "estimated_cost": "10 - 15 EUR/người",
-              "google_maps_link": "https://www.google.com/maps/search/?api=1&query=Boulangerie-Pâtisserie+Montmartre+Paris",
+              "google_maps_link": "https://www.google.com/maps/search/?api=1&query=Boulangerie+Montmartre+Paris",
               "travel_tips": [
                   {
                       "method": "Đi bộ",
                       "duration": "Khoảng 10 phút",
-                      "notes": "Đi bộ từ khách sạn để tận hưởng không khí buổi sáng của Paris.",
-                      "google_maps_link": "https://www.google.com/maps/dir/?api=1&origin=Generator+Paris&destination=Boulangerie-Pâtisserie+Montmartre+Paris&travelmode=walking"
+                      "notes": "Đi bộ từ khách sạn để tận hưởng không khí buổi sáng.",
+                      "google_maps_link": "https://www.google.com/maps/dir/?api=1&origin=Hotel&destination=Boulangerie+Montmartre&travelmode=walking"
                   }
               ]
             }
@@ -71,17 +91,41 @@ function buildPrompt(data: FormData): string {
         }
       ],
       "food": [
-        { "name": "Croissant", "description": "Bánh sừng bò nổi tiếng của Pháp, thơm bơ và giòn tan." }
+        { "name": "Croissant", "description": "Bánh sừng bò nổi tiếng, thơm bơ và giòn tan." }
       ],
       "accommodation": [
-        { "name": "Generator Paris", "type": "Hostel", "reason": "Lựa chọn tuyệt vời cho ngân sách tiết kiệm, không gian trẻ trung và dễ kết bạn." }
+        { "name": "Generator Paris", "type": "Hostel", "reason": "Không gian trẻ trung, giá tốt." }
       ],
       "tips": [
-        "Nên mua vé tham quan các địa điểm nổi tiếng trực tuyến để tránh xếp hàng."
-      ]
+        "Mua vé tham quan trực tuyến để tránh xếp hàng."
+      ],
+      "packing_suggestions": [
+        { "item": "Áo khoác mỏng chống gió", "reason": "Thời tiết se lạnh 12-18°C, cần giữ ấm khi đi bộ ngoài trời." },
+        { "item": "Giày đi bộ thoải mái", "reason": "Lịch trình có nhiều hoạt động đi bộ tham quan." },
+        { "item": "Ô gấp nhỏ", "reason": "Có thể có mưa nhỏ hoặc sương mù buổi sáng." }
+      ],
+      "traffic_alerts": [
+        { "area": "Khu vực Champs-Élysées", "issue": "Đường thường xuyên kẹt xe vào giờ cao điểm 17:00-19:00", "suggestion": "Nên sử dụng Metro thay vì taxi trong khung giờ này." }
+      ],
+      "safety_alerts": [
+        { "type": "event", "title": "Tuần lễ thời trang Paris", "description": "Sự kiện lớn diễn ra cuối tháng, nhiều khu vực trung tâm đông đúc.", "advice": "Nên đặt nhà hàng trước và tránh di chuyển bằng taxi giờ cao điểm." }
+      ],
+      "budget_summary": {
+        "total_estimated": "4.500.000 VNĐ",
+        "breakdown": [
+          { "category": "Ăn uống", "amount": "1.200.000 VNĐ", "note": "3 bữa/ngày x 2 ngày" },
+          { "category": "Di chuyển", "amount": "800.000 VNĐ", "note": "Metro + taxi" },
+          { "category": "Tham quan", "amount": "1.000.000 VNĐ", "note": "Vé vào cửa các điểm" },
+          { "category": "Lưu trú", "amount": "1.500.000 VNĐ", "note": "2 đêm hostel" }
+        ],
+        "vs_budget_note": "Phù hợp ngân sách 5.000.000 VNĐ, còn dư khoảng 500.000 VNĐ."
+      }
     }
 
     Hãy đảm bảo các gợi ý về địa điểm, món ăn, nơi ở phải thực tế, phù hợp với điểm đến và ngân sách đã cho.
+    Thông tin thời tiết phải dựa trên khí hậu thực tế của điểm đến trong thời gian dự kiến.
+    Gợi ý trang phục phải cụ thể và phù hợp với thời tiết + hoạt động trong lịch trình.
+    Cảnh báo giao thông và an toàn phải dựa trên tình hình thực tế tại địa phương.
   `;
 }
 

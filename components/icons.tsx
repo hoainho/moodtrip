@@ -315,3 +315,55 @@ export const IconSend = (props: React.SVGProps<SVGSVGElement>) => (
         <polygon points="22 2 15 22 11 13 2 9 22 2" />
     </SvgIcon>
 );
+
+export const IconThermometer = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
+    </SvgIcon>
+);
+
+export const IconCloudSun = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M12 2v2" />
+        <path d="m4.93 4.93 1.41 1.41" />
+        <path d="M20 12h2" />
+        <path d="m19.07 4.93-1.41 1.41" />
+        <path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" />
+        <path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" />
+    </SvgIcon>
+);
+
+export const IconShirt = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+    </SvgIcon>
+);
+
+export const IconAlertTriangle = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+    </SvgIcon>
+);
+
+export const IconConstruction = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <rect x="2" y="6" width="20" height="8" rx="1" />
+        <path d="M17 14v7" />
+        <path d="M7 14v7" />
+        <path d="M17 3v3" />
+        <path d="M7 3v3" />
+        <path d="M10 14 2.3 6.3" />
+        <path d="m14 6 7.7 7.7" />
+        <path d="m8 6 8 8" />
+    </SvgIcon>
+);
+
+export const IconReceipt = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+        <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+        <path d="M12 17.5v-11" />
+    </SvgIcon>
+);
