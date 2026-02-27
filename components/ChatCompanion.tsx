@@ -172,7 +172,7 @@ export const ChatCompanion: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] h-[520px] max-h-[calc(100vh-6rem)] flex flex-col bg-[rgba(10,14,26,0.92)] backdrop-blur-2xl border border-white/[0.08] shadow-2xl shadow-black/40 overflow-hidden rounded-2xl"
+            className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 sm:w-[380px] sm:h-[520px] sm:max-h-[calc(100vh-6rem)] flex flex-col bg-[rgba(10,14,26,0.95)] sm:bg-[rgba(10,14,26,0.92)] backdrop-blur-2xl border-0 sm:border border-white/[0.08] shadow-2xl shadow-black/40 overflow-hidden rounded-none sm:rounded-2xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06]">
@@ -270,7 +270,7 @@ export const ChatCompanion: React.FC = () => {
             </div>
 
             {/* Input */}
-            <div className="px-4 py-3 border-t border-white/5">
+            <div className="px-4 py-3 border-t border-white/5 pb-safe">
               <div className="flex items-center gap-2">
                 <input
                   ref={inputRef}

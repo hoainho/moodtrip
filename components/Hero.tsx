@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Logo } from './Logo';
 import { IconMapPin, IconSparkles, IconGlobe, IconCompass } from './icons';
 import type { ItineraryPlan } from '../types';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface HeroProps {
   onStart: () => void;
@@ -24,6 +24,14 @@ const gradientClasses = [
 ];
 
 export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadItinerary, onGoHome, onGoToRelease, onGoToTips, onGoToAbout }) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navItems = [
+    { label: 'Mẹo du lịch', onClick: onGoToTips },
+    { label: 'Giới thiệu', onClick: onGoToAbout },
+    { label: 'Phiên bản', onClick: onGoToRelease },
+  ];
+
   return (
     <div
       className="relative flex flex-col items-center justify-center min-h-screen text-white overflow-hidden"
@@ -39,36 +47,74 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
       }}
     >
       {/* Top bar */}
-      <div className="absolute top-6 left-6 z-10">
+      <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-10">
         <Logo className="text-white" onClick={onGoHome} />
       </div>
 
-      <div className="absolute top-6 right-6 z-10 flex items-center gap-2">
+      {/* Desktop nav */}
+      <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-10 flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2">
+          {navItems.map((item) => (
+            <motion.button
+              key={item.label}
+              onClick={item.onClick}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-4 py-2 glass text-white/80 text-sm font-medium rounded-full hover:bg-white/10 transition-colors border border-white/10"
+            >
+              {item.label}
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Mobile hamburger */}
         <motion.button
-          onClick={onGoToTips}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="px-4 py-2 glass text-white/80 text-sm font-medium rounded-full hover:bg-white/10 transition-colors border border-white/10"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          whileTap={{ scale: 0.9 }}
+          className="md:hidden p-2.5 glass rounded-full border border-white/10"
+          aria-label="Menu"
         >
-          Mẹo du lịch
-        </motion.button>
-        <motion.button
-          onClick={onGoToAbout}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="px-4 py-2 glass text-white/80 text-sm font-medium rounded-full hover:bg-white/10 transition-colors border border-white/10"
-        >
-          Giới thiệu
-        </motion.button>
-        <motion.button
-          onClick={onGoToRelease}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="px-4 py-2 glass text-white/80 text-sm font-medium rounded-full hover:bg-white/10 transition-colors border border-white/10"
-        >
-          Phiên bản
+          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
         </motion.button>
       </div>
+
+      {/* Mobile menu dropdown */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 z-20 md:hidden"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              className="absolute top-16 right-4 z-30 glass-dark rounded-2xl p-2 min-w-[180px] border border-white/10 md:hidden shadow-2xl shadow-black/40"
+            >
+              {navItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => { item.onClick(); setMobileMenuOpen(false); }}
+                  className="w-full text-left px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-medium"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Feature badges */}
       <motion.div
