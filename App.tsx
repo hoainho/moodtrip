@@ -49,7 +49,7 @@ interface Html2PdfOptions {
   margin?: number | number[];
   filename?: string;
   image?: { type?: string; quality?: number };
-  html2canvas?: { scale?: number; useCORS?: boolean };
+  html2canvas?: { scale?: number; useCORS?: boolean; backgroundColor?: string };
   jsPDF?: { unit?: string; format?: string; orientation?: string };
 }
 
@@ -176,24 +176,242 @@ export default function App() {
     setView('about');
   };
 
+  const buildPdfHtml = (data: ItineraryPlan): string => {
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    let html = `
+<div style="font-family: 'Be Vietnam Pro', sans-serif; color: #1e293b; padding: 32px 40px; max-width: 780px; margin: 0 auto; line-height: 1.6;">
+  <div style="text-align: center; margin-bottom: 28px; border-bottom: 3px solid #0d9488; padding-bottom: 18px;">
+    <h1 style="color: #0d9488; font-size: 26px; margin: 0 0 4px; font-weight: 800; letter-spacing: -0.5px;">MoodTrip</h1>
+    <p style="font-size: 11px; color: #94a3b8; margin: 0 0 10px;">Để cảm xúc dẫn đường</p>
+    <h2 style="font-size: 20px; color: #334155; margin: 0; font-weight: 700;">${esc(data.destination)}</h2>
+  </div>
+  <div style="background: #f0fdfa; border-left: 4px solid #0d9488; padding: 14px 18px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+    <p style="color: #475569; margin: 0; font-size: 14px;">${esc(data.overview)}</p>
+  </div>`;
+
+    // Timeline
+    for (const day of data.timeline) {
+      html += `
+  <div style="margin-bottom: 22px; page-break-inside: avoid;">
+    <h3 style="color: #0d9488; font-size: 16px; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 0 0 10px;">${esc(day.day)} — ${esc(day.title)}</h3>`;
+
+      // Weather
+      if (day.weather) {
+        const parts: string[] = [];
+        if (day.weather.temperature) parts.push(`🌡️ ${esc(day.weather.temperature)}`);
+        if (day.weather.condition) parts.push(`☁️ ${esc(day.weather.condition)}`);
+        if (day.weather.humidity) parts.push(`💧 ${esc(day.weather.humidity)}`);
+        if (day.weather.wind) parts.push(`💨 ${esc(day.weather.wind)}`);
+        html += `
+    <div style="background: #f0f9ff; padding: 8px 14px; border-radius: 6px; margin-bottom: 10px; font-size: 12px; color: #475569;">${parts.join(' &nbsp;|&nbsp; ')}</div>`;
+        if (day.weather.note || day.weather_note) {
+          html += `
+    <div style="font-size: 12px; color: #64748b; margin-bottom: 10px; padding-left: 4px;">💡 ${esc(day.weather.note || day.weather_note || '')}</div>`;
+        }
+      } else if (day.weather_note) {
+        html += `
+    <div style="font-size: 12px; color: #64748b; margin-bottom: 10px;">🌤️ ${esc(day.weather_note)}</div>`;
+      }
+
+      // Schedule
+      html += `<div style="margin-left: 12px; border-left: 2px solid #d1d5db; padding-left: 14px;">`;
+      for (const item of day.schedule) {
+        html += `
+      <div style="margin-bottom: 12px; page-break-inside: avoid;">
+        <p style="font-weight: 600; color: #0d9488; margin: 0 0 2px; font-size: 13px;">${esc(item.time)}</p>
+        <p style="margin: 0 0 3px; color: #1e293b; font-size: 13px;">${esc(item.activity)}</p>`;
+        const meta: string[] = [];
+        if (item.venue) meta.push(`📍 ${esc(item.venue)}`);
+        if (item.estimated_cost) meta.push(`💰 ${esc(item.estimated_cost)}`);
+        if (meta.length > 0) {
+          html += `
+        <p style="font-size: 11px; color: #64748b; margin: 0;">${meta.join(' &nbsp;·&nbsp; ')}</p>`;
+        }
+        html += `</div>`;
+      }
+      html += `</div></div>`;
+    }
+
+    // Food
+    if (data.food.length > 0) {
+      html += `
+  <div style="margin-bottom: 22px; page-break-inside: avoid;">
+    <h3 style="color: #0d9488; font-size: 16px; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 0 0 10px;">🍜 Món ăn nên thử</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">`;
+      for (const f of data.food) {
+        html += `
+      <div style="background: #fefce8; padding: 10px 14px; border-radius: 6px;">
+        <p style="font-weight: 600; color: #1e293b; margin: 0 0 2px; font-size: 13px;">${esc(f.name)}</p>
+        <p style="color: #64748b; margin: 0; font-size: 11px;">${esc(f.description)}</p>
+      </div>`;
+      }
+      html += `</div></div>`;
+    }
+
+    // Accommodation
+    if (data.accommodation.length > 0) {
+      html += `
+  <div style="margin-bottom: 22px; page-break-inside: avoid;">
+    <h3 style="color: #0d9488; font-size: 16px; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 0 0 10px;">🏨 Gợi ý chỗ nghỉ</h3>`;
+      for (const a of data.accommodation) {
+        html += `
+      <div style="background: #f8fafc; padding: 10px 14px; border-radius: 6px; margin-bottom: 6px;">
+        <p style="font-weight: 600; color: #1e293b; margin: 0; font-size: 13px;">${esc(a.name)} <span style="font-weight: 400; color: #94a3b8; font-size: 11px;">(${esc(a.type)})</span></p>
+        <p style="color: #64748b; margin: 2px 0 0; font-size: 11px;">${esc(a.reason)}</p>
+      </div>`;
+      }
+      html += `</div>`;
+    }
+
+    // Tips
+    if (data.tips.length > 0) {
+      html += `
+  <div style="margin-bottom: 22px; page-break-inside: avoid;">
+    <h3 style="color: #0d9488; font-size: 16px; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 0 0 10px;">💡 Mẹo du lịch</h3>
+    <ul style="margin: 0; padding-left: 20px;">`;
+      for (const t of data.tips) {
+        html += `<li style="color: #475569; font-size: 13px; margin-bottom: 4px;">${esc(t)}</li>`;
+      }
+      html += `</ul></div>`;
+    }
+
+    // Packing suggestions
+    if (data.packing_suggestions && data.packing_suggestions.length > 0) {
+      html += `
+  <div style="margin-bottom: 22px; page-break-inside: avoid;">
+    <h3 style="color: #0d9488; font-size: 16px; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 0 0 10px;">👕 Gợi ý trang phục & phụ kiện</h3>`;
+      for (const p of data.packing_suggestions) {
+        html += `
+      <div style="display: flex; gap: 8px; margin-bottom: 6px; font-size: 13px;">
+        <span style="color: #0d9488; font-weight: 600;">${esc(p.item)}</span>
+        <span style="color: #94a3b8;">—</span>
+        <span style="color: #64748b;">${esc(p.reason)}</span>
+      </div>`;
+      }
+      html += `</div>`;
+    }
+
+    // Traffic alerts
+    if (data.traffic_alerts && data.traffic_alerts.length > 0) {
+      html += `
+  <div style="margin-bottom: 22px; page-break-inside: avoid;">
+    <h3 style="color: #d97706; font-size: 16px; font-weight: 700; border-bottom: 2px solid #fde68a; padding-bottom: 6px; margin: 0 0 10px;">🚧 Cảnh báo giao thông</h3>`;
+      for (const t of data.traffic_alerts) {
+        html += `
+      <div style="background: #fffbeb; padding: 10px 14px; border-radius: 6px; border-left: 3px solid #f59e0b; margin-bottom: 8px;">
+        <p style="font-weight: 600; color: #92400e; margin: 0 0 2px; font-size: 13px;">⚠️ ${esc(t.area)}</p>
+        <p style="color: #78350f; margin: 0 0 4px; font-size: 12px;">${esc(t.issue)}</p>
+        <p style="color: #0d9488; margin: 0; font-size: 12px;">→ ${esc(t.suggestion)}</p>
+      </div>`;
+      }
+      html += `</div>`;
+    }
+
+    // Safety alerts
+    if (data.safety_alerts && data.safety_alerts.length > 0) {
+      html += `
+  <div style="margin-bottom: 22px; page-break-inside: avoid;">
+    <h3 style="color: #0d9488; font-size: 16px; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 0 0 10px;">🛡️ Lưu ý an toàn & sự kiện</h3>`;
+      const typeEmoji: Record<string, string> = { festival: '🎉', religious: '🙏', safety: '⚠️', event: '📅' };
+      const typeLabel: Record<string, string> = { festival: 'Lễ hội', religious: 'Tôn giáo', safety: 'An ninh', event: 'Sự kiện' };
+      for (const s of data.safety_alerts) {
+        const emoji = typeEmoji[s.type] || '📋';
+        const label = typeLabel[s.type] || 'Khác';
+        html += `
+      <div style="background: #f8fafc; padding: 10px 14px; border-radius: 6px; border-left: 3px solid #0d9488; margin-bottom: 8px;">
+        <p style="font-weight: 600; color: #334155; margin: 0 0 2px; font-size: 13px;">${emoji} [${esc(label)}] ${esc(s.title)}</p>
+        <p style="color: #64748b; margin: 0 0 4px; font-size: 12px;">${esc(s.description)}</p>
+        <p style="color: #0d9488; margin: 0; font-size: 12px;">💡 ${esc(s.advice)}</p>
+      </div>`;
+      }
+      html += `</div>`;
+    }
+
+    // Budget summary
+    if (data.budget_summary) {
+      html += `
+  <div style="margin-bottom: 22px; page-break-inside: avoid;">
+    <h3 style="color: #0d9488; font-size: 16px; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin: 0 0 10px;">💰 Tổng hợp chi phí</h3>
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <thead>
+        <tr style="background: #f0fdfa;">
+          <th style="text-align: left; padding: 8px 12px; color: #0d9488; font-weight: 600; border-bottom: 2px solid #0d9488;">Hạng mục</th>
+          <th style="text-align: right; padding: 8px 12px; color: #0d9488; font-weight: 600; border-bottom: 2px solid #0d9488;">Chi phí</th>
+          <th style="text-align: left; padding: 8px 12px; color: #0d9488; font-weight: 600; border-bottom: 2px solid #0d9488;">Ghi chú</th>
+        </tr>
+      </thead>
+      <tbody>`;
+      for (const b of data.budget_summary.breakdown) {
+        html += `
+        <tr>
+          <td style="padding: 7px 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${esc(b.category)}</td>
+          <td style="padding: 7px 12px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-weight: 500; text-align: right;">${esc(b.amount)}</td>
+          <td style="padding: 7px 12px; border-bottom: 1px solid #e2e8f0; color: #94a3b8; font-size: 11px;">${esc(b.note || '')}</td>
+        </tr>`;
+      }
+      html += `
+      </tbody>
+      <tfoot>
+        <tr style="background: #f0fdfa;">
+          <td style="padding: 10px 12px; font-weight: 700; color: #1e293b; border-top: 2px solid #0d9488;">Tổng cộng</td>
+          <td style="padding: 10px 12px; font-weight: 700; color: #0d9488; text-align: right; font-size: 15px; border-top: 2px solid #0d9488;">${esc(data.budget_summary.total_estimated)}</td>
+          <td style="padding: 10px 12px; border-top: 2px solid #0d9488;"></td>
+        </tr>
+      </tfoot>
+    </table>`;
+      if (data.budget_summary.vs_budget_note) {
+        html += `
+    <div style="background: #f0fdfa; padding: 10px 14px; border-radius: 6px; margin-top: 8px; font-size: 12px; color: #0d9488;">📊 ${esc(data.budget_summary.vs_budget_note)}</div>`;
+      }
+      html += `</div>`;
+    }
+
+    // Footer
+    html += `
+  <div style="text-align: center; margin-top: 30px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+    <p style="color: #94a3b8; font-size: 11px; margin: 0;">Được tạo bởi MoodTrip — moodtrip.vercel.app</p>
+  </div>
+</div>`;
+
+    return html;
+  };
+
   const handleExportPDF = async () => {
-    const element = document.getElementById('itinerary-to-print');
-    if (!element || !window.html2pdf) return;
-    
+    if (!itinerary || !window.html2pdf) {
+      showToast('Không thể xuất PDF. Vui lòng thử lại.');
+      return;
+    }
+
     setIsExportingPDF(true);
+    const container = document.createElement('div');
+    container.id = 'pdf-export-container';
+    container.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 800px; background: #ffffff; z-index: -1;';
+    container.innerHTML = buildPdfHtml(itinerary);
+    document.body.appendChild(container);
+
     try {
       const opt: Html2PdfOptions = {
-        margin:       0.5,
-        filename:     `MoodTrip_${itinerary?.destination.replace(/ /g, '_')}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        margin: [10, 10, 10, 10],
+        filename: `MoodTrip_${itinerary.destination.replace(/ /g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
-      await window.html2pdf().from(element).set(opt).save();
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PDF export timeout')), 30000)
+      );
+
+      await Promise.race([
+        window.html2pdf().from(container).set(opt).save(),
+        timeoutPromise
+      ]);
     } catch (err) {
       console.error('PDF export failed:', err);
       showToast('Xuất PDF thất bại. Vui lòng thử lại.');
     } finally {
+      document.body.removeChild(container);
       setIsExportingPDF(false);
     }
   };
