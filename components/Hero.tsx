@@ -34,7 +34,7 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
 
   return (
     <div
-      className="relative flex flex-col items-center justify-center min-h-screen text-white overflow-hidden"
+      className="relative flex flex-col items-center justify-center min-h-screen text-white"
       style={{
         position: 'relative',
         display: 'flex',
@@ -43,7 +43,7 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
         justifyContent: 'center',
         minHeight: '100vh',
         color: 'white',
-        overflow: 'hidden',
+        overflowX: 'hidden',
       }}
     >
       {/* Top bar */}
@@ -149,12 +149,12 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
       </motion.div>
 
       {/* Main content */}
-      <div className="relative z-10 text-center px-8 max-w-3xl bg-black/10 backdrop-blur-[2px] rounded-3xl py-12">
+      <div className="relative z-10 text-center px-4 sm:px-8 max-w-3xl bg-black/10 backdrop-blur-[2px] rounded-3xl py-8 sm:py-12 mt-16 sm:mt-0 mb-24 sm:mb-0">
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 tracking-tight text-white text-shadow-lg"
+          className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 tracking-tight text-white text-shadow-lg"
         >
           Không biết đi đâu?
         </motion.h1>
@@ -163,7 +163,7 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3 }}
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-6 text-gradient-aurora leading-tight text-shadow-md"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-extrabold mb-6 text-gradient-aurora leading-tight text-shadow-md"
         >
           Hãy để cảm xúc dẫn đường!
         </motion.h2>
@@ -172,7 +172,7 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="text-lg text-slate-300 mb-10 max-w-xl mx-auto leading-relaxed text-shadow-sm"
+          className="text-base sm:text-lg text-slate-300 mb-8 sm:mb-10 max-w-xl mx-auto leading-relaxed text-shadow-sm"
         >
           Khám phá thế giới theo cách của bạn. AI sẽ tạo hành trình du lịch hoàn hảo dựa trên tâm trạng và sở thích của bạn.
         </motion.p>
@@ -211,11 +211,11 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2, duration: 0.6 }}
-          className="absolute bottom-0 left-0 w-full z-10 pb-8 flex flex-col items-center"
+          className="absolute bottom-0 left-0 w-full z-10 pb-4 sm:pb-8 flex flex-col items-center px-4"
         >
-          <h3 className="text-center text-slate-400 text-sm font-medium mb-4 tracking-wider uppercase">Lịch sử chuyến đi</h3>
+          <h3 className="text-center text-slate-400 text-xs sm:text-sm font-medium mb-2 sm:mb-4 tracking-wider uppercase">Lịch sử chuyến đi</h3>
           <div className="w-full max-w-7xl marquee-wrapper">
-            <div className="marquee space-x-4">
+            <div className="marquee space-x-3 sm:space-x-4">
               {[...savedItineraries, ...savedItineraries].map((trip, index) => {
                 const gradient = gradientClasses[index % gradientClasses.length];
                 return (
@@ -223,10 +223,10 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
                     key={`${trip.id}-${index}`}
                     onClick={() => onLoadItinerary(trip)}
                     whileHover={{ scale: 1.05, y: -3 }}
-                    className={`flex items-center space-x-3 px-5 py-3 rounded-xl cursor-pointer glass border border-white/10 bg-gradient-to-br ${gradient} bg-opacity-20`}
+                    className={`flex items-center space-x-2 sm:space-x-3 px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl cursor-pointer glass border border-white/10 bg-gradient-to-br ${gradient} bg-opacity-20`}
                   >
                     <IconMapPin className="w-4 h-4 text-white/70" />
-                    <span className="font-semibold text-sm whitespace-nowrap text-white">{trip.destination}</span>
+                    <span className="font-semibold text-xs sm:text-sm whitespace-nowrap text-white">{trip.destination}</span>
                   </motion.div>
                 );
               })}
