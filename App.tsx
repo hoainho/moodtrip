@@ -197,7 +197,7 @@ export default function App() {
     pdfHeader.style.cssText = 'text-align: center; padding: 20px 16px 16px; border-bottom: 2px solid rgba(13,148,136,0.3); margin-bottom: 8px;';
     pdfHeader.innerHTML = `
       <h1 style="color: #0d9488; font-size: 22px; font-weight: 800; margin: 0 0 4px;">MoodTrip</h1>
-      <p style="color: #94a3b8; font-size: 10px; margin: 0 0 8px;">\u0110\u1ec3 c\u1ea3m x\u00fac d\u1eabn \u0111\u01b0\u1eddng</p>
+      <p style="color: #94a3b8; font-size: 10px; margin: 0 0 8px;">Để cảm xúc dẫn đường</p>
       <h2 style="color: #e2e8f0; font-size: 18px; font-weight: 700; margin: 0;">${itinerary.destination}</h2>
     `;
     clone.insertBefore(pdfHeader, clone.firstChild);

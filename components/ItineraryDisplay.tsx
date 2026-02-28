@@ -1,6 +1,6 @@
 import React, { useState, KeyboardEvent } from 'react';
 import type { ItineraryPlan, TravelTip } from '../types';
-import { IconFood, IconHotel, IconTip, IconMapPin, IconDownload, IconRestart, IconSun, IconMoon, IconInfo, IconWallet, IconEdit, IconBookmark, IconCheck, IconX, IconThermometer, IconCloudSun, IconShirt, IconAlertTriangle, IconConstruction, IconReceipt } from './icons';
+import { IconFood, IconHotel, IconTip, IconMapPin, IconDownload, IconRestart, IconSun, IconMoon, IconInfo, IconWallet, IconEdit, IconBookmark, IconCheck, IconX, IconThermometer, IconCloudSun, IconShirt, IconAlertTriangle, IconConstruction, IconReceipt, IconFire } from './icons';
 import { Logo } from './Logo';
 import { TravelTipsModal } from './TravelTipsModal';
 import { motion } from 'motion/react';
@@ -230,6 +230,17 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                                 </div>
 
                                 <p className="text-slate-300 mb-2">{item.activity}</p>
+                                {item.is_trending && (
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                                      <IconFire className="w-3.5 h-3.5" />
+                                      Trending
+                                    </span>
+                                    {item.trending_reason && (
+                                      <span className="text-xs text-orange-300/70">{item.trending_reason}</span>
+                                    )}
+                                  </div>
+                                )}
                                 <div className="space-y-2 text-sm">
                                   {item.venue && (
                                       <div className="flex items-center text-slate-400">
@@ -289,16 +300,18 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           </InfoCard>
 
           {/* Accommodation */}
-          <InfoCard icon={<IconHotel className="w-6 h-6"/>} title="Gợi ý chỗ nghỉ">
-            <ul className="space-y-3">
-              {itinerary.accommodation.map((item, index) => (
-                <li key={index} className="p-3 bg-white/5 rounded-xl border border-white/5">
-                  <p className="font-bold text-white">{item.name} <span className="text-sm font-normal text-slate-500">({item.type})</span></p>
-                  <p className="text-sm text-slate-400">{item.reason}</p>
-                </li>
-              ))}
-            </ul>
-          </InfoCard>
+          {itinerary.accommodation && itinerary.accommodation.length > 0 && (
+            <InfoCard icon={<IconHotel className="w-6 h-6"/>} title="Gợi ý chỗ nghỉ">
+              <ul className="space-y-3">
+                {itinerary.accommodation.map((item, index) => (
+                  <li key={index} className="p-3 bg-white/5 rounded-xl border border-white/5">
+                    <p className="font-bold text-white">{item.name} <span className="text-sm font-normal text-slate-500">({item.type})</span></p>
+                    <p className="text-sm text-slate-400">{item.reason}</p>
+                  </li>
+                ))}
+              </ul>
+            </InfoCard>
+          )}
 
           {/* Tips */}
           <div className="md:col-span-2">

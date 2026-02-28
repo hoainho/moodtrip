@@ -367,3 +367,31 @@ export const IconReceipt = (props: React.SVGProps<SVGSVGElement>) => (
         <path d="M12 17.5v-11" />
     </SvgIcon>
 );
+
+export const IconCoffee = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+        <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+    </SvgIcon>
+);
+
+export const IconFire = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M12 12c2-2.96 0-7-1-8 0 3.038-1.773 4.741-3 6-1.226 1.26-2 3.24-2 5a6 6 0 1 0 12 0c0-1.532-1.056-3.94-2-5-1.786 3-2.791 3-4 2z" />
+    </SvgIcon>
+);
+
+export const IconClock = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+    </SvgIcon>
+);
+
+export const IconTarget = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+    </SvgIcon>
+);

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import type { FormData, Mood, Duration } from '../types';
-import { MOOD_OPTIONS } from '../constants';
-import { IconMapPin, IconWallet, IconChevronLeft, IconChevronRight, IconCalendar, IconCompass, IconSparkles } from './icons';
+import React, { useState, useEffect, useMemo } from 'react';
+import type { FormData, Mood, Duration, TripMode, ShortTripMood } from '../types';
+import { MOOD_OPTIONS, SHORT_TRIP_MOOD_OPTIONS } from '../constants';
+import { IconMapPin, IconWallet, IconChevronLeft, IconChevronRight, IconCalendar, IconCompass, IconSparkles, IconClock } from './icons';
 import { Logo } from './Logo';
 import { motion } from 'motion/react';
 
@@ -60,16 +60,35 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
   const [startDate, setStartDate] = useState('');
   const [duration, setDuration] = useState<Duration>({ days: 2, nights: 1 });
   const [budget, setBudget] = useState(3000000);
-  const [mood, setMood] = useState<Mood>('explore');
+  const [moods, setMoods] = useState<Mood[]>(['explore']);
+  const [personalNote, setPersonalNote] = useState('');
+  const [tripMode, setTripMode] = useState<TripMode>('long');
+  const [startTime, setStartTime] = useState('14:00');
+  const [endTime, setEndTime] = useState('22:00');
+  const [shortMoods, setShortMoods] = useState<ShortTripMood[]>([]);
+
+  const handleTripModeChange = (mode: TripMode) => {
+    setTripMode(mode);
+    if (mode === 'short') {
+      setBudget(500000);
+    } else {
+      setBudget(3000000);
+    }
+  };
 
   useEffect(() => {
     if (initialData) {
+      setTripMode(initialData.tripMode || 'long');
       setStartLocation(initialData.startLocation || '');
       setDestination(initialData.destination);
       setDuration(initialData.duration);
       setBudget(initialData.budget);
-      setMood(initialData.mood);
+      setMoods(initialData.moods || []);
+      setShortMoods(initialData.shortMoods || []);
+      setPersonalNote(initialData.personalNote || '');
       setStartDate(initialData.startDate || '');
+      if (initialData.startTime) setStartTime(initialData.startTime);
+      if (initialData.endTime) setEndTime(initialData.endTime);
     }
   }, [initialData]);
 
@@ -95,8 +114,80 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ startLocation, destination, startDate, duration, budget, mood });
+    onSubmit({
+      tripMode,
+      startLocation: tripMode === 'short' ? '' : startLocation,
+      destination,
+      startDate: tripMode === 'short' ? '' : startDate,
+      duration: tripMode === 'short' ? { days: 0, nights: 0 } : duration,
+      startTime: tripMode === 'short' ? startTime : undefined,
+      endTime: tripMode === 'short' ? endTime : undefined,
+      budget,
+      moods: tripMode === 'short' ? [] : moods,
+      shortMoods: tripMode === 'short' ? shortMoods : undefined,
+      personalNote,
+    });
   };
+
+  const personalNotePlaceholder = useMemo(() => {
+    const hints: string[] = [];
+
+    if (tripMode === 'short') {
+      const shortMoodHints: Record<string, string[]> = {
+        date: ['muốn ăn tối lãng mạn', 'thích nơi yên tĩnh riêng tư', 'muốn xem hoàng hôn'],
+        cafe: ['thích quán có view đẹp', 'muốn chỗ yên tĩnh để nói chuyện', 'thích quán mới khai trương'],
+        food_tour: ['muốn thử bún chả Hà Nội', 'thích đồ ăn vặt', 'muốn ăn hải sản tươi'],
+        nightlife: ['thích rooftop bar', 'muốn nghe nhạc live', 'thích cocktail'],
+        fun: ['muốn chơi boardgame', 'thích karaoke', 'muốn thử escape room'],
+        chill: ['muốn đi dạo bờ sông', 'thích ngồi công viên', 'muốn ngắm thành phố về đêm'],
+      };
+      if (shortMoods.length > 0) {
+        for (const m of shortMoods) {
+          const arr = shortMoodHints[m];
+          if (arr) hints.push(arr[Math.floor(Math.random() * arr.length)]);
+        }
+      }
+      if (destination) {
+        hints.push(`khám phá ${destination}`);
+      }
+      if (hints.length === 0) {
+        return 'VD: Muốn ăn tối lãng mạn, thích quán cà phê view đẹp, muốn đi dạo...';
+      }
+      return `VD: ${hints.slice(0, 3).join(', ')}...`;
+    }
+
+    const moodHints: Record<string, string[]> = {
+      relax: ['muốn được massage thư giãn', 'thích ngâm hồ bơi', 'muốn ngủ nướng buổi sáng'],
+      explore: ['thích khám phá phố cổ', 'muốn thử đồ ăn đường phố', 'thích đi chợ đêm'],
+      nature: ['muốn leo núi buổi sáng', 'thích ngắm hoàng hôn', 'muốn cắm trại qua đêm'],
+      romantic: ['muốn ăn tối nến', 'thích đi dạo dưới ánh trăng', 'muốn chụp ảnh cặp đôi'],
+      adventure: ['muốn thử nhảy dù', 'thích lặn biển', 'muốn đi xe địa hình'],
+      cultural: ['muốn tham quan bảo tàng', 'thích xem biểu diễn truyền thống', 'muốn học nấu ăn địa phương'],
+    };
+
+    if (moods.length > 0) {
+      for (const m of moods) {
+        const arr = moodHints[m];
+        if (arr) hints.push(arr[Math.floor(Math.random() * arr.length)]);
+      }
+    }
+
+    if (destination) {
+      hints.push(`khám phá ẩm thực ${destination}`);
+    }
+
+    if (budget < 2000000) {
+      hints.push('ưu tiên địa điểm miễn phí');
+    } else if (budget >= 10000000) {
+      hints.push('trải nghiệm cao cấp');
+    }
+
+    if (hints.length === 0) {
+      return 'VD: Muốn sáng chạy bộ, tối ăn hải sản, thích check-in quán cà phê đẹp...';
+    }
+
+    return `VD: ${hints.slice(0, 3).join(', ')}...`;
+  }, [tripMode, moods, shortMoods, destination, budget]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 py-8 md:py-12">
@@ -110,10 +201,12 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
         <motion.div {...fadeUp(0)} className="text-center mb-8">
           <Logo className="text-white inline-flex mb-5" onClick={onGoHome} />
           <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight text-shadow-md">
-            Lên kế hoạch cho chuyến đi
+            {tripMode === 'short' ? 'Kế hoạch ngắn hạn' : 'Lên kế hoạch cho chuyến đi'}
           </h2>
           <p className="text-slate-300 mt-3 text-lg text-shadow-sm">
-            Chọn phong cách, để AI thiết kế hành trình hoàn hảo cho bạn
+            {tripMode === 'short'
+              ? 'Lên kế hoạch ngắn gọn cho buổi hẹn hò hoặc khám phá thành phố'
+              : 'Chọn phong cách, để AI thiết kế hành trình hoàn hảo cho bạn'}
           </p>
         </motion.div>
 
@@ -137,23 +230,27 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Địa điểm</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="startLocation" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Nơi khởi hành</label>
-                <div className="relative group">
-                  <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
-                  <input
-                    type="text"
-                    id="startLocation"
-                    value={startLocation}
-                    onChange={(e) => setStartLocation(e.target.value)}
-                    placeholder="Thành phố (tùy chọn)"
-                    className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
-                  />
+            <div className={`grid gap-4 ${tripMode === 'short' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+              {tripMode === 'long' && (
+                <div>
+                  <label htmlFor="startLocation" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Nơi khởi hành</label>
+                  <div className="relative group">
+                    <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <input
+                      type="text"
+                      id="startLocation"
+                      value={startLocation}
+                      onChange={(e) => setStartLocation(e.target.value)}
+                      placeholder="Thành phố (tùy chọn)"
+                      className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               <div>
-                <label htmlFor="destination" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Điểm đến</label>
+                <label htmlFor="destination" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">
+                  {tripMode === 'short' ? 'Thành phố' : 'Điểm đến'}
+                </label>
                 <div className="relative group">
                   <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
                   <input
@@ -161,7 +258,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                     id="destination"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
-                    placeholder="Địa điểm (hoặc để AI gợi ý)"
+                    placeholder={tripMode === 'short' ? 'VD: Hà Nội, Sài Gòn, Đà Nẵng...' : 'Địa điểm (hoặc để AI gợi ý)'}
                     className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
                   />
                 </div>
@@ -176,26 +273,88 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Thời gian</h3>
             </div>
 
-            <div>
-              <label htmlFor="startDate" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Ngày khởi hành (tùy chọn)</label>
-              <div className="relative group">
-                <IconCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
-                <input
-                  type="date"
-                  id="startDate"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
-                  style={{ colorScheme: 'dark' }}
-                />
-              </div>
+            {/* Trip Mode Toggle */}
+            <div className="grid grid-cols-2 gap-2">
+              <motion.button
+                type="button"
+                onClick={() => handleTripModeChange('long')}
+                whileTap={{ scale: 0.97 }}
+                className={`py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                  tripMode === 'long'
+                    ? 'bg-teal-400/15 text-teal-300 border border-teal-400/40 shadow-lg shadow-teal-400/10'
+                    : 'bg-white/[0.03] text-slate-400 border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/10'
+                }`}
+              >
+                Dài hạn
+              </motion.button>
+              <motion.button
+                type="button"
+                onClick={() => handleTripModeChange('short')}
+                whileTap={{ scale: 0.97 }}
+                className={`py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                  tripMode === 'short'
+                    ? 'bg-teal-400/15 text-teal-300 border border-teal-400/40 shadow-lg shadow-teal-400/10'
+                    : 'bg-white/[0.03] text-slate-400 border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/10'
+                }`}
+              >
+                Ngắn hạn
+              </motion.button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <NumberStepper label="Ngày" value={duration.days} onChange={handleDaysChange} min={1} max={30} icon={<IconCalendar className="w-4 h-4" />} />
-              <NumberStepper label="Đêm" value={duration.nights} onChange={handleNightsChange} min={0} max={duration.days > 0 ? duration.days - 1 : 0} icon={<IconCalendar className="w-4 h-4" />} />
-            </div>
+            {tripMode === 'long' ? (
+              <>
+                <div>
+                  <label htmlFor="startDate" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Ngày khởi hành (tùy chọn)</label>
+                  <div className="relative group">
+                    <IconCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <input
+                      type="date"
+                      id="startDate"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <NumberStepper label="Ngày" value={duration.days} onChange={handleDaysChange} min={1} max={30} icon={<IconCalendar className="w-4 h-4" />} />
+                  <NumberStepper label="Đêm" value={duration.nights} onChange={handleNightsChange} min={0} max={duration.days > 0 ? duration.days - 1 : 0} icon={<IconCalendar className="w-4 h-4" />} />
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="startTime" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Giờ bắt đầu</label>
+                  <div className="relative group">
+                    <IconClock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <input
+                      type="time"
+                      id="startTime"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="endTime" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Giờ kết thúc</label>
+                  <div className="relative group">
+                    <IconClock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <input
+                      type="time"
+                      id="endTime"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
 
           {/* Budget Section */}
@@ -216,16 +375,16 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               <input
                 type="range"
                 id="budget"
-                min="500000"
-                max="20000000"
-                step="500000"
+                min={tripMode === 'short' ? '100000' : '500000'}
+                max={tripMode === 'short' ? '5000000' : '20000000'}
+                step={tripMode === 'short' ? '100000' : '500000'}
                 value={budget}
                 onChange={(e) => handleBudgetChange(Number(e.target.value))}
                 className="w-full h-2 bg-white/[0.06] rounded-full appearance-none cursor-pointer custom-range"
               />
               <div className="flex justify-between mt-2">
-                <span className="text-xs text-slate-600">500K</span>
-                <span className="text-xs text-slate-600">20M</span>
+                <span className="text-xs text-slate-600">{tripMode === 'short' ? '100K' : '500K'}</span>
+                <span className="text-xs text-slate-600">{tripMode === 'short' ? '5M' : '20M'}</span>
               </div>
             </div>
 
@@ -246,38 +405,75 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
           <motion.div {...fadeUp(0.4)} className="glass-dark p-6 md:p-8 space-y-5">
             <div className="flex items-center gap-2 mb-1">
               <IconSparkles className="w-5 h-5 text-teal-400" />
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Tâm trạng của bạn</h3>
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">{tripMode === 'short' ? 'Phong cách' : 'Tâm trạng của bạn'}</h3>
             </div>
+            <p className="text-xs text-slate-500">Chọn một hoặc nhiều tâm trạng phù hợp</p>
 
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-              {MOOD_OPTIONS.map((opt) => (
-                <motion.button
-                  type="button"
-                  key={opt.id}
-                  onClick={() => setMood(opt.id)}
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.96 }}
-                  className={`relative p-4 text-center rounded-2xl border transition-all duration-300 ${
-                    mood === opt.id
-                      ? 'border-teal-400/60 bg-teal-400/10 shadow-lg shadow-teal-400/10'
-                      : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  }`}
-                >
-                  {mood === opt.id && (
-                    <motion.div
-                      layoutId="moodGlow"
-                      className="absolute inset-0 rounded-2xl bg-teal-400/5 border border-teal-400/30"
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                  <div className={`flex justify-center items-center h-10 md:h-12 relative z-10 ${mood === opt.id ? 'text-teal-300' : 'text-slate-400'}`}>
-                    {opt.icon}
-                  </div>
-                  <p className={`font-medium mt-1.5 text-xs relative z-10 ${mood === opt.id ? 'text-teal-300' : 'text-slate-500'}`}>
-                    {opt.label}
-                  </p>
-                </motion.button>
-              ))}
+              {(tripMode === 'short' ? SHORT_TRIP_MOOD_OPTIONS : MOOD_OPTIONS).map((opt) => {
+                const isSelected = tripMode === 'short'
+                  ? shortMoods.includes(opt.id as ShortTripMood)
+                  : moods.includes(opt.id as Mood);
+                return (
+                  <motion.button
+                    type="button"
+                    key={opt.id}
+                    onClick={() => {
+                      if (tripMode === 'short') {
+                        setShortMoods((prev) =>
+                          prev.includes(opt.id as ShortTripMood)
+                            ? prev.filter((m) => m !== opt.id)
+                            : [...prev, opt.id as ShortTripMood]
+                        );
+                      } else {
+                        setMoods((prev) =>
+                          prev.includes(opt.id as Mood)
+                            ? prev.filter((m) => m !== opt.id)
+                            : [...prev, opt.id as Mood]
+                        );
+                      }
+                    }}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    className={`relative p-4 text-center rounded-2xl border transition-all duration-300 ${
+                      isSelected
+                        ? 'border-teal-400/60 bg-teal-400/10 shadow-lg shadow-teal-400/10'
+                        : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                    }`}
+                  >
+                    {isSelected && (
+                      <motion.div
+                        layoutId={`moodGlow-${opt.id}`}
+                        className="absolute inset-0 rounded-2xl bg-teal-400/5 border border-teal-400/30"
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    <div className={`flex justify-center items-center h-10 md:h-12 relative z-10 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`}>
+                      {opt.icon}
+                    </div>
+                    <p className={`font-medium mt-1.5 text-xs relative z-10 ${isSelected ? 'text-teal-300' : 'text-slate-500'}`}>
+                      {opt.label}
+                    </p>
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {/* Personal Note */}
+            <div className="pt-2">
+              <label htmlFor="personalNote" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">
+                Ý kiến cá nhân (tùy chọn)
+              </label>
+              <textarea
+                id="personalNote"
+                value={personalNote}
+                onChange={(e) => setPersonalNote(e.target.value)}
+                placeholder={personalNotePlaceholder}
+                rows={3}
+                maxLength={500}
+                className="w-full px-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm resize-none"
+              />
+              <p className="text-right text-[10px] text-slate-600 mt-1">{personalNote.length}/500</p>
             </div>
           </motion.div>
 
@@ -290,7 +486,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               className="w-full py-4 gradient-nature text-white font-bold text-lg rounded-2xl shadow-lg shadow-teal-500/20 transition-all duration-300 flex items-center justify-center gap-2"
             >
               <IconSparkles className="w-5 h-5" />
-              Tạo hành trình
+              {tripMode === 'short' ? 'Khám phá ngay' : 'Tạo hành trình'}
             </motion.button>
 
             <motion.button

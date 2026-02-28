@@ -1,3 +1,7 @@
+export type TripMode = 'long' | 'short';
+
+export type ShortTripMood = 'date' | 'cafe' | 'food_tour' | 'nightlife' | 'fun' | 'chill';
+
 export type Mood = 'relax' | 'explore' | 'nature' | 'romantic' | 'adventure' | 'cultural';
 
 export interface Duration {
@@ -6,12 +10,17 @@ export interface Duration {
 }
 
 export interface FormData {
+  tripMode: TripMode;
   startLocation: string;
   destination: string;
   startDate: string;
   duration: Duration;
+  startTime?: string;
+  endTime?: string;
   budget: number;
-  mood: Mood;
+  moods: Mood[];
+  shortMoods?: ShortTripMood[];
+  personalNote: string;
 }
 
 export interface TravelTip {
@@ -28,6 +37,8 @@ export interface ScheduleItem {
   estimated_cost?: string;
   google_maps_link?: string;
   travel_tips?: TravelTip[];
+  is_trending?: boolean;
+  trending_reason?: string;
 }
 
 export interface WeatherInfo {
