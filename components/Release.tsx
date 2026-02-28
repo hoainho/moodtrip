@@ -10,8 +10,37 @@ interface ReleaseProps {
 
 const CHANGELOG_CONTENT = `# MoodTrip - Ghi Chú Phát Hành
 
-> **Phiên Bản Tài Liệu:** 4.0  
-> **Cập Nhật Lần Cuối:** 25/02/2026
+> **Phiên Bản Tài Liệu:** 4.1  
+> **Cập Nhật Lần Cuối:** 28/02/2026
+
+---
+
+## 🆕 Phiên Bản 4.1
+
+_28/02/2026_
+
+### Điểm Nổi Bật
+- Chế độ Ngắn hạn mới — lên kế hoạch khám phá thành phố trong vài giờ
+- Gợi ý địa điểm trending với badge 🔥 trên các điểm hot
+- Sửa lỗi responsive cho nút chọn ngày/đêm trên mobile
+
+### Tính Năng Mới
+
+| Tính Năng | Mô Tả |
+| --- | --- |
+| Chế độ Dài hạn / Ngắn hạn | Toggle chuyển đổi giữa chuyến đi dài ngày và khám phá ngắn trong nội ô |
+| 6 Phong cách mới | Hẹn hò, Cà phê, Food Tour, Nightlife, Vui chơi, Chill |
+| Chọn giờ bắt đầu / kết thúc | Time picker cho chế độ ngắn hạn thay vì chọn ngày |
+| Ngân sách 100K - 5M | Phạm vi ngân sách phù hợp cho chuyến ngắn |
+| Trending Badge | Đánh dấu 🔥 và lý do trending cho địa điểm hot |
+| Ẩn thông tin không cần thiết | Tự động ẩn chỗ nghỉ và gợi ý trang phục khi đi ngắn |
+
+### Sửa Lỗi
+
+| Sửa Lỗi | Mô Tả |
+| --- | --- |
+| Stepper responsive | Thu nhỏ nút +/- chọn ngày/đêm trên mobile để không bị tràn |
+| Unicode PDF header | Sửa hiển thị tiếng Việt bị lỗi trong header xuất PDF |
 
 ---
 
@@ -45,7 +74,6 @@ _25/02/2026_
 | Tải PDF | Không còn đóng băng giao diện khi xuất PDF |
 | Hiệu năng | Tự động giảm chất lượng 3D trên thiết bị yếu (AdaptiveDpr) |
 | Responsive | Giao diện tương thích tốt hơn với mọi kích thước màn hình |
-
 ---
 
 ## Phiên Bản 3.0

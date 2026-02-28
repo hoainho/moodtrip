@@ -27,28 +27,28 @@ const NumberStepper: React.FC<{
   label: string;
   icon: React.ReactNode;
 }> = ({ value, onChange, min, max, label, icon }) => (
-  <div className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/[0.06] hover:border-white/10 transition-colors">
-    <div className="flex items-center gap-2.5">
-      <span className="text-teal-400/70">{icon}</span>
-      <span className="font-medium text-slate-300 text-sm">{label}</span>
+  <div className="flex items-center justify-between p-3 md:p-4 bg-white/[0.03] rounded-2xl border border-white/[0.06] hover:border-white/10 transition-colors">
+    <div className="flex items-center gap-1.5 md:gap-2.5 min-w-0">
+      <span className="text-teal-400/70 hidden md:inline">{icon}</span>
+      <span className="font-medium text-slate-300 text-xs md:text-sm">{label}</span>
     </div>
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 md:gap-2">
       <button
         type="button"
         onClick={() => onChange(value - 1)}
         disabled={value <= min}
-        className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06] text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+        className="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl bg-white/[0.06] text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
       >
-        <IconChevronLeft className="w-4 h-4" />
+        <IconChevronLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
       </button>
-      <span className="font-bold text-xl text-white w-8 text-center tabular-nums">{value}</span>
+      <span className="font-bold text-lg md:text-xl text-white w-6 md:w-8 text-center tabular-nums">{value}</span>
       <button
         type="button"
         onClick={() => onChange(value + 1)}
         disabled={value >= max}
-        className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.06] text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+        className="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center rounded-lg md:rounded-xl bg-white/[0.06] text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
       >
-        <IconChevronRight className="w-4 h-4" />
+        <IconChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
       </button>
     </div>
   </div>
@@ -318,7 +318,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 md:gap-3">
                   <NumberStepper label="Ngày" value={duration.days} onChange={handleDaysChange} min={1} max={30} icon={<IconCalendar className="w-4 h-4" />} />
                   <NumberStepper label="Đêm" value={duration.nights} onChange={handleNightsChange} min={0} max={duration.days > 0 ? duration.days - 1 : 0} icon={<IconCalendar className="w-4 h-4" />} />
                 </div>
