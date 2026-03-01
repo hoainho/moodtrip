@@ -324,31 +324,31 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-2 gap-2 md:gap-4">
+                <div className="min-w-0">
                   <label htmlFor="startTime" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Giờ bắt đầu</label>
                   <div className="relative group">
-                    <IconClock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <IconClock className="absolute left-2.5 md:left-3.5 top-1/2 -translate-y-1/2 w-4 md:w-4.5 h-4 md:h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
                     <input
                       type="time"
                       id="startTime"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
+                      className="w-full pl-8 md:pl-10 pr-2 md:pr-4 py-3 md:py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
                       style={{ colorScheme: 'dark' }}
                     />
                   </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label htmlFor="endTime" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Giờ kết thúc</label>
                   <div className="relative group">
-                    <IconClock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <IconClock className="absolute left-2.5 md:left-3.5 top-1/2 -translate-y-1/2 w-4 md:w-4.5 h-4 md:h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
                     <input
                       type="time"
                       id="endTime"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
+                      className="w-full pl-8 md:pl-10 pr-2 md:pr-4 py-3 md:py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm"
                       style={{ colorScheme: 'dark' }}
                     />
                   </div>
