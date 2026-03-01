@@ -194,17 +194,24 @@ body {
 
 /* ===== Custom Scrollbar ===== */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(13, 148, 136, 0.5);
-  border-radius: 4px;
+  background: rgba(13, 148, 136, 0.3);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(13, 148, 136, 0.8);
+  background: rgba(13, 148, 136, 0.6);
+}
+
+/* Thin scrollbar for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13, 148, 136, 0.3) transparent;
 }
 
 /* ===== Range Input ===== */
@@ -433,4 +440,13 @@ button, a, [role="button"] {
 /* Prevent pull-to-refresh */
 .no-pull-refresh {
   overscroll-behavior-y: contain;
+}
+
+/* ===== Scrollbar-less horizontal scroll (section tabs) ===== */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

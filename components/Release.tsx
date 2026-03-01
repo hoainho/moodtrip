@@ -8,14 +8,52 @@ interface ReleaseProps {
   onGoHome: () => void;
 }
 
-const CHANGELOG_CONTENT = `# MoodTrip - Ghi Chú Phát Hành
+const CHANGELOG_CONTENT = `# MoodTrip - Ghi Ch\u00fa Ph\u00e1t H\u00e0nh
 
-> **Phiên Bản Tài Liệu:** 4.1  
-> **Cập Nhật Lần Cuối:** 28/02/2026
+> **Phi\u00ean B\u1ea3n T\u00e0i Li\u1ec7u:** 4.2  
+> **C\u1eadp Nh\u1eadt L\u1ea7n Cu\u1ed1i:** 01/03/2026
 
 ---
 
-## 🆕 Phiên Bản 4.1
+## \uD83C\uDD95 Phi\u00ean B\u1ea3n 4.2
+
+_01/03/2026_
+
+### \u0110i\u1ec3m N\u1ed5i B\u1eadt
+- Thanh t\u00e1c v\u1ee5 n\u1ed5i (Floating Action Bar) \u2014 thao t\u00e1c nhanh L\u01b0u, PDF, Chia s\u1ebb, K\u1ef7 ni\u1ec7m
+- Chia s\u1ebb chuy\u1ebfn \u0111i qua link & m\u00e3 QR kh\u00f4ng c\u1ea7n server
+- Ch\u1ebf \u0111\u1ed9 Live Trip \u2014 theo d\u00f5i ho\u1ea1t \u0111\u1ed9ng th\u1eddi gian th\u1ef1c
+- So s\u00e1nh 2 chuy\u1ebfn \u0111i c\u1ea1nh nhau
+- K\u1ef7 ni\u1ec7m chuy\u1ebfn \u0111i \u2014 th\u1ebb recap \u0111\u1eb9p \u0111\u1ec3 chia s\u1ebb
+
+### T\u00ednh N\u0103ng M\u1edbi
+
+| T\u00ednh N\u0103ng | M\u00f4 T\u1ea3 |
+| --- | --- |
+| Floating Action Bar | Thanh n\u1ed5i c\u1ed1 \u0111\u1ecbnh d\u01b0\u1edbi m\u00e0n h\u00ecnh v\u1edbi c\u00e1c nút L\u01b0u, PDF, Chia s\u1ebb, K\u1ef7 ni\u1ec7m, Chuy\u1ebfn m\u1edbi |
+| Gallery chuy\u1ebfn \u0111i | Trang ch\u1ee7 hi\u1ec3n th\u1ecb l\u1ecbch s\u1eed chuy\u1ebfn \u0111i d\u1ea1ng th\u1ebb card m\u00e0u gradient, h\u1ed7 tr\u1ee3 x\u00f3a |
+| Tab \u0111i\u1ec1u h\u01b0\u1edbng | Thanh tab ngang cu\u1ed9n \u0111\u01b0\u1ee3c \u0111\u1ec3 nh\u1ea3y nhanh \u0111\u1ebfn t\u1eebng m\u1ee5c l\u1ecbch tr\u00ecnh |
+| Chia s\u1ebb qua link | N\u00e9n l\u1ecbch tr\u00ecnh v\u00e0o URL, ng\u01b0\u1eddi nh\u1eadn m\u1edf xem kh\u00f4ng c\u1ea7n \u0111\u0103ng nh\u1eadp |
+| M\u00e3 QR | T\u1ea1o m\u00e3 QR t\u1ef1 \u0111\u1ed9ng t\u1eeb link chia s\u1ebb, d\u1ec5 qu\u00e9t b\u1eb1ng \u0111i\u1ec7n tho\u1ea1i |
+| Live Trip Mode | \u0110\u00e1nh d\u1ea5u ho\u1ea1t \u0111\u1ed9ng \u0111ang di\u1ec5n ra v\u1edbi badge LIVE xanh l\u00e1 nh\u1ea5p nh\u00e1y |
+| Confetti & Haptic | Hi\u1ec7u \u1ee9ng ph\u00e1o hoa + rung khi l\u01b0u l\u1ecbch tr\u00ecnh th\u00e0nh c\u00f4ng |
+| Skeleton Loading | M\u00e0n h\u00ecnh ch\u1edd d\u1ea1ng khung x\u01b0\u01a1ng thay v\u00ec spinner, gi\u1ed1ng layout th\u1eadt |
+| K\u1ef7 ni\u1ec7m chuy\u1ebfn \u0111i | Th\u1ebb recap \u0111\u1eb9p v\u1edbi th\u00f4ng tin t\u00f3m t\u1eaft, d\u1ec5 ch\u1ee5p m\u00e0n h\u00ecnh chia s\u1ebb |
+| So s\u00e1nh chuy\u1ebfn \u0111i | \u0110\u1eb7t 2 chuy\u1ebfn c\u1ea1nh nhau so s\u00e1nh ng\u00e0y, m\u00f3n \u0103n, chi ph\u00ed |
+| Haptic n\u00e2ng cao | Nhi\u1ec1u ki\u1ec3u rung ph\u1ea3n h\u1ed3i cho c\u00e1c thao t\u00e1c kh\u00e1c nhau (nh\u1ea5n, ch\u1ecdn, c\u1ea3nh b\u00e1o) |
+
+### C\u1ea3i Ti\u1ebfn
+
+| C\u1ea3i Ti\u1ebfn | M\u00f4 T\u1ea3 |
+| --- | --- |
+| UX t\u1ed1i \u01b0u | Thao t\u00e1c ch\u00ednh \u0111\u01b0\u1ee3c gom v\u00e0o FAB, gi\u1ea3m r\u1ed1i m\u1eaft |
+| \u0110\u1ebfm ng\u01b0\u1ee3c ho\u1ea1t \u0111\u1ed9ng | Hi\u1ec3n th\u1ecb th\u1eddi gian c\u00f2n l\u1ea1i \u0111\u1ebfn ho\u1ea1t \u0111\u1ed9ng ti\u1ebfp theo |
+| Gallery responsive | Card grid t\u1ef1 \u0111\u1ed9ng 1/2/3 c\u1ed9t theo m\u00e0n h\u00ecnh |
+| Kh\u00f4ng c\u1ea7n server | Chia s\u1ebb v\u00e0 QR ho\u00e0n to\u00e0n client-side, kh\u00f4ng l\u01b0u d\u1eef li\u1ec7u \u1edf server |
+
+---
+
+## Phi\u00ean B\u1ea3n 4.1
 
 _28/02/2026_
 

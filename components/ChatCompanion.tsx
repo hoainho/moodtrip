@@ -156,7 +156,7 @@ export const ChatCompanion: React.FC = () => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-50 w-14 h-14 gradient-nature rounded-full shadow-lg shadow-teal-500/30 flex items-center justify-center text-white"
+            className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 w-12 h-12 sm:w-14 sm:h-14 gradient-nature rounded-full shadow-lg shadow-teal-500/30 flex items-center justify-center text-white"
             title="Trợ lý du lịch AI"
           >
             <IconMessageCircle className="w-6 h-6" />
@@ -172,7 +172,7 @@ export const ChatCompanion: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 sm:w-[380px] sm:h-[520px] sm:max-h-[calc(100vh-6rem)] flex flex-col bg-[rgba(10,14,26,0.95)] sm:bg-[rgba(10,14,26,0.92)] backdrop-blur-2xl border-0 sm:border border-white/[0.08] shadow-2xl shadow-black/40 overflow-hidden rounded-none sm:rounded-2xl"
+            className="fixed bottom-16 left-0 right-0 sm:bottom-6 sm:left-auto sm:right-6 sm:inset-auto z-50 sm:w-[380px] h-[calc(100vh-8rem)] sm:h-[520px] sm:max-h-[calc(100vh-6rem)] flex flex-col bg-[rgba(10,14,26,0.97)] sm:bg-[rgba(10,14,26,0.92)] backdrop-blur-2xl border-0 sm:border border-white/[0.08] shadow-2xl shadow-black/40 overflow-hidden rounded-t-2xl sm:rounded-2xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06]">
