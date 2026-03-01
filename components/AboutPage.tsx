@@ -6,16 +6,6 @@ interface AboutPageProps {
   onGoHome: () => void;
 }
 
-const techStack = [
-  { name: 'React 19', description: 'Thư viện giao diện người dùng' },
-  { name: 'TypeScript', description: 'Ngôn ngữ lập trình an toàn kiểu' },
-  { name: 'Three.js + R3F', description: 'Hiệu ứng 3D tương tác' },
-  { name: 'Tailwind CSS 4', description: 'Framework CSS tiện ích' },
-  { name: 'Motion', description: 'Thư viện hoạt ảnh mượt mà' },
-  { name: 'Gemini AI', description: 'AI tạo lịch trình thông minh' },
-  { name: 'Vite', description: 'Công cụ build nhanh chóng' },
-  { name: 'Vercel', description: 'Nền tảng triển khai' },
-];
 
 export const AboutPage: React.FC<AboutPageProps> = ({ onGoHome }) => {
   return (
@@ -101,34 +91,6 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onGoHome }) => {
           </div>
         </motion.div>
 
-        {/* Tech Stack */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          className="glass-dark rounded-3xl p-8 border border-white/5 mb-8"
-        >
-          <div className="flex items-center mb-6">
-            <div className="bg-gradient-to-br from-purple-500 to-indigo-500 text-white rounded-full p-2.5 mr-4">
-              <IconGlobe className="w-6 h-6" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">Công nghệ sử dụng</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {techStack.map((tech, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.5 + index * 0.05 }}
-                className="p-4 bg-white/5 rounded-xl border border-white/5 text-center hover:border-teal-500/20 transition-colors"
-              >
-                <p className="font-semibold text-white text-sm mb-1">{tech.name}</p>
-                <p className="text-slate-500 text-xs">{tech.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
 
         {/* Copyright */}
         <motion.div
