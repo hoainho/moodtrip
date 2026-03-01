@@ -208,6 +208,21 @@ body {
 }
 
 /* ===== Range Input ===== */
+.custom-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  outline: none;
+}
+.custom-range::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 8px;
+  background: transparent;
+  border-radius: 9999px;
+}
 .custom-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -216,12 +231,20 @@ body {
   background: linear-gradient(135deg, #0d9488, #06b6d4);
   cursor: pointer;
   border-radius: 50%;
+  border: none;
   box-shadow: 0 0 10px rgba(13, 148, 136, 0.5);
-  transition: all 0.2s;
+  margin-top: -8px;
+  transition: box-shadow 0.2s, transform 0.2s;
 }
 .custom-range::-webkit-slider-thumb:hover {
   box-shadow: 0 0 20px rgba(13, 148, 136, 0.8);
   transform: scale(1.1);
+}
+.custom-range::-moz-range-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  border: none;
 }
 .custom-range::-moz-range-thumb {
   width: 24px;
@@ -230,6 +253,15 @@ body {
   cursor: pointer;
   border-radius: 50%;
   border: none;
+}
+
+/* ===== iOS Safari Input Fixes ===== */
+input[type="time"],
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* ===== Three.js Canvas ===== */

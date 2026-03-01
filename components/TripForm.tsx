@@ -380,7 +380,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                 step={tripMode === 'short' ? '100000' : '500000'}
                 value={budget}
                 onChange={(e) => handleBudgetChange(Number(e.target.value))}
-                className="w-full h-2 bg-white/[0.06] rounded-full appearance-none cursor-pointer custom-range"
+                className="w-full cursor-pointer custom-range"
               />
               <div className="flex justify-between mt-2">
                 <span className="text-xs text-slate-600">{tripMode === 'short' ? '100K' : '500K'}</span>
