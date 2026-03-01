@@ -1,9 +1,12 @@
-import React, { useState, KeyboardEvent } from 'react';
+import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import type { ItineraryPlan, TravelTip } from '../types';
-import { IconFood, IconHotel, IconTip, IconMapPin, IconDownload, IconRestart, IconSun, IconMoon, IconInfo, IconWallet, IconEdit, IconBookmark, IconCheck, IconX, IconThermometer, IconCloudSun, IconShirt, IconAlertTriangle, IconConstruction, IconReceipt, IconFire } from './icons';
+import { IconFood, IconHotel, IconTip, IconMapPin, IconDownload, IconRestart, IconSun, IconMoon, IconInfo, IconWallet, IconEdit, IconBookmark, IconCheck, IconX, IconThermometer, IconCloudSun, IconShirt, IconAlertTriangle, IconConstruction, IconReceipt, IconFire, IconShare, IconClock, IconHeart } from './icons';
 import { Logo } from './Logo';
 import { TravelTipsModal } from './TravelTipsModal';
 import { motion } from 'motion/react';
+import { ShareModal } from './ShareModal';
+import { hapticLight, hapticMedium } from '../services/haptics';
+import { TripRecap } from './TripRecap';
 
 interface ItineraryDisplayProps {
   itinerary: ItineraryPlan;
@@ -38,6 +41,84 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
   const [activeTips, setActiveTips] = useState<{ tips: TravelTip[], venue: string } | null>(null);
   const [editingTime, setEditingTime] = useState<{ dayIndex: number, itemIndex: number} | null>(null);
   const [currentTimeValue, setCurrentTimeValue] = useState('');
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [activeSection, setActiveSection] = useState('timeline');
+  const [showRecap, setShowRecap] = useState(false);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const scrollToSection = (id: string) => {
+    setActiveSection(id);
+    hapticLight();
+    sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const sections = [
+    { id: 'timeline', label: 'Lịch trình', icon: <IconMapPin className="w-4 h-4" /> },
+    { id: 'food', label: 'Ẩm thực', icon: <IconFood className="w-4 h-4" /> },
+    ...(itinerary.accommodation && itinerary.accommodation.length > 0 ? [{ id: 'accommodation', label: 'Chỗ nghỉ', icon: <IconHotel className="w-4 h-4" /> }] : []),
+    { id: 'tips', label: 'Mẹo', icon: <IconTip className="w-4 h-4" /> },
+    ...(itinerary.packing_suggestions && itinerary.packing_suggestions.length > 0 ? [{ id: 'packing', label: 'Hành lý', icon: <IconShirt className="w-4 h-4" /> }] : []),
+    ...(itinerary.traffic_alerts && itinerary.traffic_alerts.length > 0 ? [{ id: 'traffic', label: 'Giao thông', icon: <IconConstruction className="w-4 h-4" /> }] : []),
+    ...(itinerary.safety_alerts && itinerary.safety_alerts.length > 0 ? [{ id: 'safety', label: 'An toàn', icon: <IconAlertTriangle className="w-4 h-4" /> }] : []),
+    ...(itinerary.budget_summary ? [{ id: 'budget', label: 'Chi phí', icon: <IconReceipt className="w-4 h-4" /> }] : []),
+  ];
+
+  // Live Trip Mode
+  const [liveModeEnabled, setLiveModeEnabled] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    if (!liveModeEnabled) return;
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, [liveModeEnabled]);
+
+  const parseTimeToMinutes = (timeStr: string): number | null => {
+    // Parse time formats like '08:00', '8:00', '08h00', '14:30'
+    const match = timeStr.match(/(\d{1,2})[h:]?(\d{2})/);
+    if (!match) return null;
+    return parseInt(match[1]) * 60 + parseInt(match[2]);
+  };
+
+  const getCurrentMinutes = (): number => {
+    return currentTime.getHours() * 60 + currentTime.getMinutes();
+  };
+
+  const getActivityStatus = (dayIndex: number, itemIndex: number): 'past' | 'current' | 'upcoming' | 'none' => {
+    if (!liveModeEnabled) return 'none';
+    // Only highlight first day for simplicity (or if trip has a single day)
+    if (dayIndex !== 0) return 'none';
+    const schedule = itinerary.timeline[dayIndex]?.schedule;
+    if (!schedule) return 'none';
+    
+    const nowMinutes = getCurrentMinutes();
+    const itemTime = parseTimeToMinutes(schedule[itemIndex].time);
+    if (itemTime === null) return 'none';
+    
+    const nextItemTime = itemIndex < schedule.length - 1
+      ? parseTimeToMinutes(schedule[itemIndex + 1].time)
+      : null;
+
+    if (nextItemTime !== null && nowMinutes >= itemTime && nowMinutes < nextItemTime) return 'current';
+    if (nextItemTime === null && nowMinutes >= itemTime) return 'current';
+    if (nowMinutes < itemTime) return 'upcoming';
+    return 'past';
+  };
+
+  const getCountdown = (dayIndex: number, itemIndex: number): string | null => {
+    if (!liveModeEnabled || dayIndex !== 0) return null;
+    const schedule = itinerary.timeline[dayIndex]?.schedule;
+    if (!schedule) return null;
+    const itemTime = parseTimeToMinutes(schedule[itemIndex].time);
+    if (itemTime === null) return null;
+    const nowMinutes = getCurrentMinutes();
+    const diff = itemTime - nowMinutes;
+    if (diff <= 0 || diff > 480) return null;
+    const hours = Math.floor(diff / 60);
+    const mins = diff % 60;
+    if (hours > 0) return `c\u00f2n ${hours}h${mins > 0 ? mins + 'p' : ''}`;
+    return `c\u00f2n ${mins} ph\u00fat`;
+  };
 
   const handleEditClick = (dayIndex: number, itemIndex: number, time: string) => {
     setEditingTime({ dayIndex, itemIndex });
@@ -69,57 +150,15 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-30 glass-dark border-b border-white/5">
-        <div className="container mx-auto px-4 py-3 relative flex justify-between items-center">
-          <Logo className="text-white" onClick={onGoHome} />
-          
-          <div className="hidden md:block absolute left-1/2 -translate-x-1/2">
-             <h1 className="text-lg font-bold text-white flex items-center whitespace-nowrap">
-                <IconMapPin className="w-5 h-5 mr-2 text-teal-400" />
-                {itinerary.destination}
-             </h1>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            {!isSaved && (
-              <motion.button 
-                onClick={onSaveToList} 
-                title="Lưu lại lịch trình" 
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="p-2.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-all"
-              >
-                <IconBookmark className="w-5 h-5" />
-              </motion.button>
-            )}
-            <motion.button 
-              onClick={onExportPDF} 
-              title="Xuất ra PDF"
-              disabled={isExportingPDF}
-              whileHover={isExportingPDF ? {} : { scale: 1.1 }}
-              whileTap={isExportingPDF ? {} : { scale: 0.9 }}
-              className={`p-2.5 rounded-full border transition-all ${isExportingPDF ? 'bg-teal-500/10 text-teal-400/50 border-teal-500/20 cursor-wait' : 'bg-teal-500/20 text-teal-400 border-teal-500/30 hover:bg-teal-500/30'}`}
-            >
-              {isExportingPDF ? (
-                <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
-              ) : (
-                <IconDownload className="w-5 h-5" />
-              )}
-            </motion.button>
-            <motion.button 
-              onClick={onReset} 
-              title="Tạo chuyến đi mới" 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="p-2.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all"
-            >
-              <IconRestart className="w-5 h-5" />
-            </motion.button>
-          </div>
+      <header className="sticky top-0 z-30 bg-[rgba(10,14,26,0.85)] backdrop-blur-xl border-b border-white/[0.06]">
+        <div className="container mx-auto px-4 py-2.5 flex items-center gap-3">
+          <Logo className="text-white flex-shrink-0" onClick={onGoHome} />
+          <h1 className="flex-1 min-w-0 text-sm sm:text-base font-semibold text-white/90 flex items-center">
+            <IconMapPin className="w-4 h-4 mr-1.5 text-teal-400 flex-shrink-0" />
+            <span className="truncate">{itinerary.destination}</span>
+          </h1>
         </div>
       </header>
 
@@ -135,9 +174,29 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           <p className="text-lg opacity-90 max-w-3xl mx-auto leading-relaxed">{itinerary.overview}</p>
         </motion.div>
 
+        {/* Section Navigation Tabs */}
+        <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-none">
+          <div className="flex gap-1.5 min-w-max py-1">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => scrollToSection(section.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap border ${
+                  activeSection === section.id
+                    ? 'bg-teal-500/20 text-teal-300 border-teal-500/30 shadow-lg shadow-teal-500/10'
+                    : 'bg-white/[0.04] text-slate-400 border-white/[0.04] hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {section.icon}
+                {section.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-8">
           {/* Timeline */}
-          <div className="md:col-span-2 space-y-8">
+          <div ref={el => { sectionRefs.current['timeline'] = el; }} className="md:col-span-2 space-y-8 scroll-mt-20">
              {itinerary.timeline.map((day, dayIndex) => (
                 <motion.div
                   key={dayIndex}
@@ -147,7 +206,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                   className="glass-dark rounded-3xl p-6 border border-white/5"
                 >
                    <div className="flex items-center mb-4 border-b pb-3 border-white/10">
-                      <div className="flex items-center justify-center w-12 h-12 gradient-nature rounded-full mr-4">
+                      <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 gradient-nature rounded-full mr-4">
                           {day.title.toLowerCase().includes('toi') || day.title.toLowerCase().includes('dem') ? <IconMoon className="w-6 h-6 text-white"/> : <IconSun className="w-6 h-6 text-white"/>}
                       </div>
                       <div>
@@ -195,15 +254,20 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                         <div className="absolute left-0 top-0 h-full w-0.5 bg-teal-900"></div>
                         {day.schedule.map((item, itemIndex) => {
                             const isEditing = editingTime?.dayIndex === dayIndex && editingTime.itemIndex === itemIndex;
+                            const activityStatus = getActivityStatus(dayIndex, itemIndex);
+                            const countdown = getCountdown(dayIndex, itemIndex);
                             return (
                                 <motion.div
                                   key={itemIndex}
                                   initial={{ opacity: 0, x: -15 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: itemIndex * 0.08 }}
-                                  className="relative mb-6 pl-4"
+                                  className={`relative mb-6 pl-4 ${activityStatus === 'current' ? 'bg-teal-500/5 -mx-2 px-6 py-3 rounded-2xl border border-teal-500/20' : ''} ${activityStatus === 'past' ? 'opacity-50' : ''}`}
                                 >
-                                <div className="absolute -left-1.5 top-1 w-3 h-3 bg-teal-500 rounded-full border-2 border-[#0a0e1a] shadow-lg shadow-teal-500/30"></div>
+                                <div className={`absolute ${activityStatus === 'current' ? '-left-0.5' : '-left-1.5'} top-1 w-3 h-3 rounded-full border-2 border-[#0a0e1a] ${
+                                  activityStatus === 'current' ? 'bg-green-400 shadow-lg shadow-green-400/50 animate-pulse' :
+                                  activityStatus === 'past' ? 'bg-slate-600' : 'bg-teal-500 shadow-lg shadow-teal-500/30'
+                                }`}></div>
                                 
                                 <div className="flex items-center gap-2">
                                   {isEditing ? (
@@ -222,6 +286,18 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                                   ) : (
                                     <>
                                       <p className="font-bold text-white">{item.time}</p>
+                                      {activityStatus === 'current' && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 animate-pulse">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                                          LIVE
+                                        </span>
+                                      )}
+                                      {countdown && activityStatus === 'upcoming' && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                          <IconClock className="w-3 h-3" />
+                                          {countdown}
+                                        </span>
+                                      )}
                                       <button onClick={() => handleEditClick(dayIndex, itemIndex, item.time)} className="text-slate-600 hover:text-teal-400 transition">
                                         <IconEdit className="w-4 h-4" />
                                       </button>
@@ -288,6 +364,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           </div>
 
           {/* Food */}
+          <div ref={el => { sectionRefs.current['food'] = el; }} className="scroll-mt-20">
           <InfoCard icon={<IconFood className="w-6 h-6"/>} title="Món ăn nên thử">
             <ul className="space-y-3">
               {itinerary.food.map((item, index) => (
@@ -298,9 +375,10 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
               ))}
             </ul>
           </InfoCard>
-
+          </div>
           {/* Accommodation */}
           {itinerary.accommodation && itinerary.accommodation.length > 0 && (
+          <div ref={el => { sectionRefs.current['accommodation'] = el; }} className="scroll-mt-20">
             <InfoCard icon={<IconHotel className="w-6 h-6"/>} title="Gợi ý chỗ nghỉ">
               <ul className="space-y-3">
                 {itinerary.accommodation.map((item, index) => (
@@ -311,10 +389,11 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                 ))}
               </ul>
             </InfoCard>
+          </div>
           )}
 
           {/* Tips */}
-          <div className="md:col-span-2">
+          <div ref={el => { sectionRefs.current['tips'] = el; }} className="md:col-span-2 scroll-mt-20">
             <InfoCard icon={<IconTip className="w-6 h-6"/>} title="Mẹo du lịch hữu ích">
               <ul className="space-y-2 text-slate-300">
                 {itinerary.tips.map((tip, index) => (
@@ -329,6 +408,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
 
           {/* Packing Suggestions */}
           {itinerary.packing_suggestions && itinerary.packing_suggestions.length > 0 && (
+          <div ref={el => { sectionRefs.current['packing'] = el; }} className="scroll-mt-20">
             <InfoCard icon={<IconShirt className="w-6 h-6"/>} title="Gợi ý trang phục & phụ kiện">
               <ul className="space-y-3">
                 {itinerary.packing_suggestions.map((item, index) => (
@@ -342,10 +422,12 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                 ))}
               </ul>
             </InfoCard>
+          </div>
           )}
 
           {/* Traffic Alerts */}
           {itinerary.traffic_alerts && itinerary.traffic_alerts.length > 0 && (
+          <div ref={el => { sectionRefs.current['traffic'] = el; }} className="scroll-mt-20">
             <InfoCard icon={<IconConstruction className="w-6 h-6"/>} title="Cảnh báo giao thông">
               <ul className="space-y-3">
                 {itinerary.traffic_alerts.map((alert, index) => (
@@ -360,11 +442,12 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                 ))}
               </ul>
             </InfoCard>
+          </div>
           )}
 
           {/* Safety Alerts */}
           {itinerary.safety_alerts && itinerary.safety_alerts.length > 0 && (
-            <div className="md:col-span-2">
+          <div ref={el => { sectionRefs.current['safety'] = el; }} className="md:col-span-2 scroll-mt-20">
               <InfoCard icon={<IconAlertTriangle className="w-6 h-6"/>} title="Lưu ý an toàn & sự kiện">
                 <ul className="space-y-3">
                   {itinerary.safety_alerts.map((alert, index) => {
@@ -388,12 +471,12 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                   })}
                 </ul>
               </InfoCard>
-            </div>
+          </div>
           )}
 
           {/* Budget Summary */}
           {itinerary.budget_summary && (
-            <div className="md:col-span-2">
+          <div ref={el => { sectionRefs.current['budget'] = el; }} className="md:col-span-2 scroll-mt-20">
               <InfoCard icon={<IconReceipt className="w-6 h-6"/>} title="Tổng hợp chi phí">
                 <div className="space-y-4">
                   <div className="overflow-x-auto">
@@ -429,7 +512,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                   </div>
                 </div>
               </InfoCard>
-            </div>
+          </div>
           )}
         </div>
       </main>
@@ -441,6 +524,113 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
               onClose={() => setActiveTips(null)}
           />
       )}
+
+      {showShareModal && (
+        <ShareModal
+          itinerary={itinerary}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+
+      {showRecap && (
+        <TripRecap
+          itinerary={itinerary}
+          onClose={() => setShowRecap(false)}
+        />
+      )}
+
+      {/* Floating Action Bar */}
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.3 }}
+        className="fixed bottom-0 left-0 right-0 z-40"
+      >
+        <div className="bg-[rgba(10,14,26,0.9)] backdrop-blur-xl border-t border-white/[0.06]">
+          <div className="container mx-auto px-2 sm:px-4 py-2 pb-safe flex items-center justify-around max-w-lg">
+            {/* Save */}
+            {!isSaved ? (
+              <motion.button
+                onClick={onSaveToList}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.85 }}
+                className="flex flex-col items-center gap-0.5 group"
+              >
+                <div className="p-2 sm:p-2.5 rounded-2xl bg-yellow-500/10 text-yellow-400 border border-yellow-500/15 group-hover:bg-yellow-500/20 transition-all">
+                  <IconBookmark className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+                </div>
+                <span className="text-[9px] sm:text-[10px] text-yellow-400/60 font-medium">Lưu</span>
+              </motion.button>
+            ) : (
+              <div className="flex flex-col items-center gap-0.5 opacity-40">
+                <div className="p-2 sm:p-2.5 rounded-2xl bg-green-500/10 text-green-400 border border-green-500/15">
+                  <IconCheck className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+                </div>
+                <span className="text-[9px] sm:text-[10px] text-green-400/60 font-medium">Đã lưu</span>
+              </div>
+            )}
+
+            {/* PDF Export */}
+            <motion.button
+              onClick={onExportPDF}
+              disabled={isExportingPDF}
+              whileHover={isExportingPDF ? {} : { scale: 1.1 }}
+              whileTap={isExportingPDF ? {} : { scale: 0.85 }}
+              className="flex flex-col items-center gap-0.5 group"
+            >
+              <div className={`p-2 sm:p-2.5 rounded-2xl border transition-all ${isExportingPDF ? 'bg-teal-500/5 text-teal-400/40 border-teal-500/10 cursor-wait' : 'bg-teal-500/10 text-teal-400 border-teal-500/15 group-hover:bg-teal-500/20'}`}>
+                {isExportingPDF ? (
+                  <svg className="w-[18px] h-[18px] sm:w-5 sm:h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                ) : (
+                  <IconDownload className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+                )}
+              </div>
+              <span className={`text-[9px] sm:text-[10px] font-medium ${isExportingPDF ? 'text-teal-400/40' : 'text-teal-400/60'}`}>PDF</span>
+            </motion.button>
+
+            {/* Share */}
+            <motion.button
+              onClick={() => { hapticMedium(); setShowShareModal(true); }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.85 }}
+              className="flex flex-col items-center gap-0.5 group"
+            >
+              <div className="p-2 sm:p-2.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/15 group-hover:bg-cyan-500/20 transition-all">
+                <IconShare className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] text-cyan-400/60 font-medium">Chia sẻ</span>
+            </motion.button>
+
+            {/* Recap */}
+            <motion.button
+              onClick={() => setShowRecap(true)}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.85 }}
+              className="flex flex-col items-center gap-0.5 group"
+            >
+              <div className="p-2 sm:p-2.5 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/15 group-hover:bg-purple-500/20 transition-all">
+                <IconHeart className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] text-purple-400/60 font-medium">Kỷ niệm</span>
+            </motion.button>
+
+            {/* New Trip */}
+            <motion.button
+              onClick={onReset}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.85 }}
+              className="flex flex-col items-center gap-0.5 group"
+            >
+              <div className="p-2 sm:p-2.5 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/15 group-hover:bg-red-500/20 transition-all">
+                <IconRestart className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] text-red-400/60 font-medium">Mới</span>
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };
