@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { Logo } from './Logo';
-import { IconMapPin, IconSparkles, IconGlobe, IconCompass } from './icons';
+import { IconMapPin, IconSparkles, IconGlobe, IconCompass, IconX } from './icons';
 import type { ItineraryPlan } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { hapticLight, hapticSelection } from '../services/haptics';
+import { TripComparison } from './TripComparison';
 
 interface HeroProps {
   onStart: () => void;
   savedItineraries: ItineraryPlan[];
   onLoadItinerary: (itinerary: ItineraryPlan) => void;
+  onDeleteItinerary: (id: string | number) => void;
   onGoHome: () => void;
   onGoToRelease: () => void;
   onGoToTips: () => void;
@@ -23,8 +26,9 @@ const gradientClasses = [
     'from-sky-400 to-blue-500',
 ];
 
-export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadItinerary, onGoHome, onGoToRelease, onGoToTips, onGoToAbout }) => {
+export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadItinerary, onDeleteItinerary, onGoHome, onGoToRelease, onGoToTips, onGoToAbout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
 
   const navItems = [
     { label: 'Mẹo du lịch', onClick: onGoToTips },
@@ -184,13 +188,24 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
           className="flex flex-col items-center gap-4"
         >
           <motion.button
-            onClick={onStart}
+            onClick={() => { hapticLight(); onStart(); }}
             whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(13, 148, 136, 0.4)' }}
             whileTap={{ scale: 0.95 }}
             className="px-10 py-4 gradient-nature text-white font-bold rounded-full text-lg shadow-lg shadow-teal-500/30 transition-all duration-300"
           >
             Khám phá ngay
           </motion.button>
+
+          {savedItineraries.length >= 2 && (
+            <motion.button
+              onClick={() => setShowComparison(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-6 py-3 glass text-white/80 font-medium rounded-full text-sm border border-white/10 hover:bg-white/10 transition-colors"
+            >
+              So sánh chuyến đi
+            </motion.button>
+          )}
 
           {savedItineraries.length > 0 && (
             <motion.p
@@ -205,28 +220,42 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
         </motion.div>
       </div>
       
-      {/* Saved itineraries marquee */}
+      {/* Trip Gallery */}
       {savedItineraries && savedItineraries.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2, duration: 0.6 }}
-          className="absolute bottom-0 left-0 w-full z-10 pb-4 sm:pb-8 flex flex-col items-center px-4"
+          className="absolute bottom-0 left-0 w-full z-10 pb-4 sm:pb-8 px-4"
         >
-          <h3 className="text-center text-slate-400 text-xs sm:text-sm font-medium mb-2 sm:mb-4 tracking-wider uppercase">Lịch sử chuyến đi</h3>
-          <div className="w-full max-w-7xl marquee-wrapper">
-            <div className="marquee space-x-3 sm:space-x-4">
-              {[...savedItineraries, ...savedItineraries].map((trip, index) => {
+          <h3 className="text-center text-slate-400 text-xs sm:text-sm font-medium mb-3 tracking-wider uppercase">Lịch sử chuyến đi</h3>
+          <div className="max-w-3xl mx-auto max-h-[35vh] overflow-y-auto scrollbar-thin">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {savedItineraries.map((trip, index) => {
                 const gradient = gradientClasses[index % gradientClasses.length];
                 return (
-                  <motion.div 
-                    key={`${trip.id}-${index}`}
-                    onClick={() => onLoadItinerary(trip)}
-                    whileHover={{ scale: 1.05, y: -3 }}
-                    className={`flex items-center space-x-2 sm:space-x-3 px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl cursor-pointer glass border border-white/10 bg-gradient-to-br ${gradient} bg-opacity-20`}
+                  <motion.div
+                    key={trip.id || index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.3 + index * 0.08 }}
+                    whileHover={{ y: -4, scale: 1.02 }}
+                    onClick={() => { hapticSelection(); onLoadItinerary(trip); }}
+                    className={`relative group cursor-pointer glass rounded-2xl p-4 border border-white/10 bg-gradient-to-br ${gradient} bg-opacity-20 transition-all`}
                   >
-                    <IconMapPin className="w-4 h-4 text-white/70" />
-                    <span className="font-semibold text-xs sm:text-sm whitespace-nowrap text-white">{trip.destination}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (trip.id) onDeleteItinerary(trip.id); }}
+                      className="absolute top-2 right-2 p-1 rounded-full bg-black/30 text-white/50 hover:text-white hover:bg-red-500/50 transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <IconX className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <IconMapPin className="w-4 h-4 text-white/70 flex-shrink-0" />
+                      <span className="font-semibold text-sm text-white truncate">{trip.destination}</span>
+                    </div>
+                    {trip.overview && (
+                      <p className="text-xs text-white/50 mt-1.5 line-clamp-2">{trip.overview}</p>
+                    )}
                   </motion.div>
                 );
               })}
@@ -234,6 +263,13 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
           </div>
         </motion.div>
       )}
+      {showComparison && (
+        <TripComparison
+          itineraries={savedItineraries}
+          onClose={() => setShowComparison(false)}
+        />
+      )}
+
     </div>
   );
 };

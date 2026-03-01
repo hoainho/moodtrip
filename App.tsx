@@ -17,6 +17,8 @@ import { IconWarning } from './components/icons';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 import { AnimatePresence, motion } from 'motion/react';
+import { decompressItinerary, getSharedTripParam } from './services/shareService';
+import { hapticSuccess, spawnConfetti } from './services/haptics';
 
 // Lazy load Three.js scene to prevent blocking initial render
 const NatureScene = lazy(() => import('./components/three/NatureScene'));
@@ -77,6 +79,7 @@ export default function App() {
   const [lastFormData, setLastFormData] = useState<FormData | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isSharedView, setIsSharedView] = useState(false);
 
   useEffect(() => {
     const storedItinerary = localStorage.getItem(ITINERARY_LS_KEY);
@@ -100,6 +103,25 @@ export default function App() {
         console.error("Failed to parse saved itineraries", e);
         localStorage.removeItem(SAVED_ITINERARIES_LS_KEY);
       }
+    }
+  }, []);
+
+  // Handle shared trip URL
+  useEffect(() => {
+    const sharedParam = getSharedTripParam();
+    if (sharedParam) {
+      decompressItinerary(sharedParam)
+        .then((trip) => {
+          setItinerary(trip);
+          setIsSharedView(true);
+          setView('result');
+          setShowIntro(false);
+          // Clean URL without reload
+          window.history.replaceState({}, '', window.location.pathname);
+        })
+        .catch((err) => {
+          console.error('Failed to load shared trip:', err);
+        });
     }
   }, []);
 
@@ -279,13 +301,22 @@ export default function App() {
     const updatedList = [...savedItineraries, itinerary];
     setSavedItineraries(updatedList);
     localStorage.setItem(SAVED_ITINERARIES_LS_KEY, JSON.stringify(updatedList));
-    showToast("Đã lưu lịch trình thành công!");
+    hapticSuccess();
+    spawnConfetti();
+    showToast('Đã lưu lịch trình thành công!');
   };
 
   const handleLoadItinerary = (itineraryToLoad: ItineraryPlan) => {
     setItinerary(itineraryToLoad);
     setView('result');
     localStorage.setItem(ITINERARY_LS_KEY, JSON.stringify(itineraryToLoad));
+  };
+
+  const handleDeleteItinerary = (id: string | number) => {
+    const updatedList = savedItineraries.filter(i => i.id !== id);
+    setSavedItineraries(updatedList);
+    localStorage.setItem(SAVED_ITINERARIES_LS_KEY, JSON.stringify(updatedList));
+    showToast('Đã xóa lịch trình.');
   };
 
   const handleIntroComplete = () => {
@@ -312,6 +343,7 @@ export default function App() {
               onStart={() => setView('form')} 
               savedItineraries={savedItineraries} 
               onLoadItinerary={handleLoadItinerary} 
+              onDeleteItinerary={handleDeleteItinerary}
               onGoHome={handleGoHome} 
               onGoToRelease={handleGoToRelease}
               onGoToTips={handleGoToTips}
@@ -367,7 +399,7 @@ export default function App() {
               onSaveToList={handleSaveItineraryToList}
               onItineraryChange={handleItineraryChange}
               onGoHome={handleGoHome}
-              isSaved={isSaved}
+              isSaved={isSaved || isSharedView}
               isExportingPDF={isExportingPDF}
             />
           </motion.div>
@@ -445,6 +477,7 @@ export default function App() {
             onStart={() => setView('form')} 
             savedItineraries={savedItineraries} 
             onLoadItinerary={handleLoadItinerary} 
+            onDeleteItinerary={handleDeleteItinerary}
             onGoHome={handleGoHome} 
             onGoToRelease={handleGoToRelease}
             onGoToTips={handleGoToTips}
