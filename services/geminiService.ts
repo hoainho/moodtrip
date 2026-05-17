@@ -257,73 +257,138 @@ function buildPrompt(data: FormData): string {
   `;
 }
 
+function extractJsonObject(raw: string): string {
+  const trimmed = raw.trim();
+
+  const fullFenceRegex = /^```(\w*)?\s*\n?([\s\S]*?)\n?\s*```$/;
+  const fullFenceMatch = trimmed.match(fullFenceRegex);
+  if (fullFenceMatch && fullFenceMatch[2]) {
+    const inner = fullFenceMatch[2].trim();
+    if (inner.startsWith('{') && inner.endsWith('}')) {
+      return inner;
+    }
+  }
+
+  const inlineFenceRegex = /```(?:\w*)?\s*\n?([\s\S]*?)\n?\s*```/;
+  const inlineMatch = trimmed.match(inlineFenceRegex);
+  if (inlineMatch && inlineMatch[1]) {
+    const inner = inlineMatch[1].trim();
+    if (inner.startsWith('{') && inner.endsWith('}')) {
+      return inner;
+    }
+  }
+
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return trimmed.slice(firstBrace, lastBrace + 1);
+  }
+
+  return trimmed;
+}
+
+async function callProxyForItinerary(prompt: string): Promise<string> {
+  const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${PROXY_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'Bạn là một chuyên gia du lịch. CHỈ trả về một JSON object hợp lệ theo cấu trúc được yêu cầu. TUYỆT ĐỐI KHÔNG sử dụng markdown code fences, KHÔNG thêm văn bản giải thích, KHÔNG dùng định dạng YAML. Bắt đầu phản hồi bằng ký tự `{` và kết thúc bằng `}`.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 16384,
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('API_KEY_INVALID');
+    }
+    if (response.status === 429) {
+      throw new Error('RATE_LIMIT_EXCEEDED');
+    }
+    throw new Error(`Proxy error: ${response.status} ${response.statusText}`);
+  }
+
+  const responseData = await response.json() as {
+    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+  };
+
+  const content = responseData.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('EMPTY_RESPONSE');
+  }
+
+  if (responseData.choices?.[0]?.finish_reason === 'length') {
+    console.warn('AI response was truncated (finish_reason=length); JSON likely incomplete.');
+  }
+
+  return content;
+}
+
+function parseItinerary(rawContent: string): ItineraryPlan {
+  const jsonStr = extractJsonObject(rawContent);
+  const parsedData = JSON.parse(jsonStr) as ItineraryPlan;
+
+  if (!parsedData.destination || !parsedData.timeline || !parsedData.overview) {
+    throw new Error('INVALID_STRUCTURE');
+  }
+  return parsedData;
+}
+
 export const generateItinerary = async (formData: FormData): Promise<ItineraryPlan> => {
   const prompt = buildPrompt(formData);
+  const maxAttempts = 2;
+  let lastError: unknown;
+  let lastRawContent = '';
 
-  try {
-    const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${PROXY_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: 'Bạn là một chuyên gia du lịch. Luôn trả về JSON hợp lệ theo cấu trúc được yêu cầu. KHÔNG sử dụng markdown code fences.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 8192,
-        temperature: 0.7,
-      }),
-    });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const content = await callProxyForItinerary(prompt);
+      lastRawContent = content;
+      return parseItinerary(content);
+    } catch (error) {
+      lastError = error;
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('API_KEY_INVALID');
+      if (error instanceof Error &&
+          (error.message === 'API_KEY_INVALID' || error.message === 'RATE_LIMIT_EXCEEDED')) {
+        throw error;
       }
-      if (response.status === 429) {
-        throw new Error('RATE_LIMIT_EXCEEDED');
+
+      const isParseError = error instanceof SyntaxError;
+      const isStructureError = error instanceof Error && error.message === 'INVALID_STRUCTURE';
+
+      if (isParseError || isStructureError) {
+        console.error(
+          `[generateItinerary] Attempt ${attempt}/${maxAttempts} failed to parse AI response.`,
+          { error, contentPreview: lastRawContent.slice(0, 300), contentLength: lastRawContent.length }
+        );
+        if (attempt < maxAttempts) continue;
+      } else {
+        console.error('[generateItinerary] Proxy/network error:', error);
+        break;
       }
-      throw new Error(`Proxy error: ${response.status} ${response.statusText}`);
     }
-
-    const responseData = await response.json() as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-
-    const content = responseData.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error('Phản hồi rỗng từ AI.');
-    }
-
-    let jsonStr = content.trim();
-    const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-    const match = jsonStr.match(fenceRegex);
-    if (match && match[2]) {
-      jsonStr = match[2].trim();
-    }
-    
-    const parsedData = JSON.parse(jsonStr) as ItineraryPlan;
-    
-    if (!parsedData.destination || !parsedData.timeline || !parsedData.overview) {
-        throw new Error("Cấu trúc lịch trình nhận về từ AI không hợp lệ.");
-    }
-
-    return parsedData;
-  } catch (error) {
-    console.error("Error calling Proxy API:", error);
-    if (error instanceof Error) {
-        if (error.message === 'API_KEY_INVALID' || error.message === 'RATE_LIMIT_EXCEEDED') {
-            throw error;
-        }
-    }
-    throw new Error("Không thể tạo lịch trình. AI có thể đang bận. Vui lòng thử lại sau.");
   }
+
+  if (lastError instanceof SyntaxError ||
+      (lastError instanceof Error && lastError.message === 'INVALID_STRUCTURE')) {
+    throw new Error('Định dạng phản hồi từ AI không hợp lệ. Vui lòng thử lại.');
+  }
+  if (lastError instanceof Error && lastError.message === 'EMPTY_RESPONSE') {
+    throw new Error('AI trả về phản hồi rỗng. Vui lòng thử lại sau.');
+  }
+  throw new Error('Không thể tạo lịch trình. AI có thể đang bận. Vui lòng thử lại sau.');
 };
