@@ -1,8 +1,15 @@
 import type { FormData, ItineraryPlan, Duration, ShortTripMood } from '../types';
 import { EdgeProxyError, extractText, generate } from './edgeProxyClient';
+import { buildMoSystemPrompt, detectRegion } from './moPersona';
 
-const SYSTEM_INSTRUCTION_TEXT =
-  'Bạn là một chuyên gia du lịch. CHỈ trả về một JSON object hợp lệ theo cấu trúc được yêu cầu. TUYỆT ĐỐI KHÔNG sử dụng markdown code fences, KHÔNG thêm văn bản giải thích, KHÔNG dùng định dạng YAML. Bắt đầu phản hồi bằng ký tự `{` và kết thúc bằng `}`.';
+const STRICT_JSON_DIRECTIVE =
+  'NGỮ CẢNH HỆ THỐNG: Bạn đang trả về dữ liệu cho hệ thống parse JSON. CHỈ trả về một JSON object hợp lệ theo cấu trúc được yêu cầu. TUYỆT ĐỐI KHÔNG sử dụng markdown code fences, KHÔNG thêm văn bản giải thích, KHÔNG dùng định dạng YAML. Bắt đầu phản hồi bằng ký tự `{` và kết thúc bằng `}`.';
+
+function buildSystemInstruction(destination: string): string {
+  const region = detectRegion(destination);
+  const persona = buildMoSystemPrompt({ destination, region });
+  return `${persona}\n\n${STRICT_JSON_DIRECTIVE}`;
+}
 
 function buildDurationText(duration: Duration): string {
     if (duration.days <= 0) return 'Chuyến đi trong ngày';
@@ -287,13 +294,13 @@ function extractJsonObject(raw: string): string {
   return trimmed;
 }
 
-async function callProxyForItinerary(prompt: string): Promise<string> {
+async function callProxyForItinerary(prompt: string, destination: string): Promise<string> {
   try {
     const response = await generate(
       [{ role: 'user', parts: [{ text: prompt }] }],
       {
         model: 'flash',
-        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION_TEXT }] },
+        systemInstruction: { parts: [{ text: buildSystemInstruction(destination) }] },
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 16384,
@@ -337,7 +344,7 @@ export const generateItinerary = async (formData: FormData): Promise<ItineraryPl
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const content = await callProxyForItinerary(prompt);
+      const content = await callProxyForItinerary(prompt, formData.destination);
       lastRawContent = content;
       return parseItinerary(content);
     } catch (error) {

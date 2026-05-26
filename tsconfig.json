@@ -27,5 +27,5 @@
       "@/*" :  ["./*"]
     }
   },
-  "exclude": ["node_modules", "dist", "workers", ".vercel"]
+  "exclude": ["node_modules", "dist", "workers", "supabase/functions", ".vercel"]
 }

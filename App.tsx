@@ -11,6 +11,10 @@ import { TipsPage } from './components/TipsPage';
 import { AboutPage } from './components/AboutPage';
 import { Footer } from './components/Footer';
 import { ChatCompanion } from './components/ChatCompanion';
+import { AuthModal } from './components/AuthModal';
+import { MigrationBanner } from './components/MigrationBanner';
+import { ConsentBanner } from './components/ConsentBanner';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
 import type { FormData, ItineraryPlan } from './types';
 import { IconWarning } from './components/icons';
@@ -80,6 +84,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isSharedView, setIsSharedView] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   useEffect(() => {
     const storedItinerary = localStorage.getItem(ITINERARY_LS_KEY);
@@ -125,12 +130,20 @@ export default function App() {
     }
   }, []);
 
-  // Delay 3D scene mount so it doesn't block initial content render
   useEffect(() => {
-    if (!showIntro) {
-      const timer = setTimeout(() => setSceneReady(true), 100);
-      return () => clearTimeout(timer);
+    if (showIntro) return;
+    const w = window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+      const handle = w.requestIdleCallback(() => setSceneReady(true), { timeout: 2000 });
+      return () => {
+        if (typeof w.cancelIdleCallback === 'function') w.cancelIdleCallback(handle);
+      };
     }
+    const timer = setTimeout(() => setSceneReady(true), 800);
+    return () => clearTimeout(timer);
   }, [showIntro]);
 
   const showToast = (message: string) => {
@@ -513,9 +526,16 @@ export default function App() {
         aria-hidden="true"
       />
 
-      {/* Analytics */}
       <Analytics />
       <SpeedInsights />
+
+      <button
+        onClick={() => setAuthModalOpen(true)}
+        className="fixed top-4 right-4 z-30 px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+        aria-label="Đăng nhập"
+      >
+        Đăng nhập
+      </button>
 
       {/* Main Content — inline styles ensure visibility even if CSS fails */}
       <main
@@ -542,8 +562,11 @@ export default function App() {
       )}
 
 
-      {/* Chat Companion */}
       <ChatCompanion />
+      <MigrationBanner />
+      <PWAInstallPrompt />
+      <ConsentBanner />
+      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
 
       {/* Toast Notification */}
       <AnimatePresence>

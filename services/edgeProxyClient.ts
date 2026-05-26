@@ -1,3 +1,5 @@
+import { getSupabaseAccessToken } from './authSession';
+
 const EDGE_PROXY_URL =
   (typeof import.meta !== 'undefined' && (import.meta as { env?: Record<string, string> }).env?.VITE_EDGE_PROXY_URL) ||
   'https://api.moodtrip.app';
@@ -67,6 +69,8 @@ async function fetchAnonToken(): Promise<string> {
 
 export async function getAuthToken(supabaseToken?: string | null): Promise<string> {
   if (supabaseToken) return supabaseToken;
+  const liveSupabase = await getSupabaseAccessToken();
+  if (liveSupabase) return liveSupabase;
   const cached = readStoredToken();
   if (cached) return cached;
   return fetchAnonToken();
@@ -122,7 +126,8 @@ export async function generate(
 
   let res = await doFetch(token);
 
-  if (res.status === 401 && !opts.supabaseToken) {
+  const isSupabaseToken = Boolean(opts.supabaseToken) || (await getSupabaseAccessToken()) === token;
+  if (res.status === 401 && !isSupabaseToken) {
     try {
       localStorage.removeItem(ANON_TOKEN_LS_KEY);
       localStorage.removeItem(ANON_TOKEN_EXPIRY_LS_KEY);

@@ -4,6 +4,7 @@ import { IconMessageCircle, IconSend, IconX, IconSparkles } from './icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { EdgeProxyError, extractText, generate, type GeminiContent } from '../services/edgeProxyClient';
+import { buildMoSystemPrompt } from '../services/moPersona';
 
 interface ChatMessage {
   id: string;
@@ -12,23 +13,9 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-const SYSTEM_PROMPT = `Bạn là Trợ Lý Du Lịch MoodTrip — một chuyên gia du lịch thân thiện, nhiệt tình và giàu kinh nghiệm.
+const FORMAT_HINT = `Định dạng trả lời: dùng **in đậm** cho điểm cần nhấn, danh sách 1. 2. 3. hoặc gạch đầu dòng khi liệt kê, ### khi câu trả lời dài. Không dùng code fences.`;
 
-Nhiệm vụ của bạn:
-- Tư vấn về điểm đến, lịch trình, ẩm thực, văn hóa
-- Gợi ý hoạt động phù hợp với sở thích và ngân sách
-- Chia sẻ mẹo du lịch hữu ích và thực tế
-- Trả lời bằng tiếng Việt, thân thiện, ngắn gọn nhưng đầy đủ
-- Sử dụng kiến thức mới nhất về du lịch
-
-Định dạng trả lời:
-- Sử dụng **in đậm** để nhấn mạnh điểm quan trọng
-- Sử dụng danh sách có số thứ tự (1. 2. 3.) hoặc gạch đầu dòng (-) khi liệt kê
-- Sử dụng bảng markdown khi so sánh (ví dụ: so sánh điểm đến, chi phí)
-- Sử dụng ### tiêu đề phụ khi câu trả lời dài và có nhiều phần
-- KHÔNG sử dụng code fences (\`\`\`)
-
-Phong cách: Nhiệt tình, chuyên nghiệp, thân thiện. Trả lời ngắn gọn (2-4 câu cho câu hỏi đơn giản, chi tiết hơn khi cần).`;
+const CHAT_SYSTEM_PROMPT = `${buildMoSystemPrompt()}\n\n${FORMAT_HINT}`;
 
 async function sendChatMessage(messages: { role: string; content: string }[]): Promise<string> {
   const contents: GeminiContent[] = messages.map((m) => ({
@@ -39,7 +26,7 @@ async function sendChatMessage(messages: { role: string; content: string }[]): P
   try {
     const response = await generate(contents, {
       model: 'flash-lite',
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: CHAT_SYSTEM_PROMPT }] },
       generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
     });
     return extractText(response).trim();

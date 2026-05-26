@@ -19,8 +19,24 @@
 body {
   font-family: 'Be Vietnam Pro', sans-serif;
   background-color: #0a0e1a;
+  background-image:
+    radial-gradient(at 20% 10%, rgba(13, 148, 136, 0.18) 0px, transparent 50%),
+    radial-gradient(at 80% 90%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+    radial-gradient(at 90% 10%, rgba(14, 165, 233, 0.10) 0px, transparent 50%);
+  background-attachment: fixed;
   color: #e2e8f0;
   overflow-x: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ===== Glassmorphism ===== */

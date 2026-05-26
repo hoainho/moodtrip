@@ -134,7 +134,7 @@ describe('POST /v1/generate', () => {
   });
 
   it('enforces anonymous daily limit of 1', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
       mockGeminiResponse({ promptTokens: 100, outputTokens: 100 }),
     );
     const token = await mintAnonForTest();
