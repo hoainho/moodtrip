@@ -1,8 +1,8 @@
 import type { FormData, ItineraryPlan, Duration, ShortTripMood } from '../types';
+import { EdgeProxyError, extractText, generate } from './edgeProxyClient';
 
-const PROXY_URL = 'https://proxy.hoainho.info';
-const PROXY_API_KEY = 'hoainho';
-const MODEL = 'gemini-2.5-flash';
+const SYSTEM_INSTRUCTION_TEXT =
+  'Bạn là một chuyên gia du lịch. CHỈ trả về một JSON object hợp lệ theo cấu trúc được yêu cầu. TUYỆT ĐỐI KHÔNG sử dụng markdown code fences, KHÔNG thêm văn bản giải thích, KHÔNG dùng định dạng YAML. Bắt đầu phản hồi bằng ký tự `{` và kết thúc bằng `}`.';
 
 function buildDurationText(duration: Duration): string {
     if (duration.days <= 0) return 'Chuyến đi trong ngày';
@@ -288,54 +288,35 @@ function extractJsonObject(raw: string): string {
 }
 
 async function callProxyForItinerary(prompt: string): Promise<string> {
-  const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PROXY_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'Bạn là một chuyên gia du lịch. CHỈ trả về một JSON object hợp lệ theo cấu trúc được yêu cầu. TUYỆT ĐỐI KHÔNG sử dụng markdown code fences, KHÔNG thêm văn bản giải thích, KHÔNG dùng định dạng YAML. Bắt đầu phản hồi bằng ký tự `{` và kết thúc bằng `}`.'
+  try {
+    const response = await generate(
+      [{ role: 'user', parts: [{ text: prompt }] }],
+      {
+        model: 'flash',
+        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION_TEXT }] },
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 16384,
+          responseMimeType: 'application/json',
         },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      max_tokens: 16384,
-      temperature: 0.7,
-      response_format: { type: 'json_object' },
-    }),
-  });
+      },
+    );
 
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('API_KEY_INVALID');
+    if (response.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+      console.warn('AI response was truncated (finishReason=MAX_TOKENS); JSON likely incomplete.');
     }
-    if (response.status === 429) {
-      throw new Error('RATE_LIMIT_EXCEEDED');
+
+    return extractText(response);
+  } catch (err) {
+    if (err instanceof EdgeProxyError) {
+      if (err.code === 'UNAUTHENTICATED') throw new Error('API_KEY_INVALID');
+      if (err.code === 'RATE_LIMIT_EXCEEDED') throw new Error('RATE_LIMIT_EXCEEDED');
+      if (err.code === 'BUDGET_EXCEEDED') throw new Error('BUDGET_EXCEEDED');
+      if (err.code === 'EMPTY_RESPONSE') throw new Error('EMPTY_RESPONSE');
+      throw new Error(`Proxy error: ${err.status} ${err.message}`);
     }
-    throw new Error(`Proxy error: ${response.status} ${response.statusText}`);
+    throw err;
   }
-
-  const responseData = await response.json() as {
-    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
-  };
-
-  const content = responseData.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('EMPTY_RESPONSE');
-  }
-
-  if (responseData.choices?.[0]?.finish_reason === 'length') {
-    console.warn('AI response was truncated (finish_reason=length); JSON likely incomplete.');
-  }
-
-  return content;
 }
 
 function parseItinerary(rawContent: string): ItineraryPlan {
