@@ -63,9 +63,8 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
     ...(itinerary.budget_summary ? [{ id: 'budget', label: 'Chi phí', icon: <IconReceipt className="w-4 h-4" /> }] : []),
   ];
 
-  // Live Trip Mode
-  const [liveModeEnabled, setLiveModeEnabled] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const liveModeEnabled = true;
 
   useEffect(() => {
     if (!liveModeEnabled) return;

@@ -5,7 +5,7 @@
 ## 🔴 Critical (do these first — the old key is already compromised)
 
 ### 1. Rotate the leaked Gemini API key
-- The literal string `PROXY_API_KEY = 'hoainho'` was in `services/geminiService.ts`. Anyone with read access to the repo (or anyone who ran `view-source` on the deployed site) already has it.
+- A hardcoded proxy key was previously committed in `services/geminiService.ts` (now removed; see commit `44f4f61`). Anyone with read access to the repo — or anyone who ran `view-source` on the deployed site — has the old value. Treat it as compromised.
 - The Gemini API key behind `proxy.hoainho.info` must also be rotated — assume it has been extracted.
 - In Google Cloud Console → APIs & Services → Credentials → revoke the old Gemini key, create a new one with restricted referrer.
 - Store the new key as a Cloudflare Worker secret (step 5), never in source.
@@ -96,7 +96,7 @@ This publishes to `https://moodtrip-edge-proxy.<your-account>.workers.dev`. Note
   - `src/crypto.ts` — IP hashing
   - `test/` — 5 test suites covering crypto, rate limit, spend tracker, JWT round-trip, full integration
 - `services/edgeProxyClient.ts` — new client that mints anon JWT, caches it in LocalStorage, retries on 401
-- `services/geminiService.ts` — refactored to call new edge proxy (removed hardcoded `proxy.hoainho.info` + `PROXY_API_KEY = 'hoainho'`)
+- `services/geminiService.ts` — refactored to call new edge proxy (removed the hardcoded legacy proxy host + shared key)
 - `services/sentry.ts` — Sentry init with PII scrubbing
 - `services/__tests__/edgeProxyClient.test.ts` — 8 unit/integration tests for the client
 - `App.tsx` — surface BUDGET_EXCEEDED + clearer RATE_LIMIT_EXCEEDED user messages
