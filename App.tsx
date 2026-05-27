@@ -116,11 +116,24 @@ export default function App() {
     const storedItinerary = localStorage.getItem(ITINERARY_LS_KEY);
     const storedSavedItineraries = localStorage.getItem(SAVED_ITINERARIES_LS_KEY);
 
+    const isFixtureItinerary = (it: { destination?: string; overview?: string } | null): boolean => {
+      if (!it) return false;
+      return Boolean(
+        (it.destination && it.destination.includes('[MOCK]')) ||
+        (it.overview && it.overview.includes('[FIXTURE'))
+      );
+    };
+
     if (storedItinerary) {
       try {
         const parsedItinerary = JSON.parse(storedItinerary);
-        setItinerary(parsedItinerary);
-        setView('result');
+        if (isFixtureItinerary(parsedItinerary)) {
+          console.warn('[App] Purging cached fixture itinerary; live mode will fetch fresh from Gemini.');
+          localStorage.removeItem(ITINERARY_LS_KEY);
+        } else {
+          setItinerary(parsedItinerary);
+          setView('result');
+        }
       } catch (e) {
         console.error("Failed to parse stored itinerary", e);
         localStorage.removeItem(ITINERARY_LS_KEY);
@@ -129,7 +142,13 @@ export default function App() {
     
     if (storedSavedItineraries) {
       try {
-        setSavedItineraries(JSON.parse(storedSavedItineraries));
+        const list = JSON.parse(storedSavedItineraries) as Array<{ destination?: string; overview?: string }>;
+        const cleaned = list.filter((it) => !isFixtureItinerary(it));
+        if (cleaned.length !== list.length) {
+          console.warn(`[App] Purging ${list.length - cleaned.length} cached fixture itineraries from saved list.`);
+          localStorage.setItem(SAVED_ITINERARIES_LS_KEY, JSON.stringify(cleaned));
+        }
+        setSavedItineraries(cleaned as ItineraryPlan[]);
       } catch (e) {
         console.error("Failed to parse saved itineraries", e);
         localStorage.removeItem(SAVED_ITINERARIES_LS_KEY);

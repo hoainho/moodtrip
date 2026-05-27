@@ -34,10 +34,12 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+const MOCK_DESTINATION_MARKER = '[MOCK] Đà Lạt (fixture)';
+
 function buildMockGeminiResponse(): unknown {
   const sampleItinerary = {
-    destination: 'Đà Lạt',
-    overview: 'Hành trình 2 ngày 1 đêm tại Đà Lạt — thành phố ngàn hoa với khí hậu mát mẻ quanh năm. Kết hợp khám phá thiên nhiên, văn hóa cà phê và những khoảnh khắc lãng mạn bên hồ Xuân Hương.',
+    destination: MOCK_DESTINATION_MARKER,
+    overview: '[FIXTURE — not real Gemini output] Hành trình 2 ngày 1 đêm tại Đà Lạt — thành phố ngàn hoa với khí hậu mát mẻ quanh năm. Kết hợp khám phá thiên nhiên, văn hóa cà phê và những khoảnh khắc lãng mạn bên hồ Xuân Hương.',
     timeline: [
       {
         day: 'Ngày 1',
@@ -112,16 +114,20 @@ export function devEdgeProxy(opts: DevEdgeProxyOptions = {}): Plugin {
       const env = loadEnv(server.config.mode, server.config.root, '');
       const apiKey = opts.geminiApiKey || env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
       const mockFlag = env.MOCK_ITINERARY === '1' || process.env.MOCK_ITINERARY === '1';
-      const useMock = opts.mockItinerary || mockFlag || !apiKey;
+      const useMock = opts.mockItinerary || mockFlag;
 
       if (useMock) {
-        server.config.logger.info(
-          apiKey
-            ? '[dev-edge-proxy] MOCK_ITINERARY=1 \u2014 returning fixture itinerary for /v1/generate'
-            : '[dev-edge-proxy] No GEMINI_API_KEY found \u2014 returning fixture itinerary for /v1/generate',
+        server.config.logger.warn(
+          '\n\u001b[33m\u2502 [dev-edge-proxy] MOCK MODE \u2014 /v1/generate returns the \u0110\u00e0 L\u1ea1t fixture, not real Gemini.\u001b[0m\n\u001b[33m\u2502 Unset MOCK_ITINERARY to use real Gemini.\u001b[0m\n',
+        );
+      } else if (!apiKey) {
+        server.config.logger.error(
+          '\n\u001b[31m\u2502 [dev-edge-proxy] MISSING GEMINI_API_KEY \u2014 /v1/generate will return 500.\u001b[0m\n\u001b[31m\u2502 Add GEMINI_API_KEY=... to .env.local, or set MOCK_ITINERARY=1 to use the fixture.\u001b[0m\n',
         );
       } else {
-        server.config.logger.info('[dev-edge-proxy] Live Gemini for /v1/generate (uses GEMINI_API_KEY)');
+        server.config.logger.info(
+          `\n\u001b[32m\u2502 [dev-edge-proxy] LIVE Gemini for /v1/generate (key ${apiKey.slice(0, 6)}\u2026${apiKey.slice(-4)})\u001b[0m\n`,
+        );
       }
 
       server.middlewares.use('/v1/anon-token', (req, res, next) => {
@@ -139,6 +145,13 @@ export function devEdgeProxy(opts: DevEdgeProxyOptions = {}): Plugin {
           const body = (await readJsonBody(req)) as { model?: string; contents?: unknown; generationConfig?: unknown; systemInstruction?: unknown };
           if (useMock) {
             sendJson(res, 200, buildMockGeminiResponse());
+            return;
+          }
+          if (!apiKey) {
+            sendJson(res, 500, {
+              code: 'NO_GEMINI_KEY',
+              error: 'GEMINI_API_KEY missing from .env.local. Add it, or set MOCK_ITINERARY=1 to use the fixture.',
+            });
             return;
           }
           const result = await callGeminiDirect(
@@ -159,7 +172,8 @@ export function devEdgeProxy(opts: DevEdgeProxyOptions = {}): Plugin {
       });
 
       server.middlewares.use('/v1/health', (_req, res) => {
-        sendJson(res, 200, { ok: true, mode: useMock ? 'mock' : 'live-gemini' });
+        const mode = useMock ? 'mock' : apiKey ? 'live-gemini' : 'misconfigured';
+        sendJson(res, 200, { ok: mode !== 'misconfigured', mode });
       });
 
       server.middlewares.use('/v1/spend-status', (_req, res) => {
