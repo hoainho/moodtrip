@@ -160,7 +160,11 @@ export default defineConfig({
               },
             },
             {
-              urlPattern: /^https:\/\/proxy\.hoainho\.info\/.*/i,
+              urlPattern: /^https:\/\/api\.moodtrip\.app\/.*/i,
+              handler: 'NetworkOnly',
+            },
+            {
+              urlPattern: /\.workers\.dev\/.*/i,
               handler: 'NetworkOnly',
             },
           ],

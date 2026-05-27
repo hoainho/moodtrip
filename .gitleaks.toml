@@ -1,0 +1,37 @@
+title = "MoodTrip gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "gemini-api-key"
+description = "Google Gemini / Generative AI API key"
+regex = '''AIza[0-9A-Za-z\-_]{35}'''
+tags = ["key", "gemini", "google"]
+
+[[rules]]
+id = "supabase-service-key"
+description = "Supabase service role JWT"
+regex = '''eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}'''
+tags = ["key", "supabase", "jwt"]
+
+[[rules]]
+id = "moodtrip-shared-proxy-key"
+description = "Legacy hardcoded MoodTrip proxy key (must never reappear)"
+regex = '''PROXY_API_KEY\s*=\s*['"]hoainho['"]'''
+tags = ["key", "moodtrip", "legacy"]
+
+[allowlist]
+description = "Allow false positives in tests / docs / dependency-locks"
+paths = [
+  '''yarn\.lock''',
+  '''package-lock\.json''',
+  '''node_modules''',
+  '''dist''',
+  '''workers/edge-proxy/test/.*''',
+  '''workers/edge-proxy/vitest\.config\.ts''',
+  '''services/__tests__/.*''',
+  '''\.sisyphus/.*\.md''',
+  '''README\.md''',
+  '''CHANGELOG\.md''',
+]

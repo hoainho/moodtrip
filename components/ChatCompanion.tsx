@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { IconMessageCircle, IconSend, IconX, IconSparkles } from './icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { EdgeProxyError, extractText, generate, type GeminiContent } from '../services/edgeProxyClient';
 
 interface ChatMessage {
   id: string;
@@ -10,10 +11,6 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
 }
-
-const PROXY_URL = 'https://proxy.hoainho.info';
-const PROXY_API_KEY = 'hoainho';
-const MODEL = 'gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `Bạn là Trợ Lý Du Lịch MoodTrip — một chuyên gia du lịch thân thiện, nhiệt tình và giàu kinh nghiệm.
 
@@ -34,34 +31,30 @@ Nhiệm vụ của bạn:
 Phong cách: Nhiệt tình, chuyên nghiệp, thân thiện. Trả lời ngắn gọn (2-4 câu cho câu hỏi đơn giản, chi tiết hơn khi cần).`;
 
 async function sendChatMessage(messages: { role: string; content: string }[]): Promise<string> {
-  const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PROXY_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...messages,
-      ],
-      max_tokens: 1024,
-      temperature: 0.7,
-    }),
-  });
+  const contents: GeminiContent[] = messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+  try {
+    const response = await generate(contents, {
+      model: 'flash-lite',
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+    });
+    return extractText(response).trim();
+  } catch (err) {
+    if (err instanceof EdgeProxyError) {
+      if (err.code === 'RATE_LIMIT_EXCEEDED') {
+        throw new Error('Bạn đã đạt giới hạn trò chuyện hôm nay. Vui lòng quay lại ngày mai nhé.');
+      }
+      if (err.code === 'BUDGET_EXCEEDED') {
+        throw new Error('Trợ lý đang nghỉ ngơi để cân bằng tài nguyên. Thử lại vào ngày mai nhé.');
+      }
+      throw new Error(`Lỗi kết nối: ${err.message}`);
+    }
+    throw err;
   }
-
-  const data = await response.json() as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error('Empty response from AI.');
-  return content.trim();
 }
 
 const WELCOME_SUGGESTIONS = [

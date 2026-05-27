@@ -1,0 +1,53 @@
+name = "moodtrip-edge-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 🔴 HUMAN ACTION REQUIRED:
+# 1. Run: wrangler kv:namespace create RATE_LIMIT
+#    Paste the returned id below.
+# 2. Run: wrangler kv:namespace create SPEND_TRACKER
+#    Paste the returned id below.
+# 3. Run secrets (NEVER commit values):
+#      wrangler secret put GEMINI_API_KEY
+#      wrangler secret put JWT_SIGNING_SECRET
+#      wrangler secret put SUPABASE_JWT_SECRET
+#      wrangler secret put INTERNAL_MONITOR_TOKEN
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_ID_FROM_WRANGLER_OUTPUT"
+
+[[kv_namespaces]]
+binding = "SPEND_TRACKER"
+id = "REPLACE_WITH_KV_ID_FROM_WRANGLER_OUTPUT"
+
+[vars]
+ALLOWED_ORIGINS = "https://moodtrip.app,https://moodtripv2.vercel.app,http://localhost:5173"
+GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL_LITE = "gemini-2.5-flash-lite"
+DAILY_SPEND_LIMIT_USD = "80"
+ANON_DAILY_LIMIT = "1"
+FREE_DAILY_LIMIT = "3"
+PAID_DAILY_LIMIT = "50"
+JWT_ISSUER = "moodtrip-edge-proxy"
+JWT_AUDIENCE = "moodtrip-app"
+
+# Pricing (per 1M tokens) — used to compute $-spend per call
+# Gemini 2.5 Flash (May 2026): input $0.30 / output $2.50
+# Gemini 2.5 Flash-Lite: input $0.05 / output $0.40
+GEMINI_FLASH_INPUT_USD_PER_MTOK = "0.30"
+GEMINI_FLASH_OUTPUT_USD_PER_MTOK = "2.50"
+GEMINI_FLASH_LITE_INPUT_USD_PER_MTOK = "0.05"
+GEMINI_FLASH_LITE_OUTPUT_USD_PER_MTOK = "0.40"
+
+[env.production]
+# 🔴 HUMAN ACTION REQUIRED: add custom domain route after DNS is configured
+# routes = [{ pattern = "api.moodtrip.app/*", custom_domain = true }]
+
+[env.production.vars]
+ALLOWED_ORIGINS = "https://moodtrip.app,https://moodtripv2.vercel.app"
+DAILY_SPEND_LIMIT_USD = "80"
+
+[observability]
+enabled = true

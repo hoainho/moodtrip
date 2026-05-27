@@ -155,14 +155,16 @@ export default function App() {
       setLastFormData(null);
     } catch (e: unknown) {
       const err = e as Error;
-      const knownApiErrors = ['API_KEY_INVALID', 'RATE_LIMIT_EXCEEDED'];
+      const knownApiErrors = ['API_KEY_INVALID', 'RATE_LIMIT_EXCEEDED', 'BUDGET_EXCEEDED'];
 
       if (knownApiErrors.includes(err.message)) {
           let userMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
           if (err.message === 'API_KEY_INVALID') {
               userMessage = 'Lỗi xác thực với hệ thống AI. Vui lòng thử lại sau.';
           } else if (err.message === 'RATE_LIMIT_EXCEEDED') {
-              userMessage = 'Hệ thống đang bận. Vui lòng thử lại sau ít phút.';
+              userMessage = 'Bạn đã đạt giới hạn tạo lịch trình hôm nay. Vui lòng thử lại vào ngày mai.';
+          } else if (err.message === 'BUDGET_EXCEEDED') {
+              userMessage = 'Hệ thống AI đang nghỉ để cân bằng tài nguyên. Vui lòng quay lại vào ngày mai nhé.';
           }
           setError(userMessage);
           setView('form');
