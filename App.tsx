@@ -15,8 +15,14 @@ import { AuthModal } from './components/AuthModal';
 import { MigrationBanner } from './components/MigrationBanner';
 import { ConsentBanner } from './components/ConsentBanner';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { CardPullOnboarding } from './components/CardPullOnboarding';
+import { SharedTripView } from './components/SharedTripView';
+import { useAuth } from './services/useAuth';
+import { loadPreferences, savePreferencesFromTrip } from './services/preferencesApi';
+import { parseCurrentRoute, type Route } from './services/sharedTripRouter';
+import { saveTrip } from './services/tripsApi';
 import { ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
-import type { FormData, ItineraryPlan } from './types';
+import type { FormData, ItineraryPlan, Mood, ShortTripMood } from './types';
 import { IconWarning } from './components/icons';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
@@ -71,7 +77,7 @@ declare global {
   }
 }
 
-type View = 'hero' | 'form' | 'loading' | 'result' | 'error' | 'release' | 'tips' | 'about';
+type View = 'hero' | 'card-pull' | 'form' | 'loading' | 'result' | 'error' | 'release' | 'tips' | 'about';
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
@@ -85,6 +91,10 @@ export default function App() {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isSharedView, setIsSharedView] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [route, setRoute] = useState<Route>(() => parseCurrentRoute());
+  const [cardPullPrefill, setCardPullPrefill] = useState<Partial<FormData> | null>(null);
+  const [preferenceDefaults, setPreferenceDefaults] = useState<Partial<FormData> | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const storedItinerary = localStorage.getItem(ITINERARY_LS_KEY);
@@ -131,6 +141,30 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    function onPop() {
+      setRoute(parseCurrentRoute());
+    }
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setPreferenceDefaults(null);
+      return;
+    }
+    loadPreferences(user.id).then((prefs) => {
+      if (!prefs) return;
+      setPreferenceDefaults({
+        moods: prefs.preferredMoods,
+        shortMoods: prefs.preferredShortMoods,
+        budget: prefs.defaultBudget ?? undefined,
+        startLocation: prefs.defaultStartLocation ?? '',
+      });
+    });
+  }, [user]);
+
+  useEffect(() => {
     if (showIntro) return;
     const w = window as typeof window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
@@ -166,6 +200,20 @@ export default function App() {
       setView('result');
       localStorage.setItem(ITINERARY_LS_KEY, JSON.stringify(resultWithId));
       setLastFormData(null);
+
+      if (user) {
+        try {
+          await savePreferencesFromTrip(user.id, {
+            moods: formData.moods,
+            shortMoods: formData.shortMoods,
+            budget: formData.budget,
+            startLocation: formData.startLocation,
+          });
+          await saveTrip(user.id, resultWithId, formData, { tripMode: formData.tripMode });
+        } catch (persistErr) {
+          console.warn('[App] background persistence failed', persistErr);
+        }
+      }
     } catch (e: unknown) {
       const err = e as Error;
       const knownApiErrors = ['API_KEY_INVALID', 'RATE_LIMIT_EXCEEDED', 'BUDGET_EXCEEDED'];
@@ -342,8 +390,62 @@ export default function App() {
     return <IntroScreen onComplete={handleIntroComplete} />;
   }
 
+  if (route.kind === 'shared-trip') {
+    return (
+      <div className="min-h-screen relative" style={{ backgroundColor: '#0a0e1a' }}>
+        <SharedTripView
+          slug={route.slug}
+          onForkSuccess={(forked) => {
+            const newItinerary = { ...(forked.itinerary), id: forked.id };
+            setItinerary(newItinerary);
+            localStorage.setItem(ITINERARY_LS_KEY, JSON.stringify(newItinerary));
+            window.history.replaceState({}, '', '/');
+            setRoute({ kind: 'app' });
+            setView('result');
+          }}
+          onRequestSignIn={() => setAuthModalOpen(true)}
+          onBackToApp={() => {
+            window.history.replaceState({}, '', '/');
+            setRoute({ kind: 'app' });
+          }}
+        />
+        <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      </div>
+    );
+  }
+
+  const handleCardPullComplete = (result: {
+    moods: Mood[];
+    shortMoods: ShortTripMood[];
+    narrative: string;
+  }) => {
+    const prefill: Partial<FormData> = {
+      ...preferenceDefaults,
+      moods: result.moods,
+      shortMoods: result.shortMoods,
+      personalNote: `Mơ rút quẻ: ${result.narrative}`,
+    };
+    setCardPullPrefill(prefill);
+    setView('form');
+  };
+
   const renderContent = () => {
     switch (view) {
+      case 'card-pull':
+        return (
+          <motion.div
+            key="card-pull"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <CardPullOnboarding
+              onComplete={handleCardPullComplete}
+              onUseTraditionalForm={() => setView('form')}
+            />
+          </motion.div>
+        );
       case 'hero':
         return (
           <motion.div
@@ -355,7 +457,7 @@ export default function App() {
             style={{ minHeight: '100vh' }}
           >
             <Hero 
-              onStart={() => setView('form')} 
+              onStart={() => setView('card-pull')} 
               savedItineraries={savedItineraries} 
               onLoadItinerary={handleLoadItinerary} 
               onDeleteItinerary={handleDeleteItinerary}
@@ -379,7 +481,7 @@ export default function App() {
               onSubmit={handleGenerateItinerary}
               onBack={() => itinerary ? setView('result') : setView('hero')}
               error={error}
-              initialData={lastFormData}
+              initialData={lastFormData ?? (cardPullPrefill as FormData | null) ?? (preferenceDefaults as FormData | null)}
               onGoHome={handleGoHome}
             />
           </motion.div>
@@ -489,7 +591,7 @@ export default function App() {
       default:
         return (
           <Hero 
-            onStart={() => setView('form')} 
+            onStart={() => setView('card-pull')} 
             savedItineraries={savedItineraries} 
             onLoadItinerary={handleLoadItinerary} 
             onDeleteItinerary={handleDeleteItinerary}
