@@ -11,7 +11,12 @@ export async function acceptConsentIfPresent(page: Page): Promise<void> {
 export async function preacceptConsent(page: Page): Promise<void> {
   await page.addInitScript(() => {
     try {
-      localStorage.setItem('moodtrip_consent_v1', JSON.stringify({ accepted: true, ts: Date.now() }));
+      const stored = {
+        version: '2026-05-26-v1',
+        scopes: ['ai_generation_cross_border', 'analytics_anonymous', 'storage_local'],
+        acceptedAt: Date.now(),
+      };
+      localStorage.setItem('moodtrip_consent_v1', JSON.stringify(stored));
     } catch (err) {
       console.warn('[e2e] localStorage unavailable', err);
     }

@@ -30,10 +30,10 @@ test.describe('Create trip happy path (MOCK_ITINERARY)', () => {
 
     await expect(page.locator('text=HÀNH TRÌNH TỪ MƠ')).toBeVisible({ timeout: 60_000 });
 
-    await expect(page.getByText('Số ngày', { exact: true })).toBeVisible();
-    await expect(page.getByText('Hoạt động', { exact: true })).toBeVisible();
-    await expect(page.getByText('Trending', { exact: true })).toBeVisible();
-    await expect(page.getByText('Tổng dự kiến', { exact: true })).toBeVisible();
+    const vitalsLabels = ['Số ngày', 'Hoạt động', 'Trending', 'Tổng dự kiến'];
+    for (const label of vitalsLabels) {
+      await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
+    }
 
     await expect(page.locator('button:has-text("Tạo Reel")')).toBeVisible();
 

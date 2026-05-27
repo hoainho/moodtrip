@@ -300,11 +300,12 @@ async function callProxyForItinerary(prompt: string, destination: string): Promi
       [{ role: 'user', parts: [{ text: prompt }] }],
       {
         model: 'flash',
-        systemInstruction: { parts: [{ text: buildSystemInstruction(destination) }] },
+        systemInstruction: { role: 'system', parts: [{ text: buildSystemInstruction(destination) }] },
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 16384,
+          maxOutputTokens: 8192,
           responseMimeType: 'application/json',
+          thinkingConfig: { thinkingBudget: 0 },
         },
       },
     );

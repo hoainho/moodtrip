@@ -91,7 +91,7 @@ export interface GeminiContent {
 
 export interface GeminiGenerateResponse {
   candidates?: Array<{
-    content?: { parts?: Array<{ text?: string }> };
+    content?: { parts?: Array<{ text?: string; thought?: boolean }> };
     finishReason?: string;
   }>;
   usageMetadata?: {
@@ -159,7 +159,8 @@ export async function generate(
 }
 
 export function extractText(response: GeminiGenerateResponse): string {
-  const part = response.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!part) throw new EdgeProxyError('Empty response', 'EMPTY_RESPONSE', 200);
-  return part;
+  const parts = response.candidates?.[0]?.content?.parts;
+  const answerPart = parts?.find((p) => !p.thought && typeof p.text === 'string' && p.text.length > 0);
+  if (!answerPart?.text) throw new EdgeProxyError('Empty response', 'EMPTY_RESPONSE', 200);
+  return answerPart.text;
 }
