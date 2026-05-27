@@ -23,6 +23,10 @@ import { TripMap } from './components/TripMap';
 import { MoNotebookModal } from './components/MoNotebookModal';
 import { PublicShareButton } from './components/PublicShareButton';
 import { PersonalWorldBadge } from './components/PersonalWorldBadge';
+import { PersonalWorldScene } from './components/PersonalWorldScene';
+import { AntiItineraryView } from './components/AntiItineraryView';
+import { DataPortabilityPanel } from './components/DataPortabilityPanel';
+import { generateAntiItinerary } from './services/antiItinerary';
 import { useAuth } from './services/useAuth';
 import { loadPreferences, savePreferencesFromTrip } from './services/preferencesApi';
 import { parseCurrentRoute, type Route } from './services/sharedTripRouter';
@@ -102,7 +106,11 @@ export default function App() {
   const [preferenceDefaults, setPreferenceDefaults] = useState<Partial<FormData> | null>(null);
   const [queModalOpen, setQueModalOpen] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
+  const [worldSceneOpen, setWorldSceneOpen] = useState(false);
+  const [antiItineraryForm, setAntiItineraryForm] = useState<FormData | null>(null);
+  const [portabilityOpen, setPortabilityOpen] = useState(false);
   const { user } = useAuth();
+  void generateAntiItinerary;
 
   useEffect(() => {
     const storedItinerary = localStorage.getItem(ITINERARY_LS_KEY);
@@ -546,6 +554,14 @@ export default function App() {
                 >
                   ✍️ Mơ viết thư cho bạn
                 </button>
+                {lastFormData && (
+                  <button
+                    onClick={() => setAntiItineraryForm(lastFormData)}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold"
+                  >
+                    🌒 Thử Anti-Itinerary
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>
@@ -668,12 +684,21 @@ export default function App() {
         >
           🏡 Về quê
         </button>
+        {user && (
+          <button
+            onClick={() => setWorldSceneOpen(true)}
+            className="px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+            aria-label="Thế giới của bạn"
+          >
+            🌳 Thế giới
+          </button>
+        )}
         <button
-          onClick={() => setAuthModalOpen(true)}
+          onClick={() => (user ? setPortabilityOpen(true) : setAuthModalOpen(true))}
           className="px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
-          aria-label="Đăng nhập"
+          aria-label={user ? 'Tài khoản' : 'Đăng nhập'}
         >
-          Đăng nhập
+          {user ? '⚙️ Tài khoản' : 'Đăng nhập'}
         </button>
       </div>
 
@@ -720,6 +745,40 @@ export default function App() {
         trip={itinerary}
         onClose={() => setNotebookOpen(false)}
       />
+      <PersonalWorldScene open={worldSceneOpen} onClose={() => setWorldSceneOpen(false)} />
+      <AntiItineraryView
+        open={antiItineraryForm !== null}
+        form={antiItineraryForm}
+        onClose={() => setAntiItineraryForm(null)}
+        onWantNormalPlan={() => {
+          const f = antiItineraryForm;
+          setAntiItineraryForm(null);
+          if (f) void handleGenerateItinerary(f);
+        }}
+      />
+      <AnimatePresence>
+        {portabilityOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setPortabilityOpen(false)}
+          >
+            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
+              <DataPortabilityPanel />
+              <div className="text-center mt-3">
+                <button
+                  onClick={() => setPortabilityOpen(false)}
+                  className="text-slate-400 hover:text-white text-xs"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
 
       {/* Toast Notification */}
