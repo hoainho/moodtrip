@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: false,
-    include: ['services/**/*.test.ts', 'src/**/*.test.ts', 'components/**/*.test.tsx'],
+    include: ['services/**/*.test.ts', 'services/**/__tests__/**/*.test.ts', 'src/**/*.test.ts', 'components/**/*.test.tsx'],
     exclude: ['workers/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
