@@ -17,6 +17,9 @@ import { ConsentBanner } from './components/ConsentBanner';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { CardPullOnboarding } from './components/CardPullOnboarding';
 import { SharedTripView } from './components/SharedTripView';
+import { DuongVeQueModal } from './components/DuongVeQueModal';
+import { SundayDreamBanner } from './components/SundayDreamBanner';
+import { TripMap } from './components/TripMap';
 import { useAuth } from './services/useAuth';
 import { loadPreferences, savePreferencesFromTrip } from './services/preferencesApi';
 import { parseCurrentRoute, type Route } from './services/sharedTripRouter';
@@ -94,6 +97,7 @@ export default function App() {
   const [route, setRoute] = useState<Route>(() => parseCurrentRoute());
   const [cardPullPrefill, setCardPullPrefill] = useState<Partial<FormData> | null>(null);
   const [preferenceDefaults, setPreferenceDefaults] = useState<Partial<FormData> | null>(null);
+  const [queModalOpen, setQueModalOpen] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -519,6 +523,10 @@ export default function App() {
               isSaved={isSaved || isSharedView}
               isExportingPDF={isExportingPDF}
             />
+            <div className="max-w-3xl mx-auto px-4 mt-6 mb-10">
+              <h3 className="text-lg font-bold text-white mb-3">Bản đồ hành trình</h3>
+              <TripMap itinerary={itinerary} />
+            </div>
           </motion.div>
         );
       }
@@ -631,13 +639,22 @@ export default function App() {
       <Analytics />
       <SpeedInsights />
 
-      <button
-        onClick={() => setAuthModalOpen(true)}
-        className="fixed top-4 right-4 z-30 px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
-        aria-label="Đăng nhập"
-      >
-        Đăng nhập
-      </button>
+      <div className="fixed top-4 right-4 z-30 flex gap-2">
+        <button
+          onClick={() => setQueModalOpen(true)}
+          className="px-3 py-1.5 text-xs font-medium text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+          aria-label="Đường về quê"
+        >
+          🏡 Về quê
+        </button>
+        <button
+          onClick={() => setAuthModalOpen(true)}
+          className="px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+          aria-label="Đăng nhập"
+        >
+          Đăng nhập
+        </button>
+      </div>
 
       {/* Main Content — inline styles ensure visibility even if CSS fails */}
       <main
@@ -668,6 +685,15 @@ export default function App() {
       <MigrationBanner />
       <PWAInstallPrompt />
       <ConsentBanner />
+      <SundayDreamBanner onAcceptDream={() => setView('card-pull')} />
+      <DuongVeQueModal
+        open={queModalOpen}
+        onClose={() => setQueModalOpen(false)}
+        onSeed={(prefill) => {
+          setCardPullPrefill(prefill);
+          setView('form');
+        }}
+      />
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
 
       {/* Toast Notification */}

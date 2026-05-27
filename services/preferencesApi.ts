@@ -41,6 +41,12 @@ export async function loadPreferences(userId: string): Promise<PreferenceProfile
   return rowToProfile(data);
 }
 
+export async function setRegionDialect(userId: string, dialect: string | null): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  await supabase.from('preferences').update({ region_dialect: dialect }).eq('user_id', userId);
+}
+
 export async function savePreferencesFromTrip(
   userId: string,
   input: {
