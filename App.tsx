@@ -497,7 +497,7 @@ export default function App() {
               onSubmit={handleGenerateItinerary}
               onBack={() => itinerary ? setView('result') : setView('hero')}
               error={error}
-              initialData={lastFormData ?? (cardPullPrefill as FormData | null) ?? (preferenceDefaults as FormData | null)}
+              initialData={lastFormData ?? cardPullPrefill ?? preferenceDefaults}
               onGoHome={handleGoHome}
             />
           </motion.div>
@@ -534,6 +534,7 @@ export default function App() {
               onGoHome={handleGoHome}
               isSaved={isSaved || isSharedView}
               isExportingPDF={isExportingPDF}
+              formData={lastFormData}
             />
             <div className="max-w-3xl mx-auto px-4 mt-6 space-y-6 mb-10">
               <PersonalWorldBadge />
@@ -676,31 +677,34 @@ export default function App() {
       <Analytics />
       <SpeedInsights />
 
-      <div className="fixed top-4 right-4 z-30 flex gap-2">
-        <button
-          onClick={() => setQueModalOpen(true)}
-          className="px-3 py-1.5 text-xs font-medium text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
-          aria-label="Đường về quê"
-        >
-          🏡 Về quê
-        </button>
-        {user && (
+      {/* Quick-access buttons — hidden on Hero (Hero has its own top-right nav) to prevent overlap */}
+      {view !== 'hero' && (
+        <div className="fixed top-4 right-4 z-30 flex gap-2">
           <button
-            onClick={() => setWorldSceneOpen(true)}
-            className="px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
-            aria-label="Thế giới của bạn"
+            onClick={() => setQueModalOpen(true)}
+            className="px-3 py-1.5 text-xs font-medium text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+            aria-label="Đường về quê"
           >
-            🌳 Thế giới
+            🏡 Về quê
           </button>
-        )}
-        <button
-          onClick={() => (user ? setPortabilityOpen(true) : setAuthModalOpen(true))}
-          className="px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
-          aria-label={user ? 'Tài khoản' : 'Đăng nhập'}
-        >
-          {user ? '⚙️ Tài khoản' : 'Đăng nhập'}
-        </button>
-      </div>
+          {user && (
+            <button
+              onClick={() => setWorldSceneOpen(true)}
+              className="px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+              aria-label="Thế giới của bạn"
+            >
+              🌳 Thế giới
+            </button>
+          )}
+          <button
+            onClick={() => (user ? setPortabilityOpen(true) : setAuthModalOpen(true))}
+            className="px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+            aria-label={user ? 'Tài khoản' : 'Đăng nhập'}
+          >
+            {user ? '⚙️ Tài khoản' : 'Đăng nhập'}
+          </button>
+        </div>
+      )}
 
       {/* Main Content — inline styles ensure visibility even if CSS fails */}
       <main

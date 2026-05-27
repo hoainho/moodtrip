@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import type { ItineraryPlan, TravelTip } from '../types';
+import type { ItineraryPlan, TravelTip, FormData } from '../types';
 import { IconFood, IconHotel, IconTip, IconMapPin, IconDownload, IconRestart, IconSun, IconMoon, IconInfo, IconWallet, IconEdit, IconBookmark, IconCheck, IconX, IconThermometer, IconCloudSun, IconShirt, IconAlertTriangle, IconConstruction, IconReceipt, IconFire, IconShare, IconClock, IconHeart } from './icons';
 import { Logo } from './Logo';
 import { TravelTipsModal } from './TravelTipsModal';
@@ -7,6 +7,10 @@ import { motion } from 'motion/react';
 import { ShareModal } from './ShareModal';
 import { hapticLight, hapticMedium } from '../services/haptics';
 import { TripRecap } from './TripRecap';
+import { TripHeroBanner } from './TripHeroBanner';
+import { TripViewModeToggle, type TripViewMode } from './TripViewModeToggle';
+import { TripDayStoryboard } from './TripDayStoryboard';
+import { TripReelModal } from './TripReelModal';
 
 interface ItineraryDisplayProps {
   itinerary: ItineraryPlan;
@@ -17,6 +21,7 @@ interface ItineraryDisplayProps {
   onGoHome: () => void;
   isSaved: boolean;
   isExportingPDF?: boolean;
+  formData?: FormData | null;
 }
 
 const InfoCard: React.FC<{ icon: React.ReactNode, title: string, children: React.ReactNode }> = ({ icon, title, children }) => (
@@ -37,13 +42,15 @@ const InfoCard: React.FC<{ icon: React.ReactNode, title: string, children: React
     </motion.div>
 );
 
-export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, onReset, onExportPDF, onSaveToList, onItineraryChange, onGoHome, isSaved, isExportingPDF }) => {
+export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, onReset, onExportPDF, onSaveToList, onItineraryChange, onGoHome, isSaved, isExportingPDF, formData }) => {
   const [activeTips, setActiveTips] = useState<{ tips: TravelTip[], venue: string } | null>(null);
   const [editingTime, setEditingTime] = useState<{ dayIndex: number, itemIndex: number} | null>(null);
   const [currentTimeValue, setCurrentTimeValue] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [activeSection, setActiveSection] = useState('timeline');
   const [showRecap, setShowRecap] = useState(false);
+  const [viewMode, setViewMode] = useState<TripViewMode>('timeline');
+  const [showReel, setShowReel] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const scrollToSection = (id: string) => {
@@ -163,41 +170,78 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
       </header>
 
       <main id="itinerary-to-print" className="container mx-auto p-4 md:p-8">
-        {/* Overview */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="gradient-ocean text-white rounded-2xl p-8 mb-8 text-center shadow-xl shadow-cyan-500/10 border border-white/10"
-        >
-          <h2 className="text-3xl font-bold mb-4">Hành trình của bạn đã sẵn sàng!</h2>
-          <p className="text-lg opacity-90 max-w-3xl mx-auto leading-relaxed">{itinerary.overview}</p>
-        </motion.div>
+        <TripHeroBanner itinerary={itinerary} formData={formData ?? null} onShowReel={() => setShowReel(true)} />
 
-        {/* Section Navigation Tabs */}
-        <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-none">
-          <div className="flex gap-1.5 min-w-max py-1">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => scrollToSection(section.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap border ${
-                  activeSection === section.id
-                    ? 'bg-teal-500/20 text-teal-300 border-teal-500/30 shadow-lg shadow-teal-500/10'
-                    : 'bg-white/[0.04] text-slate-400 border-white/[0.04] hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {section.icon}
-                {section.label}
-              </button>
-            ))}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex-1 -mx-4 px-4 overflow-x-auto scrollbar-none">
+            <div className="flex gap-1.5 min-w-max py-1">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => scrollToSection(section.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap border ${
+                    activeSection === section.id
+                      ? 'bg-teal-500/20 text-teal-300 border-teal-500/30 shadow-lg shadow-teal-500/10'
+                      : 'bg-white/[0.04] text-slate-400 border-white/[0.04] hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {section.icon}
+                  {section.label}
+                </button>
+              ))}
+            </div>
           </div>
+          <TripViewModeToggle mode={viewMode} onChange={setViewMode} />
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Timeline */}
           <div ref={el => { sectionRefs.current['timeline'] = el; }} className="md:col-span-2 space-y-8 scroll-mt-20">
-             {itinerary.timeline.map((day, dayIndex) => (
+             {viewMode === 'storyboard' ? (
+               itinerary.timeline.map((day, dayIndex) => (
+                 <TripDayStoryboard key={dayIndex} day={day} dayIndex={dayIndex} />
+               ))
+             ) : viewMode === 'compact' ? (
+               itinerary.timeline.map((day, dayIndex) => (
+                 <motion.div
+                   key={dayIndex}
+                   initial={{ opacity: 0, y: 16 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   transition={{ duration: 0.4, delay: dayIndex * 0.08 }}
+                   className="glass-dark rounded-2xl p-4 border border-white/5"
+                 >
+                   <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/5">
+                     <div className="flex-shrink-0 w-9 h-9 gradient-nature rounded-xl flex items-center justify-center text-sm font-bold text-white">
+                       {dayIndex + 1}
+                     </div>
+                     <div className="min-w-0">
+                       <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{day.day}</p>
+                       <h3 className="text-sm font-bold text-white truncate">{day.title}</h3>
+                     </div>
+                   </div>
+                   <ul className="space-y-1.5">
+                     {day.schedule.map((item, i) => (
+                       <li key={i} className="flex items-start gap-3 text-sm">
+                         <span className="flex-shrink-0 w-12 text-teal-400 font-bold tabular-nums text-xs">{item.time}</span>
+                         <div className="flex-1 min-w-0">
+                           <p className="text-slate-200 leading-snug">{item.activity}</p>
+                           {item.venue && (
+                             <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                               <IconMapPin className="w-3 h-3" />
+                               {item.google_maps_link ? (
+                                 <a href={item.google_maps_link} target="_blank" rel="noopener noreferrer" className="hover:text-teal-400 truncate">{item.venue}</a>
+                               ) : (
+                                 <span className="truncate">{item.venue}</span>
+                               )}
+                             </p>
+                           )}
+                         </div>
+                       </li>
+                     ))}
+                   </ul>
+                 </motion.div>
+               ))
+             ) : (
+               itinerary.timeline.map((day, dayIndex) => (
                 <motion.div
                   key={dayIndex}
                   initial={{ opacity: 0, y: 30 }}
@@ -360,7 +404,8 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                         })}
                    </div>
                 </motion.div>
-             ))}
+             ))
+             )}
           </div>
 
           {/* Food */}
@@ -538,6 +583,8 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           onClose={() => setShowRecap(false)}
         />
       )}
+
+      <TripReelModal itinerary={itinerary} open={showReel} onClose={() => setShowReel(false)} />
 
       {/* Floating Action Bar */}
       <motion.div

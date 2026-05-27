@@ -10,7 +10,7 @@ interface TripFormProps {
   onBack: () => void;
   onGoHome: () => void;
   error?: string | null;
-  initialData?: FormData | null;
+  initialData?: Partial<FormData> | null;
 }
 
 const fadeUp = (delay: number) => ({
@@ -80,9 +80,13 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
     if (initialData) {
       setTripMode(initialData.tripMode || 'long');
       setStartLocation(initialData.startLocation || '');
-      setDestination(initialData.destination);
-      setDuration(initialData.duration);
-      setBudget(initialData.budget);
+      if (initialData.destination !== undefined) setDestination(initialData.destination);
+      if (initialData.duration && typeof initialData.duration.days === 'number') {
+        setDuration(initialData.duration);
+      }
+      if (typeof initialData.budget === 'number' && !Number.isNaN(initialData.budget)) {
+        setBudget(initialData.budget);
+      }
       setMoods(initialData.moods || []);
       setShortMoods(initialData.shortMoods || []);
       setPersonalNote(initialData.personalNote || '');
