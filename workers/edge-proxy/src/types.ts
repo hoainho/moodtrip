@@ -10,6 +10,8 @@ export interface Env {
   ALLOWED_ORIGINS: string;
   GEMINI_MODEL: string;
   GEMINI_MODEL_LITE: string;
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
   DAILY_SPEND_LIMIT_USD: string;
   ANON_DAILY_LIMIT: string;
   FREE_DAILY_LIMIT: string;

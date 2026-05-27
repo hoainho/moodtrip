@@ -6,6 +6,8 @@ import { mintAnonToken, verifyToken } from './jwt';
 import { consumeQuota } from './rateLimit';
 import { addSpend, estimateCostUsd, readSpend } from './spendTracker';
 import { callGemini } from './gemini';
+import { fetchPublicTripBySlug } from './supabaseRest';
+import { buildRecapCardJsx } from './recapCard';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -79,6 +81,81 @@ app.post('/v1/generate', async (c) => {
 
   return c.json(result.body, result.status as 200);
 });
+
+app.get('/v1/og/:slug', async (c) => {
+  const slug = c.req.param('slug');
+  if (!slug || !/^[a-z0-9]{6,16}$/i.test(slug)) {
+    return c.json({ error: 'Invalid slug', code: 'BAD_REQUEST' }, 400);
+  }
+  const trip = await fetchPublicTripBySlug(c.env, slug);
+  if (!trip) {
+    return c.json({ error: 'Trip not found', code: 'NOT_FOUND' }, 404);
+  }
+  const overview = String(trip.skeleton?.overview ?? '');
+  const days = Array.isArray(trip.skeleton?.timeline) ? trip.skeleton.timeline.length : 1;
+  const topActivities: string[] = [];
+  for (const day of trip.skeleton?.timeline ?? []) {
+    for (const item of day?.schedule ?? []) {
+      if (item?.activity && topActivities.length < 4) topActivities.push(item.activity);
+    }
+    if (topActivities.length >= 4) break;
+  }
+
+  const jsx = buildRecapCardJsx({
+    destination: trip.destination,
+    overview,
+    days,
+    topActivities,
+  });
+
+  try {
+    const satoriMod = (await import('satori')) as unknown as {
+      default: (jsx: unknown, opts: { width: number; height: number; fonts: unknown[] }) => Promise<string>;
+    };
+    const resvgMod = (await import('@resvg/resvg-wasm')) as unknown as {
+      Resvg: new (svg: string, opts?: unknown) => { render: () => { asPng: () => Uint8Array } };
+      initWasm?: (input: unknown) => Promise<void>;
+    };
+    if (typeof resvgMod.initWasm === 'function') {
+      try {
+        await resvgMod.initWasm(fetch(new URL('@resvg/resvg-wasm/index_bg.wasm', import.meta.url)));
+      } catch {
+        void 0;
+      }
+    }
+    const svg = await satoriMod.default(jsx, { width: 1200, height: 630, fonts: [] });
+    const pngBytes = new resvgMod.Resvg(svg).render().asPng();
+    return new Response(pngBytes as BodyInit, {
+      status: 200,
+      headers: {
+        'content-type': 'image/png',
+        'cache-control': 'public, max-age=300, s-maxage=86400',
+      },
+    });
+  } catch (err) {
+    console.warn('[og] render failed, returning placeholder', err);
+    const fallback = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect fill="#0a0e1a" width="1200" height="630"/><text x="64" y="120" fill="#94a3b8" font-family="sans-serif" font-size="32">MoodTrip</text><text x="64" y="220" fill="#e2e8f0" font-family="sans-serif" font-size="84" font-weight="700">${escapeXml(trip.destination)}</text><text x="64" y="290" fill="#94a3b8" font-family="sans-serif" font-size="28">${days} ngày · moodtrip.app</text></svg>`;
+    return new Response(fallback, {
+      status: 200,
+      headers: {
+        'content-type': 'image/svg+xml',
+        'cache-control': 'public, max-age=300',
+      },
+    });
+  }
+});
+
+function escapeXml(s: string): string {
+  return s.replace(/[<>&"']/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '"': return '&quot;';
+      default: return '&#39;';
+    }
+  });
+}
 
 app.get('/v1/spend-status', async (c) => {
   const token = c.req.header('x-internal-token');
