@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = process.env.E2E_PORT ? parseInt(process.env.E2E_PORT, 10) : 5174;
-const BASE_URL = process.env.E2E_BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL = process.env.E2E_BASE_URL || `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -39,10 +39,10 @@ export default defineConfig({
   webServer: process.env.E2E_NO_WEBSERVER
     ? undefined
     : {
-        command: `MOCK_ITINERARY=1 npm run dev -- --host 0.0.0.0 --port ${PORT}`,
-        url: BASE_URL,
+        command: `MOCK_ITINERARY=1 npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
+        url: `http://127.0.0.1:${PORT}/`,
         reuseExistingServer: !process.env.CI,
-        timeout: 60_000,
+        timeout: 120_000,
         stdout: 'pipe',
         stderr: 'pipe',
       },
