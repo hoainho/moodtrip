@@ -31,7 +31,7 @@ paths = [
   '''workers/edge-proxy/test/.*''',
   '''workers/edge-proxy/vitest\.config\.ts''',
   '''services/__tests__/.*''',
-  '''\.sisyphus/plans/.*''',
+  '''\.sisyphus/.*\.md''',
   '''README\.md''',
   '''CHANGELOG\.md''',
 ]
