@@ -10,13 +10,22 @@ const messages = [
   "Tìm quán ăn ngon...",
 ];
 
-function SkeletonBlock({ className = '', delay = 0 }: { className?: string; delay?: number }) {
+function SkeletonBlock({
+  className = '',
+  delay = 0,
+  style,
+}: {
+  className?: string;
+  delay?: number;
+  style?: React.CSSProperties;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay, duration: 0.3 }}
       className={`bg-white/[0.06] rounded-xl animate-pulse ${className}`}
+      style={style}
     />
   );
 }
