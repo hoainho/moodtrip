@@ -1,8 +1,9 @@
 import { getSupabaseAccessToken } from './authSession';
 
-const EDGE_PROXY_URL =
-  (typeof import.meta !== 'undefined' && (import.meta as { env?: Record<string, string> }).env?.VITE_EDGE_PROXY_URL) ||
-  'https://api.moodtrip.app';
+const VITE_ENV = (typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string | boolean> }).env : undefined) || {};
+const IS_DEV = Boolean(VITE_ENV.DEV);
+const CONFIGURED_PROXY_URL = typeof VITE_ENV.VITE_EDGE_PROXY_URL === 'string' ? (VITE_ENV.VITE_EDGE_PROXY_URL as string) : '';
+const EDGE_PROXY_URL = CONFIGURED_PROXY_URL || (IS_DEV ? '' : 'https://api.moodtrip.app');
 
 const ANON_TOKEN_LS_KEY = 'moodtrip_anon_token_v1';
 const ANON_TOKEN_EXPIRY_LS_KEY = 'moodtrip_anon_token_expiry_v1';
