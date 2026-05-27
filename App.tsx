@@ -20,6 +20,9 @@ import { SharedTripView } from './components/SharedTripView';
 import { DuongVeQueModal } from './components/DuongVeQueModal';
 import { SundayDreamBanner } from './components/SundayDreamBanner';
 import { TripMap } from './components/TripMap';
+import { MoNotebookModal } from './components/MoNotebookModal';
+import { PublicShareButton } from './components/PublicShareButton';
+import { PersonalWorldBadge } from './components/PersonalWorldBadge';
 import { useAuth } from './services/useAuth';
 import { loadPreferences, savePreferencesFromTrip } from './services/preferencesApi';
 import { parseCurrentRoute, type Route } from './services/sharedTripRouter';
@@ -98,6 +101,7 @@ export default function App() {
   const [cardPullPrefill, setCardPullPrefill] = useState<Partial<FormData> | null>(null);
   const [preferenceDefaults, setPreferenceDefaults] = useState<Partial<FormData> | null>(null);
   const [queModalOpen, setQueModalOpen] = useState(false);
+  const [notebookOpen, setNotebookOpen] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -523,9 +527,26 @@ export default function App() {
               isSaved={isSaved || isSharedView}
               isExportingPDF={isExportingPDF}
             />
-            <div className="max-w-3xl mx-auto px-4 mt-6 mb-10">
-              <h3 className="text-lg font-bold text-white mb-3">Bản đồ hành trình</h3>
-              <TripMap itinerary={itinerary} />
+            <div className="max-w-3xl mx-auto px-4 mt-6 space-y-6 mb-10">
+              <PersonalWorldBadge />
+
+              <div>
+                <h3 className="text-lg font-bold text-white mb-3">Bản đồ hành trình</h3>
+                <TripMap itinerary={itinerary} />
+              </div>
+
+              <div className="flex flex-wrap items-start gap-3">
+                <PublicShareButton
+                  itinerary={itinerary}
+                  onRequestSignIn={() => setAuthModalOpen(true)}
+                />
+                <button
+                  onClick={() => setNotebookOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-200 to-amber-300 text-amber-900 text-sm font-semibold"
+                >
+                  ✍️ Mơ viết thư cho bạn
+                </button>
+              </div>
             </div>
           </motion.div>
         );
@@ -693,6 +714,11 @@ export default function App() {
           setCardPullPrefill(prefill);
           setView('form');
         }}
+      />
+      <MoNotebookModal
+        open={notebookOpen}
+        trip={itinerary}
+        onClose={() => setNotebookOpen(false)}
       />
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
 
