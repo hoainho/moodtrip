@@ -2,10 +2,12 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { devEdgeProxy } from './vite.devEdgeProxy';
 
 export default defineConfig({
     plugins: [
       tailwindcss(),
+      devEdgeProxy(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.png', 'apple-touch-icon.png', 'maskable-icon-512x512.png'],
