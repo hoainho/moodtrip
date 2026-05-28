@@ -265,8 +265,8 @@ function buildSparkles(w: number, h: number, seed: number, count: number): strin
 function layoutStory(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
   const PAD_LEFT = 80;
   const CONTENT_WIDTH = 920;
-  const HIGHLIGHTS_TOP = 1180;
-  const HIGHLIGHTS_BOTTOM_LIMIT = 1750;
+  const HIGHLIGHTS_TOP = 1170;
+  const HIGHLIGHTS_BOTTOM_LIMIT = 1760;
   const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
   const DEST_TOP_LIMIT = 430;
@@ -285,13 +285,13 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
   const HIGHLIGHT_TEXT_LEFT = HIGHLIGHT_TIME_X + Math.max(96, HIGHLIGHT_TIME_WIDTH + 20);
   const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
   const HIGHLIGHT_TITLE_FS = 28;
-  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.22;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.42;
   const HIGHLIGHT_VENUE_FS = 20;
-  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.25;
-  const HIGHLIGHT_PAD_TOP = 30;
-  const HIGHLIGHT_PAD_BETWEEN = 10;
-  const HIGHLIGHT_PAD_BOTTOM = 26;
-  const HIGHLIGHT_GAP = 20;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.4;
+  const HIGHLIGHT_PAD_TOP = 36;
+  const HIGHLIGHT_PAD_BETWEEN = 16;
+  const HIGHLIGHT_PAD_BOTTOM = 32;
+  const HIGHLIGHT_GAP = 24;
   const HIGHLIGHT_VENUE_INDENT = 22;
 
   type CardLayout = {
@@ -375,7 +375,7 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
     <text x="780" y="170" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
   </g>
 
-  <text x="${PAD_LEFT}" y="1130" font-family="Inter,system-ui,sans-serif" font-size="30" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  <text x="${PAD_LEFT}" y="1120" font-family="${FONT_FAMILY.inter}" font-size="28" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
   ${renderedHighlights.join('')}
 
   <g transform="translate(${PAD_LEFT},1800)">
@@ -408,13 +408,13 @@ function layoutPortrait(palette: Palette, dest: string, days: number, activities
   const HIGHLIGHT_TEXT_LEFT = HIGHLIGHT_TIME_X + Math.max(96, HIGHLIGHT_TIME_WIDTH + 20);
   const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
   const HIGHLIGHT_TITLE_FS = 26;
-  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.22;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.42;
   const HIGHLIGHT_VENUE_FS = 18;
-  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.25;
-  const HIGHLIGHT_PAD_TOP = 28;
-  const HIGHLIGHT_PAD_BETWEEN = 8;
-  const HIGHLIGHT_PAD_BOTTOM = 24;
-  const HIGHLIGHT_GAP = 16;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.4;
+  const HIGHLIGHT_PAD_TOP = 32;
+  const HIGHLIGHT_PAD_BETWEEN = 14;
+  const HIGHLIGHT_PAD_BOTTOM = 28;
+  const HIGHLIGHT_GAP = 20;
 
   type CardLayout = { h: Highlight; titleLines: string[]; venueLines: string[]; cardH: number };
   const candidates: CardLayout[] = highlights.slice(0, 3).map((h) => {
@@ -488,7 +488,7 @@ function layoutPortrait(palette: Palette, dest: string, days: number, activities
     <text x="810" y="142" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
   </g>
 
-  <text x="${PAD_LEFT}" y="730" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  <text x="${PAD_LEFT}" y="720" font-family="${FONT_FAMILY.inter}" font-size="24" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
   ${renderedHighlights.join('')}
 
   <g transform="translate(${PAD_LEFT},1240)">
@@ -520,13 +520,13 @@ function layoutSquare(palette: Palette, dest: string, days: number, activities: 
   const HIGHLIGHT_TIME_WIDTH = estimateTextWidth('22:00', HIGHLIGHT_TIME_FS, 'inter');
   const HIGHLIGHT_TEXT_LEFT = HIGHLIGHT_TIME_X + Math.max(86, HIGHLIGHT_TIME_WIDTH + 18);
   const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
-  const HIGHLIGHT_TITLE_FS = 24;
-  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.22;
-  const HIGHLIGHT_VENUE_FS = 17;
-  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.25;
+  const HIGHLIGHT_TITLE_FS = 22;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.4;
+  const HIGHLIGHT_VENUE_FS = 16;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.4;
   const HIGHLIGHT_PAD_TOP = 22;
-  const HIGHLIGHT_PAD_BETWEEN = 8;
-  const HIGHLIGHT_PAD_BOTTOM = 20;
+  const HIGHLIGHT_PAD_BETWEEN = 10;
+  const HIGHLIGHT_PAD_BOTTOM = 18;
   const HIGHLIGHT_GAP = 14;
 
   type CardLayout = { h: Highlight; titleLines: string[]; venueLines: string[]; cardH: number };
@@ -601,7 +601,7 @@ function layoutSquare(palette: Palette, dest: string, days: number, activities: 
     <text x="810" y="132" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
   </g>
 
-  <text x="${PAD_LEFT}" y="690" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  <text x="${PAD_LEFT}" y="680" font-family="${FONT_FAMILY.inter}" font-size="20" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
   ${renderedHighlights.join('')}
 
   <g transform="translate(${PAD_LEFT},980)">
