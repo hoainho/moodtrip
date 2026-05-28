@@ -86,9 +86,35 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-const CHAR_WIDTH_RATIO = {
-  inter: { lower: 0.52, upper: 0.66, digit: 0.55, punct: 0.32, space: 0.27, vietnamese: 0.58 },
-  georgia: { lower: 0.50, upper: 0.62, digit: 0.55, punct: 0.32, space: 0.27, vietnamese: 0.56 },
+type FontId = 'inter' | 'georgia';
+
+const FONT_FAMILY: Record<FontId, string> = {
+  inter: '"Inter", "Be Vietnam Pro", system-ui, -apple-system, sans-serif',
+  georgia: '"Georgia", "Times New Roman", serif',
+};
+
+const FONT_WEIGHT: Record<FontId, number> = {
+  inter: 700,
+  georgia: 700,
+};
+
+const SAFETY_MARGIN = 0.92;
+
+let _canvasCtx: CanvasRenderingContext2D | null = null;
+
+function getMeasureCtx(): CanvasRenderingContext2D | null {
+  if (_canvasCtx) return _canvasCtx;
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  _canvasCtx = ctx;
+  return ctx;
+}
+
+const FALLBACK_WIDTH_RATIO: Record<FontId, { default: number; vietnamese: number; upper: number; digit: number; punct: number; space: number }> = {
+  inter: { default: 0.55, vietnamese: 0.62, upper: 0.72, digit: 0.58, punct: 0.34, space: 0.27 },
+  georgia: { default: 0.54, vietnamese: 0.60, upper: 0.68, digit: 0.58, punct: 0.34, space: 0.27 },
 };
 
 const VIET_DIACRITIC_RE = /[\u00C0-\u1EF9]/;
@@ -96,64 +122,113 @@ const UPPER_RE = /[A-Z\u00C0-\u00DE\u0100-\u017F]/;
 const DIGIT_RE = /[0-9]/;
 const SPACE_RE = /\s/;
 
-function estimateTextWidth(text: string, fontSize: number, font: 'inter' | 'georgia' = 'inter'): number {
-  const r = CHAR_WIDTH_RATIO[font];
+function estimateTextWidth(text: string, fontSize: number, font: FontId = 'inter'): number {
+  const ctx = getMeasureCtx();
+  if (ctx) {
+    ctx.font = `${FONT_WEIGHT[font]} ${fontSize}px ${FONT_FAMILY[font]}`;
+    const metrics = ctx.measureText(text);
+    return metrics.width;
+  }
+  const r = FALLBACK_WIDTH_RATIO[font];
   let total = 0;
   for (const ch of text) {
     if (SPACE_RE.test(ch)) total += fontSize * r.space;
     else if (DIGIT_RE.test(ch)) total += fontSize * r.digit;
     else if (VIET_DIACRITIC_RE.test(ch)) total += fontSize * r.vietnamese;
     else if (UPPER_RE.test(ch)) total += fontSize * r.upper;
-    else if (/[a-z]/.test(ch)) total += fontSize * r.lower;
+    else if (/[a-z]/.test(ch)) total += fontSize * r.default;
     else total += fontSize * r.punct;
   }
   return total;
 }
 
-function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: number, font: 'inter' | 'georgia' = 'inter'): string[] {
+function widthFits(text: string, fontSize: number, maxWidth: number, font: FontId): boolean {
+  return estimateTextWidth(text, fontSize, font) <= maxWidth * SAFETY_MARGIN;
+}
+
+function truncateToWidth(text: string, fontSize: number, maxWidth: number, font: FontId): string {
+  const budget = maxWidth * SAFETY_MARGIN;
+  if (estimateTextWidth(text, fontSize, font) <= budget) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const candidate = text.slice(0, mid) + '…';
+    if (estimateTextWidth(candidate, fontSize, font) <= budget) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  const result = text.slice(0, lo).trimEnd() + '…';
+  return result;
+}
+
+function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: number, font: FontId = 'inter'): string[] {
+  if (!text) return [];
   const words = text.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+
   const lines: string[] = [];
   let current = '';
-  for (const word of words) {
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
     const candidate = current ? `${current} ${word}` : word;
-    if (estimateTextWidth(candidate, fontSize, font) <= maxWidth) {
+    if (widthFits(candidate, fontSize, maxWidth, font)) {
       current = candidate;
       continue;
     }
-    if (current) lines.push(current);
+    if (current) {
+      lines.push(current);
+      current = '';
+    }
     if (lines.length >= maxLines - 1) {
-      let truncated = word;
-      while (truncated && estimateTextWidth(truncated + '…', fontSize, font) > maxWidth) {
-        truncated = truncated.slice(0, -1);
-      }
-      const remaining = words.slice(words.indexOf(word) + 1);
-      const tail = remaining.length > 0 ? '…' : (estimateTextWidth(word, fontSize, font) > maxWidth ? '…' : '');
-      lines.push(tail === '…' ? (truncated || word.slice(0, Math.max(1, Math.floor(maxWidth / (fontSize * 0.5))))) + '…' : word);
+      const remaining = words.slice(i).join(' ');
+      lines.push(truncateToWidth(remaining, fontSize, maxWidth, font));
       return lines;
     }
-    current = word;
+    if (widthFits(word, fontSize, maxWidth, font)) {
+      current = word;
+    } else {
+      current = '';
+      lines.push(truncateToWidth(word, fontSize, maxWidth, font));
+      if (lines.length >= maxLines) return lines;
+    }
   }
+
   if (current) lines.push(current);
   return lines.slice(0, maxLines);
 }
 
-function fitTextToBox(text: string, maxWidth: number, maxHeight: number, startFontSize: number, minFontSize: number, lineHeightRatio: number, maxLines: number, font: 'inter' | 'georgia' = 'inter'): { fontSize: number; lines: string[] } {
-  for (let fs = startFontSize; fs >= minFontSize; fs -= 4) {
+function fitTextToBox(
+  text: string,
+  maxWidth: number,
+  maxHeight: number,
+  startFontSize: number,
+  minFontSize: number,
+  lineHeightRatio: number,
+  maxLines: number,
+  font: FontId = 'inter',
+): { fontSize: number; lines: string[] } {
+  for (let fs = startFontSize; fs >= minFontSize; fs -= 2) {
     const lines = wrapText(text, maxWidth, fs, maxLines, font);
+    if (lines.length === 0) return { fontSize: fs, lines: [] };
     const totalHeight = lines.length * fs * lineHeightRatio;
-    if (totalHeight <= maxHeight) {
-      let allFit = true;
-      for (const line of lines) {
-        if (estimateTextWidth(line, fs, font) > maxWidth) {
-          allFit = false;
-          break;
-        }
+    if (totalHeight > maxHeight) continue;
+    let allFit = true;
+    for (const line of lines) {
+      if (!widthFits(line, fs, maxWidth, font)) {
+        allFit = false;
+        break;
       }
-      if (allFit) return { fontSize: fs, lines };
     }
+    if (allFit) return { fontSize: fs, lines };
   }
   const fs = minFontSize;
-  const lines = wrapText(text, maxWidth, fs, maxLines, font);
+  const lines = wrapText(text, maxWidth, fs, maxLines, font).map((line) =>
+    widthFits(line, fs, maxWidth, font) ? line : truncateToWidth(line, fs, maxWidth, font),
+  );
   return { fontSize: fs, lines };
 }
 
@@ -190,61 +265,87 @@ function buildSparkles(w: number, h: number, seed: number, count: number): strin
 function layoutStory(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
   const PAD_LEFT = 80;
   const CONTENT_WIDTH = 920;
+  const HIGHLIGHTS_TOP = 1180;
+  const HIGHLIGHTS_BOTTOM_LIMIT = 1750;
+  const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
-  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 380, 170, 88, 1.05, 3, 'georgia');
-  const destLineHeight = destFit.fontSize * 1.05;
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 380, 160, 78, 1.08, 3, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.08;
   const destStartY = 520 - (destFit.lines.length - 1) * destLineHeight * 0.5;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
-  const costFontSize = cost.length > 14 ? 32 : cost.length > 10 ? 38 : 40;
-
-  const HIGHLIGHT_TEXT_LEFT = 150;
+  const costFontSize = cost.length > 14 ? 30 : cost.length > 10 ? 36 : 40;
+  const HIGHLIGHT_TIME_X = 32;
+  const HIGHLIGHT_TIME_FS = 26;
+  const HIGHLIGHT_TIME_WIDTH = estimateTextWidth('22:00', HIGHLIGHT_TIME_FS, 'inter');
+  const HIGHLIGHT_TEXT_LEFT = HIGHLIGHT_TIME_X + Math.max(96, HIGHLIGHT_TIME_WIDTH + 20);
   const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
   const HIGHLIGHT_TITLE_FS = 28;
-  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.18;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.22;
   const HIGHLIGHT_VENUE_FS = 20;
-  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.2;
-  const HIGHLIGHT_PAD_TOP = 36;
-  const HIGHLIGHT_PAD_BETWEEN = 14;
-  const HIGHLIGHT_PAD_BOTTOM = 28;
-  const HIGHLIGHT_GAP = 22;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.25;
+  const HIGHLIGHT_PAD_TOP = 30;
+  const HIGHLIGHT_PAD_BETWEEN = 10;
+  const HIGHLIGHT_PAD_BOTTOM = 26;
+  const HIGHLIGHT_GAP = 20;
+  const HIGHLIGHT_VENUE_INDENT = 22;
 
-  let cursorY = 1180;
-  const renderedHighlights: string[] = [];
-
-  for (const h of highlights.slice(0, 4)) {
+  type CardLayout = {
+    h: Highlight;
+    titleLines: string[];
+    venueLines: string[];
+    cardH: number;
+  };
+  const candidates: CardLayout[] = highlights.slice(0, 4).map((h) => {
     const titleLines = wrapText(h.title, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_TITLE_FS, 2, 'inter');
-    const venueLines = h.venue ? wrapText(h.venue, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_VENUE_FS, 1, 'inter') : [];
+    const venueLines = h.venue
+      ? wrapText(h.venue, HIGHLIGHT_TEXT_WIDTH - HIGHLIGHT_VENUE_INDENT, HIGHLIGHT_VENUE_FS, 1, 'inter')
+      : [];
     const titleBlockH = titleLines.length * HIGHLIGHT_TITLE_LH;
     const venueBlockH = venueLines.length * HIGHLIGHT_VENUE_LH;
     const cardH = Math.max(
-      104,
+      108,
       HIGHLIGHT_PAD_TOP + titleBlockH + (venueLines.length > 0 ? HIGHLIGHT_PAD_BETWEEN + venueBlockH : 0) + HIGHLIGHT_PAD_BOTTOM,
     );
+    return { h, titleLines, venueLines, cardH };
+  });
 
-    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.85;
-    const titleTspans = renderTspans(titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
+  const accepted: CardLayout[] = [];
+  let runningHeight = 0;
+  for (const c of candidates) {
+    const next = runningHeight + c.cardH + (accepted.length > 0 ? HIGHLIGHT_GAP : 0);
+    if (next > HIGHLIGHTS_BUDGET) break;
+    accepted.push(c);
+    runningHeight = next;
+  }
 
+  let cursorY = HIGHLIGHTS_TOP;
+  const renderedHighlights: string[] = [];
+
+  for (const c of accepted) {
+    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.82;
+    const titleTspans = renderTspans(c.titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
     const timeY = titleYStart;
 
     let venueRender = '';
-    if (venueLines.length > 0) {
-      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.85;
-      const venueTspans = renderTspans(venueLines, HIGHLIGHT_TEXT_LEFT + 20, HIGHLIGHT_VENUE_LH);
+    if (c.venueLines.length > 0) {
+      const titleBlockH = c.titleLines.length * HIGHLIGHT_TITLE_LH;
+      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.82;
+      const venueTspans = renderTspans(c.venueLines, HIGHLIGHT_TEXT_LEFT + HIGHLIGHT_VENUE_INDENT, HIGHLIGHT_VENUE_LH);
       venueRender = `
-      <circle cx="${HIGHLIGHT_TEXT_LEFT + 6}" cy="${venueY - HIGHLIGHT_VENUE_FS * 0.35}" r="3.5" fill="${palette.accent}"/>
-      <text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.82)" y="${venueY}">${venueTspans}</text>`;
+      <circle cx="${HIGHLIGHT_TEXT_LEFT + 6}" cy="${venueY - HIGHLIGHT_VENUE_FS * 0.32}" r="3.5" fill="${palette.accent}"/>
+      <text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.82)" y="${venueY}">${venueTspans}</text>`;
     }
 
     renderedHighlights.push(`
     <g transform="translate(${PAD_LEFT},${cursorY})">
-      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${cardH}" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="32" y="${timeY}" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
-      <text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(c.h.time)}</text>
+      <text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
       ${venueRender}
     </g>`);
 
-    cursorY += cardH + HIGHLIGHT_GAP;
+    cursorY += c.cardH + HIGHLIGHT_GAP;
   }
 
   return `
@@ -282,58 +383,78 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
 function layoutPortrait(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
   const PAD_LEFT = 60;
   const CONTENT_WIDTH = 960;
+  const HIGHLIGHTS_TOP = 760;
+  const HIGHLIGHTS_BOTTOM_LIMIT = 1220;
+  const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
-  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 260, 130, 72, 1.05, 2, 'georgia');
-  const destLineHeight = destFit.fontSize * 1.05;
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 260, 120, 64, 1.08, 2, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.08;
   const destStartY = 380 - (destFit.lines.length - 1) * destLineHeight * 0.5;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
-  const costFontSize = cost.length > 14 ? 28 : cost.length > 10 ? 32 : 36;
+  const costFontSize = cost.length > 14 ? 26 : cost.length > 10 ? 30 : 36;
 
-  const HIGHLIGHT_TEXT_LEFT = 150;
+  const HIGHLIGHT_TIME_X = 32;
+  const HIGHLIGHT_TIME_FS = 24;
+  const HIGHLIGHT_TIME_WIDTH = estimateTextWidth('22:00', HIGHLIGHT_TIME_FS, 'inter');
+  const HIGHLIGHT_TEXT_LEFT = HIGHLIGHT_TIME_X + Math.max(96, HIGHLIGHT_TIME_WIDTH + 20);
   const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
   const HIGHLIGHT_TITLE_FS = 26;
-  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.18;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.22;
   const HIGHLIGHT_VENUE_FS = 18;
-  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.2;
-  const HIGHLIGHT_PAD_TOP = 32;
-  const HIGHLIGHT_PAD_BETWEEN = 12;
-  const HIGHLIGHT_PAD_BOTTOM = 26;
-  const HIGHLIGHT_GAP = 18;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.25;
+  const HIGHLIGHT_PAD_TOP = 28;
+  const HIGHLIGHT_PAD_BETWEEN = 8;
+  const HIGHLIGHT_PAD_BOTTOM = 24;
+  const HIGHLIGHT_GAP = 16;
 
-  let cursorY = 760;
-  const renderedHighlights: string[] = [];
-
-  for (const h of highlights.slice(0, 3)) {
+  type CardLayout = { h: Highlight; titleLines: string[]; venueLines: string[]; cardH: number };
+  const candidates: CardLayout[] = highlights.slice(0, 3).map((h) => {
     const titleLines = wrapText(h.title, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_TITLE_FS, 2, 'inter');
     const venueLines = h.venue ? wrapText(h.venue, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_VENUE_FS, 1, 'inter') : [];
     const titleBlockH = titleLines.length * HIGHLIGHT_TITLE_LH;
     const venueBlockH = venueLines.length * HIGHLIGHT_VENUE_LH;
     const cardH = Math.max(
-      96,
+      100,
       HIGHLIGHT_PAD_TOP + titleBlockH + (venueLines.length > 0 ? HIGHLIGHT_PAD_BETWEEN + venueBlockH : 0) + HIGHLIGHT_PAD_BOTTOM,
     );
+    return { h, titleLines, venueLines, cardH };
+  });
 
-    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.85;
-    const titleTspans = renderTspans(titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
+  const accepted: CardLayout[] = [];
+  let runningHeight = 0;
+  for (const c of candidates) {
+    const next = runningHeight + c.cardH + (accepted.length > 0 ? HIGHLIGHT_GAP : 0);
+    if (next > HIGHLIGHTS_BUDGET) break;
+    accepted.push(c);
+    runningHeight = next;
+  }
+
+  let cursorY = HIGHLIGHTS_TOP;
+  const renderedHighlights: string[] = [];
+
+  for (const c of accepted) {
+    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.82;
+    const titleTspans = renderTspans(c.titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
     const timeY = titleYStart;
 
     let venueRender = '';
-    if (venueLines.length > 0) {
-      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.85;
-      const venueTspans = renderTspans(venueLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_VENUE_LH);
-      venueRender = `<text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.78)" y="${venueY}">${venueTspans}</text>`;
+    if (c.venueLines.length > 0) {
+      const titleBlockH = c.titleLines.length * HIGHLIGHT_TITLE_LH;
+      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.82;
+      const venueTspans = renderTspans(c.venueLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_VENUE_LH);
+      venueRender = `<text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.78)" y="${venueY}">${venueTspans}</text>`;
     }
 
     renderedHighlights.push(`
     <g transform="translate(${PAD_LEFT},${cursorY})">
-      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${cardH}" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="32" y="${timeY}" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
-      <text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(c.h.time)}</text>
+      <text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
       ${venueRender}
     </g>`);
 
-    cursorY += cardH + HIGHLIGHT_GAP;
+    cursorY += c.cardH + HIGHLIGHT_GAP;
   }
 
   return `
@@ -362,67 +483,87 @@ function layoutPortrait(palette: Palette, dest: string, days: number, activities
   <text x="${PAD_LEFT}" y="730" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
   ${renderedHighlights.join('')}
 
-  <g transform="translate(${PAD_LEFT},1260)">
-    <text x="0" y="36" font-family="Georgia,serif" font-size="36" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
-    <text x="0" y="80" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
+  <g transform="translate(${PAD_LEFT},1240)">
+    <text x="0" y="34" font-family="Georgia,serif" font-size="34" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
+    <text x="0" y="74" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
   </g>`;
 }
 
 function layoutSquare(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
   const PAD_LEFT = 60;
   const CONTENT_WIDTH = 960;
+  const HIGHLIGHTS_TOP = 720;
+  const HIGHLIGHTS_BOTTOM_LIMIT = 970;
+  const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
-  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 200, 120, 60, 1.05, 2, 'georgia');
-  const destLineHeight = destFit.fontSize * 1.05;
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 200, 110, 56, 1.08, 2, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.08;
   const destStartY = 330 - (destFit.lines.length - 1) * destLineHeight * 0.5;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
-  const costFontSize = cost.length > 14 ? 26 : cost.length > 10 ? 28 : 32;
+  const costFontSize = cost.length > 14 ? 24 : cost.length > 10 ? 26 : 32;
 
-  const HIGHLIGHT_TEXT_LEFT = 140;
+  const HIGHLIGHT_TIME_X = 32;
+  const HIGHLIGHT_TIME_FS = 22;
+  const HIGHLIGHT_TIME_WIDTH = estimateTextWidth('22:00', HIGHLIGHT_TIME_FS, 'inter');
+  const HIGHLIGHT_TEXT_LEFT = HIGHLIGHT_TIME_X + Math.max(86, HIGHLIGHT_TIME_WIDTH + 18);
   const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
   const HIGHLIGHT_TITLE_FS = 24;
-  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.18;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.22;
   const HIGHLIGHT_VENUE_FS = 17;
-  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.2;
-  const HIGHLIGHT_PAD_TOP = 26;
-  const HIGHLIGHT_PAD_BETWEEN = 10;
-  const HIGHLIGHT_PAD_BOTTOM = 22;
-  const HIGHLIGHT_GAP = 16;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.25;
+  const HIGHLIGHT_PAD_TOP = 22;
+  const HIGHLIGHT_PAD_BETWEEN = 8;
+  const HIGHLIGHT_PAD_BOTTOM = 20;
+  const HIGHLIGHT_GAP = 14;
 
-  let cursorY = 720;
-  const renderedHighlights: string[] = [];
-
-  for (const h of highlights.slice(0, 2)) {
+  type CardLayout = { h: Highlight; titleLines: string[]; venueLines: string[]; cardH: number };
+  const candidates: CardLayout[] = highlights.slice(0, 2).map((h) => {
     const titleLines = wrapText(h.title, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_TITLE_FS, 2, 'inter');
     const venueLines = h.venue ? wrapText(h.venue, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_VENUE_FS, 1, 'inter') : [];
     const titleBlockH = titleLines.length * HIGHLIGHT_TITLE_LH;
     const venueBlockH = venueLines.length * HIGHLIGHT_VENUE_LH;
     const cardH = Math.max(
-      88,
+      94,
       HIGHLIGHT_PAD_TOP + titleBlockH + (venueLines.length > 0 ? HIGHLIGHT_PAD_BETWEEN + venueBlockH : 0) + HIGHLIGHT_PAD_BOTTOM,
     );
+    return { h, titleLines, venueLines, cardH };
+  });
 
-    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.85;
-    const titleTspans = renderTspans(titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
+  const accepted: CardLayout[] = [];
+  let runningHeight = 0;
+  for (const c of candidates) {
+    const next = runningHeight + c.cardH + (accepted.length > 0 ? HIGHLIGHT_GAP : 0);
+    if (next > HIGHLIGHTS_BUDGET) break;
+    accepted.push(c);
+    runningHeight = next;
+  }
+
+  let cursorY = HIGHLIGHTS_TOP;
+  const renderedHighlights: string[] = [];
+
+  for (const c of accepted) {
+    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.82;
+    const titleTspans = renderTspans(c.titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
     const timeY = titleYStart;
 
     let venueRender = '';
-    if (venueLines.length > 0) {
-      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.85;
-      const venueTspans = renderTspans(venueLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_VENUE_LH);
-      venueRender = `<text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.78)" y="${venueY}">${venueTspans}</text>`;
+    if (c.venueLines.length > 0) {
+      const titleBlockH = c.titleLines.length * HIGHLIGHT_TITLE_LH;
+      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.82;
+      const venueTspans = renderTspans(c.venueLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_VENUE_LH);
+      venueRender = `<text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.78)" y="${venueY}">${venueTspans}</text>`;
     }
 
     renderedHighlights.push(`
     <g transform="translate(${PAD_LEFT},${cursorY})">
-      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${cardH}" rx="20" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="32" y="${timeY}" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
-      <text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="20" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(c.h.time)}</text>
+      <text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
       ${venueRender}
     </g>`);
 
-    cursorY += cardH + HIGHLIGHT_GAP;
+    cursorY += c.cardH + HIGHLIGHT_GAP;
   }
 
   return `
@@ -458,7 +599,7 @@ function layoutSquare(palette: Palette, dest: string, days: number, activities: 
 }
 
 function buildReelSvg(itinerary: ItineraryPlan, format: Format): string {
-  const dest = escapeXml(itinerary.destination);
+  const dest = itinerary.destination;
   const days = itinerary.timeline.length;
   const activities = itinerary.timeline.reduce((s, d) => s + d.schedule.length, 0);
   const cost = itinerary.budget_summary?.total_estimated || '—';
