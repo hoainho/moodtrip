@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import type { ItineraryPlan, FormData, Mood } from '../types';
-import { IconMapPin, IconClock, IconWallet, IconFire, IconSparkles } from './icons';
+import { IconMapPin, IconClock, IconWallet, IconFire, IconSparkles, IconSmartphone } from './icons';
 
 interface TripHeroBannerProps {
   itinerary: ItineraryPlan;
@@ -197,9 +197,10 @@ export const TripHeroBanner: React.FC<TripHeroBannerProps> = ({ itinerary, formD
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={onShowReel}
-              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-white text-sm font-semibold transition-colors"
+              className="mt-5 inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-white text-sm font-semibold transition-colors"
             >
-              📱 Tạo Reel để khoe bạn bè
+              <IconSmartphone className="w-4 h-4" />
+              Tạo Reel để khoe bạn bè
             </motion.button>
           )}
         </div>

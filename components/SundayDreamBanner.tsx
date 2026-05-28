@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getSundayWindow, readStreak, recordDream } from '../services/sundayDream';
+import { IconCoffee, IconFire } from './icons';
 
 interface SundayDreamBannerProps {
   onAcceptDream: () => void;
@@ -57,12 +58,16 @@ export function SundayDreamBanner({ onAcceptDream }: SundayDreamBannerProps) {
         role="dialog"
         aria-label="Chiều chủ nhật dream"
       >
-        <p className="text-white font-medium mb-1">☕ Chiều chủ nhật</p>
-        <p className="text-slate-400 text-xs mb-3 leading-relaxed">
+        <p className="text-white font-semibold mb-1 inline-flex items-center gap-2">
+          <IconCoffee className="w-4 h-4 text-amber-300" />
+          Chiều chủ nhật
+        </p>
+        <p className="text-slate-300 text-sm mb-3 leading-relaxed">
           Pha một ly cà phê. Mình mơ một chuyến đi nhé?
           {streak > 0 && (
-            <span className="block mt-1 text-purple-300">
-              🔥 Chuỗi {streak} chủ nhật liên tiếp
+            <span className="block mt-1.5 text-purple-300 inline-flex items-center gap-1.5">
+              <IconFire className="w-3.5 h-3.5" />
+              Chuỗi {streak} chủ nhật liên tiếp
             </span>
           )}
         </p>

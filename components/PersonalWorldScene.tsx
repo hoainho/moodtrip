@@ -4,6 +4,7 @@ import { useAuth } from '../services/useAuth';
 import { listOwnedTrips, type TripRecord } from '../services/tripsApi';
 import { buildWorldStats, currentMilestone } from '../services/personalWorld';
 import { buildSceneState } from '../services/personalWorldScene';
+import { IconSprout } from './icons';
 
 const LazySceneCanvas = lazy(() => import('./three/PersonalWorldCanvas'));
 
@@ -73,8 +74,8 @@ export function PersonalWorldScene({ open, onClose }: PersonalWorldSceneProps) {
           ) : scene.monuments.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center text-center text-slate-400 px-6">
               <div>
-                <p className="text-3xl mb-2">🌱</p>
-                <p className="text-white text-base font-medium mb-1">Thế giới còn trống</p>
+                <IconSprout className="w-10 h-10 mx-auto mb-2 text-emerald-300" />
+                <p className="text-white text-base font-semibold mb-1">Thế giới còn trống</p>
                 <p className="text-sm">
                   Tạo chuyến đi đầu tiên — một công trình sẽ xuất hiện ở đây sau mỗi chuyến.
                 </p>

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ItineraryPlan } from '../types';
 import { computeBounds, resolveVenues, type ResolvedVenue } from '../services/venueResolver';
+import { geocodeBatch } from '../services/geocoder';
+import { IconMapPin, IconRoute } from './icons';
 
 interface TripMapProps {
   itinerary: ItineraryPlan;
@@ -19,34 +21,74 @@ const OSM_STYLE = {
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 };
 
+const DAY_COLORS = ['#14b8a6', '#f97316', '#a855f7', '#3b82f6', '#ef4444', '#10b981', '#f59e0b'];
+
 export function TripMap({ itinerary }: TripMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
   const [venues, setVenues] = useState<ResolvedVenue[]>([]);
   const [selected, setSelected] = useState<ResolvedVenue | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeProgress, setGeocodeProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
-    setVenues(resolveVenues(itinerary));
+    let cancelled = false;
+    (async () => {
+      const initial = resolveVenues(itinerary);
+      setVenues(initial);
+
+      const missing = initial.filter((v) => v.lat == null || v.lng == null);
+      if (missing.length === 0) return;
+
+      setGeocoding(true);
+      setGeocodeProgress({ done: 0, total: missing.length });
+      const lookups = missing.map((v) => ({ venue: v.name, destination: itinerary.destination }));
+      const results = await geocodeBatch(lookups, (done, total) => {
+        if (!cancelled) setGeocodeProgress({ done, total });
+      });
+      if (cancelled) return;
+
+      const enriched = initial.map((v) => {
+        if (v.lat != null && v.lng != null) return v;
+        const key = `${v.name.toLowerCase().trim()}|${itinerary.destination.toLowerCase().trim()}`;
+        const hit = results.get(key);
+        if (hit) return { ...v, lat: hit.lat, lng: hit.lng };
+        return v;
+      });
+      setVenues(enriched);
+      setGeocoding(false);
+      setGeocodeProgress(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [itinerary]);
 
   useEffect(() => {
-    if (!containerRef.current || venues.length === 0) return;
+    if (!containerRef.current) return;
+    const located = venues.filter((v) => v.lat != null && v.lng != null);
+    if (located.length === 0) return;
     let cancelled = false;
     (async () => {
       type MarkerLike = {
         setLngLat: (ll: [number, number]) => MarkerLike;
         addTo: (map: unknown) => MarkerLike;
         getElement: () => HTMLElement;
+        remove: () => void;
+      };
+      type MapLike = {
+        fitBounds: (b: number[][], opts?: unknown) => void;
+        remove: () => void;
+        on: (ev: string, fn: () => void) => void;
+        addControl: (c: unknown) => void;
+        addSource: (id: string, src: unknown) => void;
+        addLayer: (layer: unknown) => void;
+        getSource: (id: string) => unknown;
       };
       const mod = (await import('maplibre-gl')) as unknown as {
         default: {
-          Map: new (opts: unknown) => {
-            fitBounds: (b: number[][], opts?: unknown) => void;
-            remove: () => void;
-            on: (ev: string, fn: () => void) => void;
-            addControl: (c: unknown) => void;
-          };
+          Map: new (opts: unknown) => MapLike;
           NavigationControl: new (opts?: unknown) => unknown;
           Marker: new (opts?: unknown) => MarkerLike;
         };
@@ -54,7 +96,7 @@ export function TripMap({ itinerary }: TripMapProps) {
       await import('maplibre-gl/dist/maplibre-gl.css');
       if (cancelled || !containerRef.current) return;
 
-      const bounds = computeBounds(venues);
+      const bounds = computeBounds(located);
       const center = bounds?.center ?? { lat: 16.0, lng: 107.5 };
 
       const map = new mod.default.Map({
@@ -67,25 +109,75 @@ export function TripMap({ itinerary }: TripMapProps) {
       mapRef.current = map;
       map.addControl(new mod.default.NavigationControl({ showCompass: false }));
 
+      const markers: MarkerLike[] = [];
+
       map.on('load', () => {
         if (cancelled) return;
-        for (const v of venues) {
-          if (v.lat == null || v.lng == null) continue;
-          const el = document.createElement('button');
-          el.className =
-            'w-7 h-7 rounded-full bg-teal-500 border-2 border-white shadow-md text-white text-xs font-bold flex items-center justify-center';
-          el.textContent = String(v.day);
-          el.setAttribute('aria-label', `${v.name} - Ngày ${v.day}`);
-          el.onclick = () => setSelected(v);
-          new mod.default.Marker({ element: el }).setLngLat([v.lng, v.lat]).addTo(map);
+
+        const byDay = new Map<number, ResolvedVenue[]>();
+        for (const v of located) {
+          if (!byDay.has(v.day)) byDay.set(v.day, []);
+          byDay.get(v.day)!.push(v);
         }
-        if (bounds && venues.filter((v) => v.lat != null).length > 1) {
+
+        const features: object[] = [];
+        for (const [day, dayVenues] of byDay) {
+          if (dayVenues.length < 2) continue;
+          features.push({
+            type: 'Feature',
+            properties: { day, color: DAY_COLORS[(day - 1) % DAY_COLORS.length] },
+            geometry: {
+              type: 'LineString',
+              coordinates: dayVenues.map((v) => [v.lng as number, v.lat as number]),
+            },
+          });
+        }
+
+        if (features.length > 0) {
+          map.addSource('routes', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features },
+          });
+          map.addLayer({
+            id: 'routes-line',
+            type: 'line',
+            source: 'routes',
+            paint: {
+              'line-color': ['get', 'color'],
+              'line-width': 3,
+              'line-opacity': 0.75,
+              'line-dasharray': [2, 1.5],
+            },
+          });
+        }
+
+        for (let i = 0; i < located.length; i++) {
+          const v = located[i];
+          if (v.lat == null || v.lng == null) continue;
+          const color = DAY_COLORS[(v.day - 1) % DAY_COLORS.length];
+          const orderInDay = (byDay.get(v.day) || []).indexOf(v) + 1;
+          const el = document.createElement('button');
+          el.type = 'button';
+          el.className =
+            'flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-white cursor-pointer';
+          el.style.width = '32px';
+          el.style.height = '32px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = color;
+          el.textContent = String(orderInDay);
+          el.setAttribute('aria-label', `Ngày ${v.day} · ${orderInDay}. ${v.name}`);
+          el.onclick = () => setSelected(v);
+          const marker = new mod.default.Marker({ element: el }).setLngLat([v.lng, v.lat]).addTo(map);
+          markers.push(marker);
+        }
+
+        if (bounds && located.length > 1) {
           map.fitBounds(
             [
               [bounds.west, bounds.south],
               [bounds.east, bounds.north],
             ],
-            { padding: 48, maxZoom: 13, duration: 0 },
+            { padding: 60, maxZoom: 13, duration: 0 },
           );
         }
         setMapReady(true);
@@ -99,10 +191,40 @@ export function TripMap({ itinerary }: TripMapProps) {
     };
   }, [venues]);
 
-  if (venues.filter((v) => v.lat != null).length === 0) {
+  const located = venues.filter((v) => v.lat != null && v.lng != null);
+  const totalVenues = venues.length;
+
+  if (totalVenues === 0) {
     return (
-      <div className="rounded-2xl glass-dark border border-white/10 p-6 text-center text-slate-400 text-sm">
-        Không có toạ độ địa điểm trong lịch trình này — bản đồ chưa hiển thị được.
+      <div className="rounded-2xl glass-dark border border-white/10 p-6 text-center text-slate-300 text-sm">
+        <IconMapPin className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+        Lịch trình này chưa có địa điểm cụ thể.
+      </div>
+    );
+  }
+
+  if (geocoding && located.length === 0) {
+    return (
+      <div className="rounded-2xl glass-dark border border-white/10 p-6 text-center text-slate-300 text-sm">
+        <IconRoute className="w-8 h-8 mx-auto mb-2 text-teal-400 animate-pulse" />
+        <p className="font-semibold mb-1">Đang tìm vị trí địa điểm…</p>
+        {geocodeProgress && (
+          <p className="text-xs text-slate-400">
+            {geocodeProgress.done}/{geocodeProgress.total} địa điểm
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (located.length === 0) {
+    return (
+      <div className="rounded-2xl glass-dark border border-white/10 p-6 text-center text-slate-300 text-sm">
+        <IconMapPin className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+        <p className="font-semibold mb-1">Không tìm thấy toạ độ chính xác.</p>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Mơ chưa định vị được {totalVenues} địa điểm. Bạn vẫn xem được tên + giờ ở phần lịch trình bên dưới.
+        </p>
       </div>
     );
   }
@@ -110,26 +232,57 @@ export function TripMap({ itinerary }: TripMapProps) {
   return (
     <div className="relative rounded-2xl overflow-hidden border border-white/10">
       <div ref={containerRef} className="w-full h-72 sm:h-96 bg-slate-900" aria-label="Bản đồ chuyến đi" />
+
       {!mapReady && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/70 text-slate-400 text-sm pointer-events-none">
-          Đang tải bản đồ…
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/70 text-slate-300 text-sm pointer-events-none">
+          <div className="flex flex-col items-center gap-2">
+            <IconRoute className="w-6 h-6 animate-pulse" />
+            Đang tải bản đồ…
+          </div>
         </div>
       )}
+
+      {geocoding && mapReady && geocodeProgress && (
+        <div className="absolute top-3 left-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950/85 border border-white/10 text-xs text-slate-200">
+          <IconRoute className="w-3.5 h-3.5 animate-pulse text-teal-400" />
+          Đang tìm vị trí · {geocodeProgress.done}/{geocodeProgress.total}
+        </div>
+      )}
+
+      {mapReady && located.length > 0 && !geocoding && (
+        <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/85 border border-white/10 text-xs text-slate-200">
+          <IconMapPin className="w-3.5 h-3.5 text-teal-400" />
+          {located.length} địa điểm
+        </div>
+      )}
+
       {selected && (
-        <div className="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-slate-950/90 border border-teal-500/30 backdrop-blur">
-          <p className="text-white font-medium text-sm mb-1">
+        <div className="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-slate-950/95 border border-teal-500/30 backdrop-blur shadow-xl">
+          <p className="text-white font-semibold text-sm mb-1">
             Ngày {selected.day} · {selected.time}
           </p>
-          <p className="text-slate-300 text-xs mb-2">{selected.name}</p>
+          <p className="text-slate-200 text-sm mb-2.5">{selected.name}</p>
           <div className="flex flex-wrap gap-2">
             {selected.mapsLink && (
               <a
                 href={selected.mapsLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-1 text-xs rounded-md bg-white/10 hover:bg-white/15 text-teal-300"
+                className="inline-flex items-center gap-1 min-h-[36px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-teal-300 transition-colors"
               >
-                Mở Google Maps ↗
+                <IconMapPin className="w-3.5 h-3.5" />
+                Google Maps
+              </a>
+            )}
+            {selected.lat != null && selected.lng != null && (
+              <a
+                href={`https://www.openstreetmap.org/directions?from=&to=${selected.lat}%2C${selected.lng}#map=14/${selected.lat}/${selected.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 min-h-[36px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-cyan-300 transition-colors"
+              >
+                <IconRoute className="w-3.5 h-3.5" />
+                Chỉ đường
               </a>
             )}
             {selected.tiktokQuery && (
@@ -137,14 +290,15 @@ export function TripMap({ itinerary }: TripMapProps) {
                 href={selected.tiktokQuery}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-1 text-xs rounded-md bg-white/10 hover:bg-white/15 text-pink-300"
+                className="inline-flex items-center gap-1 min-h-[36px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-pink-300 transition-colors"
               >
-                Xem TikTok về địa điểm ↗
+                TikTok
               </a>
             )}
             <button
+              type="button"
               onClick={() => setSelected(null)}
-              className="ml-auto text-slate-400 text-xs hover:text-white"
+              className="ml-auto min-h-[36px] px-3 text-slate-400 text-xs hover:text-white transition-colors"
             >
               Đóng
             </button>

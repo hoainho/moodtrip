@@ -1,7 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { ItineraryPlan } from '../types';
-import { IconX, IconDownload } from './icons';
+import { IconX, IconDownload, IconCopy, IconCheck, IconSparkles } from './icons';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 interface TripReelModalProps {
   itinerary: ItineraryPlan;
@@ -9,28 +11,62 @@ interface TripReelModalProps {
   onClose: () => void;
 }
 
-const W = 1080;
-const H = 1920;
+type FormatId = 'story' | 'square' | 'portrait';
 
-function topHighlights(itinerary: ItineraryPlan, n: number): Array<{ time: string; title: string; venue: string | null }> {
+interface Format {
+  id: FormatId;
+  label: string;
+  platforms: string;
+  w: number;
+  h: number;
+  aspect: string;
+}
+
+const FORMATS: Record<FormatId, Format> = {
+  story: { id: 'story', label: 'Reels / Story', platforms: 'TikTok · IG Reels · FB Story', w: 1080, h: 1920, aspect: '9 / 16' },
+  portrait: { id: 'portrait', label: 'Feed Portrait', platforms: 'IG Feed · FB Feed', w: 1080, h: 1350, aspect: '4 / 5' },
+  square: { id: 'square', label: 'Square', platforms: 'IG Feed · FB Post', w: 1080, h: 1080, aspect: '1 / 1' },
+};
+
+interface Highlight {
+  time: string;
+  title: string;
+  venue: string | null;
+}
+
+function topHighlights(itinerary: ItineraryPlan, n: number): Highlight[] {
   const all = itinerary.timeline.flatMap((d) =>
-    d.schedule.map((s) => ({ time: s.time, title: s.activity, venue: s.venue ?? null, trending: !!s.is_trending }))
+    d.schedule.map((s) => ({
+      time: s.time,
+      title: s.activity,
+      venue: s.venue ?? null,
+      trending: !!s.is_trending,
+    })),
   );
   const trending = all.filter((a) => a.trending);
   const rest = all.filter((a) => !a.trending);
   return [...trending, ...rest].slice(0, n);
 }
 
-function paletteFor(destination: string): { c1: string; c2: string; c3: string } {
-  const palettes = [
-    { c1: '#0ea5a4', c2: '#0369a1', c3: '#1e1b4b' },
-    { c1: '#f59e0b', c2: '#dc2626', c3: '#831843' },
-    { c1: '#a855f7', c2: '#ec4899', c3: '#581c87' },
-    { c1: '#10b981', c2: '#0d9488', c3: '#064e3b' },
-    { c1: '#6366f1', c2: '#8b5cf6', c3: '#312e81' },
+interface Palette {
+  c1: string;
+  c2: string;
+  c3: string;
+  glow: string;
+  accent: string;
+}
+
+function paletteFor(destination: string): Palette {
+  const palettes: Palette[] = [
+    { c1: '#14b8a6', c2: '#0369a1', c3: '#1e1b4b', glow: 'rgba(125,211,252,0.55)', accent: '#fcd34d' },
+    { c1: '#f59e0b', c2: '#dc2626', c3: '#831843', glow: 'rgba(254,215,170,0.55)', accent: '#fde68a' },
+    { c1: '#a855f7', c2: '#ec4899', c3: '#581c87', glow: 'rgba(244,114,182,0.55)', accent: '#fef3c7' },
+    { c1: '#10b981', c2: '#0d9488', c3: '#064e3b', glow: 'rgba(110,231,183,0.55)', accent: '#fde68a' },
+    { c1: '#6366f1', c2: '#8b5cf6', c3: '#312e81', glow: 'rgba(196,181,253,0.55)', accent: '#fcd34d' },
+    { c1: '#ef4444', c2: '#f97316', c3: '#7c2d12', glow: 'rgba(254,202,202,0.55)', accent: '#fef3c7' },
   ];
-  const idx = (destination.charCodeAt(0) + destination.length) % palettes.length;
-  return palettes[idx];
+  const sum = destination.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+  return palettes[sum % palettes.length];
 }
 
 function escapeXml(s: string): string {
@@ -42,110 +78,320 @@ function escapeXml(s: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function buildReelSvg(itinerary: ItineraryPlan): string {
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return s / 2147483647;
+  };
+}
+
+function buildSparkles(w: number, h: number, seed: number, count: number): string {
+  const rand = seededRandom(seed);
+  const out: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const x = Math.floor(rand() * w);
+    const y = Math.floor(rand() * h);
+    const r = 1 + rand() * 3.5;
+    const opacity = (0.35 + rand() * 0.55).toFixed(2);
+    out.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="#ffffff" opacity="${opacity}"/>`);
+  }
+  for (let i = 0; i < count / 6; i++) {
+    const x = Math.floor(rand() * w);
+    const y = Math.floor(rand() * h);
+    const size = 6 + rand() * 14;
+    const opacity = (0.5 + rand() * 0.4).toFixed(2);
+    out.push(
+      `<g transform="translate(${x},${y}) rotate(${Math.floor(rand() * 360)})" opacity="${opacity}">` +
+        `<path d="M0 -${size} L${size * 0.18} -${size * 0.18} L${size} 0 L${size * 0.18} ${size * 0.18} L0 ${size} L-${size * 0.18} ${size * 0.18} L-${size} 0 L-${size * 0.18} -${size * 0.18} Z" fill="#ffffff"/>` +
+        `</g>`,
+    );
+  }
+  return out.join('\n');
+}
+
+function layoutStory(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
+  const highlightItems = highlights
+    .slice(0, 4)
+    .map((h, i) => {
+      const y = 1180 + i * 130;
+      const title = escapeXml(h.title.length > 36 ? h.title.slice(0, 34) + '…' : h.title);
+      const venue = h.venue ? escapeXml(h.venue.length > 30 ? h.venue.slice(0, 28) + '…' : h.venue) : '';
+      return `
+    <g transform="translate(80,${y})">
+      <rect x="0" y="0" width="920" height="104" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="32" y="42" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
+      <text x="150" y="42" font-family="Inter,system-ui,sans-serif" font-size="30" font-weight="600" fill="#ffffff">${title}</text>
+      ${venue ? `<g transform="translate(150,68)"><circle cx="6" cy="6" r="3" fill="${palette.accent}"/><text x="20" y="11" font-family="Inter,system-ui,sans-serif" font-size="22" fill="rgba(255,255,255,0.78)">${venue}</text></g>` : ''}
+    </g>`;
+    })
+    .join('');
+
+  return `
+  <g transform="translate(80,140)">
+    <rect x="0" y="0" width="240" height="50" rx="25" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+    <text x="120" y="34" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
+  </g>
+
+  <text x="80" y="380" font-family="Inter,system-ui,sans-serif" font-size="40" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="5">HÀNH TRÌNH CỦA TÔI</text>
+  <text x="80" y="560" font-family="Georgia,serif" font-size="${Math.max(110, 180 - dest.length * 6)}" font-weight="700" fill="#ffffff" filter="url(#textGlow)">${dest}</text>
+
+  <g transform="translate(80,700)">
+    <rect x="0" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="140" y="84" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">NGÀY</text>
+    <text x="140" y="174" font-family="Inter,system-ui,sans-serif" font-size="110" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
+
+    <rect x="320" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="460" y="84" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">HOẠT ĐỘNG</text>
+    <text x="460" y="174" font-family="Inter,system-ui,sans-serif" font-size="110" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
+
+    <rect x="640" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="780" y="84" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">CHI PHÍ</text>
+    <text x="780" y="170" font-family="Inter,system-ui,sans-serif" font-size="${cost.length > 14 ? 32 : 40}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+  </g>
+
+  <text x="80" y="1100" font-family="Inter,system-ui,sans-serif" font-size="32" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  ${highlightItems}
+
+  <g transform="translate(80,1760)">
+    <text x="0" y="40" font-family="Georgia,serif" font-size="42" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
+    <text x="0" y="92" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
+  </g>`;
+}
+
+function layoutPortrait(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
+  const highlightItems = highlights
+    .slice(0, 3)
+    .map((h, i) => {
+      const y = 760 + i * 130;
+      const title = escapeXml(h.title.length > 32 ? h.title.slice(0, 30) + '…' : h.title);
+      return `
+    <g transform="translate(60,${y})">
+      <rect x="0" y="0" width="960" height="104" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="32" y="42" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
+      <text x="150" y="42" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="600" fill="#ffffff">${title}</text>
+      ${h.venue ? `<text x="150" y="78" font-family="Inter,system-ui,sans-serif" font-size="20" fill="rgba(255,255,255,0.78)">${escapeXml(h.venue.length > 38 ? h.venue.slice(0, 36) + '…' : h.venue)}</text>` : ''}
+    </g>`;
+    })
+    .join('');
+
+  return `
+  <g transform="translate(60,100)">
+    <rect x="0" y="0" width="200" height="44" rx="22" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+    <text x="100" y="30" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
+  </g>
+
+  <text x="60" y="270" font-family="Inter,system-ui,sans-serif" font-size="32" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="5">HÀNH TRÌNH CỦA TÔI</text>
+  <text x="60" y="410" font-family="Georgia,serif" font-size="${Math.max(90, 140 - dest.length * 5)}" font-weight="700" fill="#ffffff" filter="url(#textGlow)">${dest}</text>
+
+  <g transform="translate(60,500)">
+    <rect x="0" y="0" width="300" height="200" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="150" y="74" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">NGÀY</text>
+    <text x="150" y="160" font-family="Inter,system-ui,sans-serif" font-size="96" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
+
+    <rect x="330" y="0" width="300" height="200" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="480" y="74" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">HOẠT ĐỘNG</text>
+    <text x="480" y="160" font-family="Inter,system-ui,sans-serif" font-size="96" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
+
+    <rect x="660" y="0" width="300" height="200" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="810" y="74" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">CHI PHÍ</text>
+    <text x="810" y="156" font-family="Inter,system-ui,sans-serif" font-size="${cost.length > 14 ? 28 : 36}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+  </g>
+
+  <text x="60" y="730" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  ${highlightItems}
+
+  <g transform="translate(60,1240)">
+    <text x="0" y="36" font-family="Georgia,serif" font-size="38" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
+    <text x="0" y="80" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
+  </g>`;
+}
+
+function layoutSquare(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
+  const highlightItems = highlights
+    .slice(0, 2)
+    .map((h, i) => {
+      const y = 720 + i * 110;
+      const title = escapeXml(h.title.length > 30 ? h.title.slice(0, 28) + '…' : h.title);
+      return `
+    <g transform="translate(60,${y})">
+      <rect x="0" y="0" width="960" height="90" rx="20" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="32" y="38" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
+      <text x="140" y="38" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="600" fill="#ffffff">${title}</text>
+      ${h.venue ? `<text x="140" y="68" font-family="Inter,system-ui,sans-serif" font-size="18" fill="rgba(255,255,255,0.78)">${escapeXml(h.venue.length > 40 ? h.venue.slice(0, 38) + '…' : h.venue)}</text>` : ''}
+    </g>`;
+    })
+    .join('');
+
+  return `
+  <g transform="translate(60,80)">
+    <rect x="0" y="0" width="180" height="40" rx="20" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+    <text x="90" y="27" font-family="Inter,system-ui,sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
+  </g>
+
+  <text x="60" y="220" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="4">HÀNH TRÌNH CỦA TÔI</text>
+  <text x="60" y="350" font-family="Georgia,serif" font-size="${Math.max(80, 130 - dest.length * 5)}" font-weight="700" fill="#ffffff" filter="url(#textGlow)">${dest}</text>
+
+  <g transform="translate(60,440)">
+    <rect x="0" y="0" width="300" height="180" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="150" y="66" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">NGÀY</text>
+    <text x="150" y="146" font-family="Inter,system-ui,sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
+
+    <rect x="330" y="0" width="300" height="180" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="480" y="66" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">HOẠT ĐỘNG</text>
+    <text x="480" y="146" font-family="Inter,system-ui,sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
+
+    <rect x="660" y="0" width="300" height="180" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="810" y="66" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">CHI PHÍ</text>
+    <text x="810" y="140" font-family="Inter,system-ui,sans-serif" font-size="${cost.length > 14 ? 26 : 32}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+  </g>
+
+  <text x="60" y="690" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  ${highlightItems}
+
+  <g transform="translate(60,970)">
+    <text x="0" y="34" font-family="Georgia,serif" font-size="34" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
+    <text x="0" y="74" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
+  </g>`;
+}
+
+function buildReelSvg(itinerary: ItineraryPlan, format: Format): string {
   const dest = escapeXml(itinerary.destination);
   const days = itinerary.timeline.length;
   const activities = itinerary.timeline.reduce((s, d) => s + d.schedule.length, 0);
   const cost = itinerary.budget_summary?.total_estimated || '—';
   const highlights = topHighlights(itinerary, 4);
-  const { c1, c2, c3 } = paletteFor(itinerary.destination);
+  const palette = paletteFor(itinerary.destination);
+  const seed = dest.split('').reduce((a, c) => a + c.charCodeAt(0), 7) * (format.w + format.h);
+  const sparkleCount = Math.round((format.w * format.h) / 18000);
+  const sparkles = buildSparkles(format.w, format.h, seed, sparkleCount);
 
-  const highlightItems = highlights
-    .map((h, i) => {
-      const y = 1180 + i * 130;
-      const title = escapeXml(h.title.length > 38 ? h.title.slice(0, 36) + '…' : h.title);
-      const venue = h.venue ? escapeXml((h.venue.length > 32 ? h.venue.slice(0, 30) + '…' : h.venue)) : '';
-      return `
-    <g transform="translate(80,${y})">
-      <rect x="0" y="0" width="920" height="100" rx="20" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
-      <text x="32" y="42" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="700" fill="#fcd34d">${escapeXml(h.time)}</text>
-      <text x="150" y="42" font-family="Inter,system-ui,sans-serif" font-size="32" font-weight="600" fill="#ffffff">${title}</text>
-      ${venue ? `<text x="150" y="78" font-family="Inter,system-ui,sans-serif" font-size="22" fill="rgba(255,255,255,0.7)">📍 ${venue}</text>` : ''}
-    </g>`;
-    })
-    .join('');
+  let body: string;
+  if (format.id === 'story') body = layoutStory(palette, dest, days, activities, cost, highlights);
+  else if (format.id === 'portrait') body = layoutPortrait(palette, dest, days, activities, cost, highlights);
+  else body = layoutSquare(palette, dest, days, activities, cost, highlights);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<svg xmlns="http://www.w3.org/2000/svg" width="${format.w}" height="${format.h}" viewBox="0 0 ${format.w} ${format.h}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="${c1}"/>
-      <stop offset="50%" stop-color="${c2}"/>
-      <stop offset="100%" stop-color="${c3}"/>
+      <stop offset="0%" stop-color="${palette.c1}"/>
+      <stop offset="48%" stop-color="${palette.c2}"/>
+      <stop offset="100%" stop-color="${palette.c3}"/>
     </linearGradient>
-    <radialGradient id="glow1" cx="0.2" cy="0.15" r="0.6">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.35)"/>
+    <radialGradient id="glow1" cx="0.18" cy="0.12" r="0.7">
+      <stop offset="0%" stop-color="${palette.glow}"/>
       <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
     </radialGradient>
-    <radialGradient id="glow2" cx="0.85" cy="0.85" r="0.7">
-      <stop offset="0%" stop-color="rgba(252,211,77,0.25)"/>
+    <radialGradient id="glow2" cx="0.85" cy="0.85" r="0.75">
+      <stop offset="0%" stop-color="rgba(252,211,77,0.32)"/>
       <stop offset="100%" stop-color="rgba(252,211,77,0)"/>
     </radialGradient>
+    <radialGradient id="glow3" cx="0.5" cy="0.5" r="0.95">
+      <stop offset="0%" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="80%" stop-color="rgba(0,0,0,0.05)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.30)"/>
+    </radialGradient>
+    <filter id="textGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
 
-  <rect width="${W}" height="${H}" fill="url(#bg)"/>
-  <rect width="${W}" height="${H}" fill="url(#glow1)"/>
-  <rect width="${W}" height="${H}" fill="url(#glow2)"/>
-
-  <g transform="translate(80,140)">
-    <rect x="0" y="0" width="240" height="50" rx="25" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
-    <text x="120" y="34" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle" letter-spacing="2">MOODTRIP</text>
-  </g>
-
-  <text x="80" y="380" font-family="Inter,system-ui,sans-serif" font-size="42" font-weight="500" fill="rgba(255,255,255,0.75)" letter-spacing="4">HÀNH TRÌNH CỦA TÔI</text>
-  <text x="80" y="540" font-family="Georgia,serif" font-size="170" font-weight="700" fill="#ffffff">${dest}</text>
-
-  <g transform="translate(80,680)">
-    <rect x="0" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
-    <text x="140" y="80" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="600" fill="rgba(255,255,255,0.7)" text-anchor="middle" letter-spacing="2">NGÀY</text>
-    <text x="140" y="170" font-family="Inter,system-ui,sans-serif" font-size="110" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
-
-    <rect x="320" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
-    <text x="460" y="80" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="600" fill="rgba(255,255,255,0.7)" text-anchor="middle" letter-spacing="2">HOẠT ĐỘNG</text>
-    <text x="460" y="170" font-family="Inter,system-ui,sans-serif" font-size="110" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
-
-    <rect x="640" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
-    <text x="780" y="80" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="600" fill="rgba(255,255,255,0.7)" text-anchor="middle" letter-spacing="2">DỰ KIẾN</text>
-    <text x="780" y="170" font-family="Inter,system-ui,sans-serif" font-size="42" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
-  </g>
-
-  <text x="80" y="1080" font-family="Inter,system-ui,sans-serif" font-size="30" font-weight="600" fill="rgba(255,255,255,0.6)" letter-spacing="3">ĐIỂM NHẤN</text>
-  ${highlightItems}
-
-  <g transform="translate(80,1780)">
-    <text x="0" y="40" font-family="Georgia,serif" font-size="40" font-style="italic" fill="rgba(255,255,255,0.85)">Tạo bởi Mơ ✨</text>
-    <text x="0" y="90" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="600" fill="rgba(255,255,255,0.6)" letter-spacing="2">moodtrip.app</text>
-  </g>
+  <rect width="${format.w}" height="${format.h}" fill="url(#bg)"/>
+  <rect width="${format.w}" height="${format.h}" fill="url(#glow1)"/>
+  <rect width="${format.w}" height="${format.h}" fill="url(#glow2)"/>
+  <g opacity="0.55">${sparkles}</g>
+  <rect width="${format.w}" height="${format.h}" fill="url(#glow3)"/>
+  ${body}
 </svg>`;
 }
 
 export const TripReelModal: React.FC<TripReelModalProps> = ({ itinerary, open, onClose }) => {
-  const svg = useMemo(() => buildReelSvg(itinerary), [itinerary]);
+  const [formatId, setFormatId] = useState<FormatId>('story');
+  const [copied, setCopied] = useState(false);
+  const format = FORMATS[formatId];
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const svg = useMemo(() => buildReelSvg(itinerary, format), [itinerary, format]);
   const dataUrl = useMemo(() => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, [svg]);
 
-  const handleDownload = () => {
+  useBodyScrollLock(open);
+  useEscapeKey(open, onClose);
+
+  useEffect(() => {
+    if (open) {
+      const t = window.setTimeout(() => closeBtnRef.current?.focus(), 400);
+      return () => window.clearTimeout(t);
+    }
+  }, [open]);
+
+  const handleDownloadSvg = () => {
     const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const slug = itinerary.destination.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
-    a.download = `moodtrip-${slug}-reel.svg`;
+    const slug = itinerary.destination
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .toLowerCase();
+    a.download = `moodtrip-${slug}-${format.id}-${format.w}x${format.h}.svg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const handleCopyImage = async () => {
+  const handleDownloadPng = async () => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = dataUrl;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Image load failed'));
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = format.w;
+    canvas.height = format.h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(img, 0, 0, format.w, format.h);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const slug = itinerary.destination
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .toLowerCase();
+      a.download = `moodtrip-${slug}-${format.id}-${format.w}x${format.h}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/png');
+  };
+
+  const handleCopy = async () => {
     try {
       const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
       await navigator.clipboard.write([new ClipboardItem({ 'image/svg+xml': blob })]);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
       return;
     } catch (writeErr) {
       console.warn('[reel] clipboard.write unavailable, falling back to text', writeErr);
     }
     try {
       await navigator.clipboard.writeText(svg);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
     } catch (textErr) {
       console.warn('[reel] clipboard unavailable', textErr);
     }
@@ -158,7 +404,10 @@ export const TripReelModal: React.FC<TripReelModalProps> = ({ itinerary, open, o
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Tạo Reel cho ${itinerary.destination}`}
+          className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
           onClick={onClose}
         >
           <motion.div
@@ -170,37 +419,77 @@ export const TripReelModal: React.FC<TripReelModalProps> = ({ itinerary, open, o
             onClick={(e) => e.stopPropagation()}
           >
             <button
+              ref={closeBtnRef}
+              type="button"
               onClick={onClose}
-              className="absolute -top-2 -right-2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20"
+              className="absolute -top-3 -right-3 z-10 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md flex items-center justify-center text-white border border-white/30 transition-colors"
               aria-label="Đóng"
             >
               <IconX className="w-5 h-5" />
             </button>
 
+            <div role="tablist" aria-label="Định dạng" className="flex items-center gap-1 p-1 rounded-full bg-white/[0.06] border border-white/10">
+              {Object.values(FORMATS).map((f) => {
+                const active = f.id === formatId;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setFormatId(f.id)}
+                    className={`relative inline-flex items-center min-h-[36px] px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                      active ? 'bg-white text-slate-900' : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="text-[11px] uppercase tracking-widest text-white/60 font-semibold">
+              {format.w} × {format.h} · {format.platforms}
+            </p>
+
             <img
+              key={formatId}
               src={dataUrl}
               alt={`Reel preview cho ${itinerary.destination}`}
-              className="w-full max-h-[78vh] rounded-2xl shadow-2xl shadow-black/60 border border-white/10"
-              style={{ aspectRatio: '9 / 16', objectFit: 'contain', background: '#0a0e1a' }}
+              className="w-full max-h-[68vh] rounded-2xl shadow-2xl shadow-black/60 border border-white/15"
+              style={{ aspectRatio: format.aspect, objectFit: 'contain', background: '#0a0e1a' }}
             />
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 w-full">
               <button
-                onClick={handleDownload}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold shadow-lg shadow-teal-500/30 hover:from-teal-400 hover:to-cyan-400 transition-colors"
+                type="button"
+                onClick={handleDownloadPng}
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold shadow-lg shadow-teal-500/30 hover:from-teal-400 hover:to-cyan-400 transition-colors"
               >
-                <IconDownload className="w-4 h-4" /> Tải về (SVG)
+                <IconDownload className="w-4 h-4" />
+                Tải PNG
               </button>
               <button
-                onClick={handleCopyImage}
-                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold border border-white/15 transition-colors"
+                type="button"
+                onClick={handleDownloadSvg}
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold border border-white/15 transition-colors"
               >
-                📋 Copy
+                <IconDownload className="w-4 h-4" />
+                SVG
+              </button>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold border border-white/15 transition-colors"
+              >
+                {copied ? <IconCheck className="w-4 h-4" /> : <IconCopy className="w-4 h-4" />}
+                {copied ? 'Đã copy' : 'Copy'}
               </button>
             </div>
 
-            <p className="text-xs text-white/60 text-center max-w-xs">
-              File 1080×1920, đăng được trực tiếp lên Instagram Reels, TikTok, Facebook Story.
+            <p className="text-xs text-white/65 text-center max-w-xs inline-flex items-center justify-center gap-1.5">
+              <IconSparkles className="w-3.5 h-3.5" />
+              Đăng trực tiếp lên Instagram Reels, TikTok, Facebook Story.
             </p>
           </motion.div>
         </motion.div>

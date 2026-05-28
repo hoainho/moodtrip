@@ -1,37 +1,31 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { ItineraryPlan, FormData } from '../types';
-import { ensurePublicTrip } from '../services/publicShare';
-import { useAuth } from '../services/useAuth';
+import { generateShareUrl } from '../services/shareService';
+import { IconShare, IconCopy, IconCheck } from './icons';
 
 interface PublicShareButtonProps {
   itinerary: ItineraryPlan;
   formInput?: Partial<FormData>;
-  onRequestSignIn: () => void;
 }
 
 type State = 'idle' | 'sharing' | 'shared' | 'error';
 
-export function PublicShareButton({ itinerary, formInput, onRequestSignIn }: PublicShareButtonProps) {
-  const { user } = useAuth();
+export function PublicShareButton({ itinerary }: PublicShareButtonProps) {
   const [state, setState] = useState<State>('idle');
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function handleShare() {
-    if (!user) {
-      onRequestSignIn();
-      return;
-    }
     setState('sharing');
     setErrorMsg(null);
     try {
-      const existingId = typeof itinerary.id === 'string' ? itinerary.id : undefined;
-      const result = await ensurePublicTrip(user.id, itinerary, formInput ?? {}, existingId);
-      setShareUrl(result.url);
+      const url = await generateShareUrl(itinerary);
+      setShareUrl(url);
       setState('shared');
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Không thể chia sẻ');
+      setErrorMsg(err instanceof Error ? err.message : 'Không thể tạo link chia sẻ');
       setState('error');
     }
   }
@@ -40,19 +34,23 @@ export function PublicShareButton({ itinerary, formInput, onRequestSignIn }: Pub
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
-    } catch {
-      void 0;
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.warn('[share] clipboard unavailable', err);
     }
   }
 
   return (
     <div className="inline-flex flex-col gap-2">
       <button
+        type="button"
         onClick={handleShare}
         disabled={state === 'sharing'}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-teal-500/30 text-teal-300 text-sm font-medium disabled:opacity-60"
+        className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-teal-500/30 text-teal-300 text-sm font-semibold disabled:opacity-60 transition-colors"
       >
-        {state === 'sharing' ? 'Đang tạo link…' : '🔗 Chia sẻ công khai'}
+        <IconShare className="w-4 h-4" />
+        {state === 'sharing' ? 'Đang tạo link…' : 'Chia sẻ chuyến đi'}
       </button>
 
       <AnimatePresence>
@@ -63,16 +61,21 @@ export function PublicShareButton({ itinerary, formInput, onRequestSignIn }: Pub
             exit={{ opacity: 0 }}
             className="rounded-xl bg-white/5 border border-teal-500/30 p-3 text-xs text-slate-300"
           >
-            <p className="mb-2">Lịch trình đã được công khai. Ai có link đều xem được:</p>
+            <p className="mb-2">Link chia sẻ (ai có link cũng xem được, không cần đăng ký):</p>
             <div className="flex gap-2">
               <input
                 readOnly
                 value={shareUrl}
                 onClick={(e) => (e.target as HTMLInputElement).select()}
-                className="flex-1 px-2 py-1.5 bg-slate-900 rounded text-teal-200 text-xs"
+                className="flex-1 min-w-0 px-2 py-2 bg-slate-900 rounded text-teal-200 text-xs"
               />
-              <button onClick={handleCopy} className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-xs rounded">
-                Copy
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1 min-h-[36px] px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold rounded transition-colors"
+              >
+                {copied ? <IconCheck className="w-3.5 h-3.5" /> : <IconCopy className="w-3.5 h-3.5" />}
+                {copied ? 'Đã copy' : 'Copy'}
               </button>
             </div>
           </motion.div>

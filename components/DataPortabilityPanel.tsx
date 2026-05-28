@@ -6,6 +6,7 @@ import {
   downloadArchive,
   requestAccountDeletionViaEdgeFunction,
 } from '../services/dataExport';
+import { IconPackage, IconTrash, IconCheck } from './icons';
 
 type State =
   | { kind: 'idle' }
@@ -60,7 +61,10 @@ export function DataPortabilityPanel() {
   return (
     <div className="rounded-2xl glass-dark border border-white/10 p-4 max-w-md mx-auto space-y-4">
       <div>
-        <p className="text-white font-medium text-sm mb-1">📦 Xuất dữ liệu của bạn</p>
+        <p className="text-white font-semibold text-sm mb-1 inline-flex items-center gap-2">
+          <IconPackage className="w-4 h-4 text-teal-300" />
+          Xuất dữ liệu của bạn
+        </p>
         <p className="text-slate-400 text-xs leading-relaxed mb-3">
           Tải về một file JSON chứa toàn bộ lịch trình, sở thích, và đồng ý xử lý dữ liệu của bạn.
           Theo Nghị định 13/2023/NĐ-CP, bạn có quyền mang dữ liệu của mình đi bất kỳ lúc nào.
@@ -77,9 +81,10 @@ export function DataPortabilityPanel() {
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-teal-300 text-xs mt-2"
+              className="text-teal-300 text-xs mt-2 inline-flex items-center gap-1.5"
             >
-              ✓ Đã xuất {state.count} chuyến đi.
+              <IconCheck className="w-3.5 h-3.5" />
+              Đã xuất {state.count} chuyến đi.
             </motion.p>
           )}
           {state.kind === 'export-failed' && (
@@ -97,7 +102,10 @@ export function DataPortabilityPanel() {
       <hr className="border-white/5" />
 
       <div>
-        <p className="text-white font-medium text-sm mb-1">🗑️ Yêu cầu xoá tài khoản</p>
+        <p className="text-white font-semibold text-sm mb-1 inline-flex items-center gap-2">
+          <IconTrash className="w-4 h-4 text-rose-300" />
+          Yêu cầu xoá tài khoản
+        </p>
         <p className="text-slate-400 text-xs leading-relaxed mb-3">
           Xoá toàn bộ dữ liệu của bạn trên hệ thống MoodTrip. Hành động này không thể hoàn tác.
           Theo Nghị định 13/2023/NĐ-CP, dữ liệu sẽ được xoá trong vòng 30 ngày.

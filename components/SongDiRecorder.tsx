@@ -7,6 +7,7 @@ import {
   type SoundClip,
   type WaveformSummary,
 } from '../services/songDi';
+import { IconMic, IconRecord } from './icons';
 
 interface SongDiRecorderProps {
   destination: string;
@@ -71,8 +72,11 @@ export function SongDiRecorder({ destination, onClipReady }: SongDiRecorderProps
 
   return (
     <div className="rounded-2xl border border-purple-500/20 bg-white/5 p-4">
-      <p className="text-white text-sm font-medium mb-1">🎙️ Sóng đi · {destination}</p>
-      <p className="text-slate-400 text-xs mb-3">
+      <p className="text-white text-sm font-semibold mb-1 inline-flex items-center gap-2">
+        <IconMic className="w-4 h-4 text-purple-300" />
+        Sóng đi · {destination}
+      </p>
+      <p className="text-slate-300 text-sm mb-3 leading-relaxed">
         Ghi 5 giây âm thanh ở nơi bạn đang đứng — Mơ sẽ ghép thành một tấm bưu thiếp âm thanh sau chuyến đi.
       </p>
 
@@ -92,9 +96,10 @@ export function SongDiRecorder({ destination, onClipReady }: SongDiRecorderProps
         <motion.div
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 1, repeat: Infinity }}
-          className="text-rose-300 text-sm font-medium mb-2"
+          className="text-rose-300 text-sm font-semibold mb-2 inline-flex items-center gap-2"
         >
-          🔴 Đang ghi…
+          <IconRecord className="w-3 h-3 text-rose-500" />
+          Đang ghi…
         </motion.div>
       )}
 
@@ -109,11 +114,13 @@ export function SongDiRecorder({ destination, onClipReady }: SongDiRecorderProps
       <div className="flex gap-2">
         {state !== 'recording' ? (
           <button
+            type="button"
             onClick={handleStart}
             disabled={state === 'requesting' || state === 'processing'}
-            className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl"
+            className="flex-1 inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
           >
-            {clip ? 'Ghi lại' : '🎙️ Bắt đầu ghi'}
+            {!clip && <IconMic className="w-4 h-4" />}
+            {clip ? 'Ghi lại' : 'Bắt đầu ghi'}
           </button>
         ) : (
           <button

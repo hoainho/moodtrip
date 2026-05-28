@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import type { TripRecord } from '../services/tripsApi';
-import { forkTrip, getTripBySlug } from '../services/tripsApi';
-import { useAuth } from '../services/useAuth';
+import { getTripBySlug } from '../services/tripsApi';
+import { IconWand, IconCheck } from './icons';
 
 interface SharedTripViewProps {
   slug: string;
   onForkSuccess: (trip: TripRecord) => void;
-  onRequestSignIn: () => void;
   onBackToApp: () => void;
 }
 
 type State = 'loading' | 'loaded' | 'not-found' | 'forking' | 'forked';
 
-export function SharedTripView({ slug, onForkSuccess, onRequestSignIn, onBackToApp }: SharedTripViewProps) {
-  const { user } = useAuth();
+export function SharedTripView({ slug, onForkSuccess, onBackToApp }: SharedTripViewProps) {
   const [trip, setTrip] = useState<TripRecord | null>(null);
   const [state, setState] = useState<State>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -36,20 +34,22 @@ export function SharedTripView({ slug, onForkSuccess, onRequestSignIn, onBackToA
     };
   }, [slug]);
 
-  async function handleFork() {
-    if (!user) {
-      onRequestSignIn();
-      return;
-    }
+  function handleFork() {
+    if (!trip) return;
     setState('forking');
-    const forked = await forkTrip(slug, user.id);
-    if (!forked) {
-      setError('Không thể fork lịch trình này. Thử lại nhé.');
+    setError(null);
+    try {
+      const cloned: TripRecord = {
+        ...trip,
+        id: `${trip.id}-fork-${Date.now()}`,
+        itinerary: { ...trip.itinerary, id: `${trip.id}-fork-${Date.now()}` },
+      };
+      setState('forked');
+      window.setTimeout(() => onForkSuccess(cloned), 500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không thể remix lịch trình này.');
       setState('loaded');
-      return;
     }
-    setState('forked');
-    setTimeout(() => onForkSuccess(forked), 600);
   }
 
   if (state === 'loading') {
@@ -110,21 +110,29 @@ export function SharedTripView({ slug, onForkSuccess, onRequestSignIn, onBackToA
 
       <footer className="sticky bottom-4 z-10 flex gap-2">
         <button
+          type="button"
           onClick={handleFork}
           disabled={state === 'forking' || state === 'forked'}
-          className="flex-1 px-5 py-3 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-2xl disabled:opacity-60 shadow-lg shadow-teal-500/30"
+          className="flex-1 inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-3 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-2xl disabled:opacity-60 shadow-lg shadow-teal-500/30 transition-colors"
         >
-          {state === 'forking'
-            ? 'Đang tạo bản remix…'
-            : state === 'forked'
-            ? '✓ Đã thêm vào lịch trình của bạn'
-            : user
-            ? '🪄 Remix lịch trình này'
-            : 'Đăng nhập để remix'}
+          {state === 'forking' ? (
+            'Đang tạo bản remix…'
+          ) : state === 'forked' ? (
+            <>
+              <IconCheck className="w-4 h-4" />
+              Đã thêm vào lịch trình của bạn
+            </>
+          ) : (
+            <>
+              <IconWand className="w-4 h-4" />
+              Remix lịch trình này
+            </>
+          )}
         </button>
         <button
+          type="button"
           onClick={onBackToApp}
-          className="px-4 py-3 text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm"
+          className="min-h-[48px] px-4 py-3 text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm transition-colors"
         >
           Trang chủ
         </button>

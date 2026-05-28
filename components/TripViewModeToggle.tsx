@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { IconLayoutList, IconFilm, IconLayoutGrid } from './icons';
 
 export type TripViewMode = 'timeline' | 'storyboard' | 'compact';
 
@@ -8,10 +9,15 @@ interface TripViewModeToggleProps {
   onChange: (mode: TripViewMode) => void;
 }
 
-const MODES: Array<{ id: TripViewMode; label: string; icon: string; hint: string }> = [
-  { id: 'timeline', label: 'Lịch trình', icon: '📋', hint: 'Theo giờ' },
-  { id: 'storyboard', label: 'Storyboard', icon: '🎬', hint: 'Phóng to' },
-  { id: 'compact', label: 'Gọn', icon: '📑', hint: 'Cho điện thoại' },
+const MODES: Array<{
+  id: TripViewMode;
+  label: string;
+  Icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  hint: string;
+}> = [
+  { id: 'timeline', label: 'Lịch trình', Icon: IconLayoutList, hint: 'Theo giờ' },
+  { id: 'storyboard', label: 'Storyboard', Icon: IconFilm, hint: 'Phóng to' },
+  { id: 'compact', label: 'Gọn', Icon: IconLayoutGrid, hint: 'Cho điện thoại' },
 ];
 
 export const TripViewModeToggle: React.FC<TripViewModeToggleProps> = ({ mode, onChange }) => {
@@ -19,12 +25,15 @@ export const TripViewModeToggle: React.FC<TripViewModeToggleProps> = ({ mode, on
     <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/[0.04] border border-white/10">
       {MODES.map((m) => {
         const active = m.id === mode;
+        const Icon = m.Icon;
         return (
           <button
             key={m.id}
             type="button"
             onClick={() => onChange(m.id)}
-            className="relative px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
+            aria-label={`${m.label} — ${m.hint}`}
+            aria-pressed={active}
+            className="relative inline-flex items-center min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
             title={m.hint}
           >
             {active && (
@@ -34,8 +43,8 @@ export const TripViewModeToggle: React.FC<TripViewModeToggleProps> = ({ mode, on
                 transition={{ type: 'spring', stiffness: 350, damping: 30 }}
               />
             )}
-            <span className={`relative flex items-center gap-1.5 ${active ? 'text-teal-200' : 'text-slate-400 hover:text-white'}`}>
-              <span>{m.icon}</span>
+            <span className={`relative inline-flex items-center gap-1.5 ${active ? 'text-teal-200' : 'text-slate-400 hover:text-white'}`}>
+              <Icon className="w-4 h-4 flex-shrink-0" />
               <span className="hidden sm:inline">{m.label}</span>
             </span>
           </button>

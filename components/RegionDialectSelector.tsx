@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../services/useAuth';
 import { loadPreferences, setRegionDialect } from '../services/preferencesApi';
+import { IconLanguages } from './icons';
 
 const OPTIONS: Array<{ id: string; label: string; sample: string }> = [
   { id: 'auto', label: 'Tự động theo điểm đến', sample: 'Mơ chọn giọng phù hợp với mỗi chuyến' },
@@ -36,7 +37,10 @@ export function RegionDialectSelector() {
 
   return (
     <div className="rounded-2xl glass-dark border border-white/10 p-4 max-w-md mx-auto">
-      <p className="text-white font-medium text-sm mb-1">🗣️ Tiếng vùng của Mơ</p>
+      <p className="text-white font-semibold text-sm mb-1 inline-flex items-center gap-2">
+        <IconLanguages className="w-4 h-4 text-teal-300" />
+        Tiếng vùng của Mơ
+      </p>
       <p className="text-slate-400 text-xs mb-3">
         Chọn giọng địa phương bạn muốn nghe khi Mơ kể chuyện.
       </p>

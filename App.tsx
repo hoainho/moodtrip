@@ -11,8 +11,6 @@ import { TipsPage } from './components/TipsPage';
 import { AboutPage } from './components/AboutPage';
 import { Footer } from './components/Footer';
 import { ChatCompanion } from './components/ChatCompanion';
-import { AuthModal } from './components/AuthModal';
-import { MigrationBanner } from './components/MigrationBanner';
 import { ConsentBanner } from './components/ConsentBanner';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { CardPullOnboarding } from './components/CardPullOnboarding';
@@ -33,7 +31,7 @@ import { parseCurrentRoute, type Route } from './services/sharedTripRouter';
 import { saveTrip } from './services/tripsApi';
 import { ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
 import type { FormData, ItineraryPlan, Mood, ShortTripMood } from './types';
-import { IconWarning } from './components/icons';
+import { IconWarning, IconHome, IconCog, IconGlobe, IconFeather, IconMoon } from './components/icons';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -100,7 +98,6 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isSharedView, setIsSharedView] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [route, setRoute] = useState<Route>(() => parseCurrentRoute());
   const [cardPullPrefill, setCardPullPrefill] = useState<Partial<FormData> | null>(null);
   const [preferenceDefaults, setPreferenceDefaults] = useState<Partial<FormData> | null>(null);
@@ -438,13 +435,11 @@ export default function App() {
             setRoute({ kind: 'app' });
             setView('result');
           }}
-          onRequestSignIn={() => setAuthModalOpen(true)}
           onBackToApp={() => {
             window.history.replaceState({}, '', '/');
             setRoute({ kind: 'app' });
           }}
         />
-        <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
       </div>
     );
   }
@@ -564,22 +559,21 @@ export default function App() {
               </div>
 
               <div className="flex flex-wrap items-start gap-3">
-                <PublicShareButton
-                  itinerary={itinerary}
-                  onRequestSignIn={() => setAuthModalOpen(true)}
-                />
+                <PublicShareButton itinerary={itinerary} />
                 <button
                   onClick={() => setNotebookOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-200 to-amber-300 text-amber-900 text-sm font-semibold"
+                  className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-200 to-amber-300 text-amber-900 text-sm font-semibold hover:from-amber-300 hover:to-amber-400 transition-colors"
                 >
-                  ✍️ Mơ viết thư cho bạn
+                  <IconFeather className="w-4 h-4" />
+                  Mơ viết thư cho bạn
                 </button>
                 {lastFormData && (
                   <button
                     onClick={() => setAntiItineraryForm(lastFormData)}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold"
+                    className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:from-purple-600 hover:to-pink-600 transition-colors"
                   >
-                    🌒 Thử Anti-Itinerary
+                    <IconMoon className="w-4 h-4" />
+                    Thử Anti-Itinerary
                   </button>
                 )}
               </div>
@@ -696,31 +690,34 @@ export default function App() {
       <Analytics />
       <SpeedInsights />
 
-      {/* Quick-access buttons — hidden on Hero (Hero has its own top-right nav) to prevent overlap */}
       {view !== 'hero' && (
         <div className="fixed top-4 right-4 z-30 flex gap-2">
           <button
+            type="button"
             onClick={() => setQueModalOpen(true)}
-            className="px-3 py-1.5 text-xs font-medium text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+            className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
             aria-label="Đường về quê"
           >
-            🏡 Về quê
+            <IconHome className="w-4 h-4" />
+            <span>Về quê</span>
           </button>
-          {user && (
-            <button
-              onClick={() => setWorldSceneOpen(true)}
-              className="px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
-              aria-label="Thế giới của bạn"
-            >
-              🌳 Thế giới
-            </button>
-          )}
           <button
-            onClick={() => (user ? setPortabilityOpen(true) : setAuthModalOpen(true))}
-            className="px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
-            aria-label={user ? 'Tài khoản' : 'Đăng nhập'}
+            type="button"
+            onClick={() => setWorldSceneOpen(true)}
+            className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+            aria-label="Thế giới của bạn"
           >
-            {user ? '⚙️ Tài khoản' : 'Đăng nhập'}
+            <IconGlobe className="w-4 h-4" />
+            <span>Thế giới</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPortabilityOpen(true)}
+            className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+            aria-label="Cài đặt và dữ liệu"
+          >
+            <IconCog className="w-4 h-4" />
+            <span>Cài đặt</span>
           </button>
         </div>
       )}
@@ -751,7 +748,6 @@ export default function App() {
 
 
       <ChatCompanion />
-      <MigrationBanner />
       <PWAInstallPrompt />
       <ConsentBanner />
       <SundayDreamBanner onAcceptDream={() => setView('card-pull')} />
@@ -802,7 +798,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
 
       {/* Toast Notification */}
       <AnimatePresence>

@@ -11,6 +11,7 @@ import {
 } from '../services/cardPullDeck';
 import { hapticSelection, hapticSuccess } from '../services/haptics';
 import type { Mood, ShortTripMood } from '../types';
+import { IconSparkles } from './icons';
 
 interface CardPullOnboardingProps {
   onComplete: (result: { moods: Mood[]; shortMoods: ShortTripMood[]; narrative: string }) => void;
@@ -127,11 +128,13 @@ export function CardPullOnboarding({ onComplete, onUseTraditionalForm }: CardPul
 
       <div className="flex flex-col gap-3 w-full max-w-md">
         <button
+          type="button"
           onClick={needsMotionPermission ? requestMotionAndPull : doPull}
           disabled={shaking}
-          className="w-full px-6 py-4 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white font-bold rounded-2xl shadow-lg shadow-teal-500/30"
+          className="w-full inline-flex items-center justify-center gap-2 min-h-[52px] px-6 py-4 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white font-bold rounded-2xl shadow-lg shadow-teal-500/30 transition-colors"
         >
-          {shaking ? 'Đang rút…' : pull ? 'Rút lại' : '🎴 Rút bài'}
+          {!shaking && !pull && <IconSparkles className="w-5 h-5" />}
+          {shaking ? 'Đang rút…' : pull ? 'Rút lại' : 'Rút bài'}
         </button>
 
         <AnimatePresence>

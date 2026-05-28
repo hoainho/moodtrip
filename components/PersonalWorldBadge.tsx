@@ -8,6 +8,7 @@ import {
   type PersonalWorldStats,
 } from '../services/personalWorld';
 import { useAuth } from '../services/useAuth';
+import { IconTree, IconSprout } from './icons';
 
 export function PersonalWorldBadge() {
   const { user } = useAuth();
@@ -44,7 +45,9 @@ export function PersonalWorldBadge() {
     >
       <p className="text-teal-300 text-xs uppercase tracking-wider mb-2">Thế giới MoodTrip của bạn</p>
       <div className="flex items-center gap-3 mb-3">
-        <div className="text-3xl">{current ? '🌳' : '🌱'}</div>
+        <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center flex-shrink-0">
+          {current ? <IconTree className="w-6 h-6" /> : <IconSprout className="w-6 h-6" />}
+        </div>
         <div>
           <p className="text-white font-bold text-base">
             {current?.label ?? 'Chưa có chuyến nào'}

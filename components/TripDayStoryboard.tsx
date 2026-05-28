@@ -1,14 +1,26 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import type { DayPlan } from '../types';
-import { IconMapPin, IconWallet, IconFire, IconSun, IconMoon, IconClock } from './icons';
+import {
+  IconMapPin,
+  IconWallet,
+  IconFire,
+  IconSun,
+  IconMoon,
+  IconClock,
+  IconCoffee,
+  IconCloudSun,
+  IconSparkles,
+} from './icons';
 
 interface TripDayStoryboardProps {
   day: DayPlan;
   dayIndex: number;
 }
 
-function partOfDay(time: string): 'morning' | 'noon' | 'afternoon' | 'evening' {
+type PartId = 'morning' | 'noon' | 'afternoon' | 'evening';
+
+function partOfDay(time: string): PartId {
   const m = time.match(/(\d{1,2})/);
   if (!m) return 'morning';
   const h = parseInt(m[1], 10);
@@ -18,11 +30,19 @@ function partOfDay(time: string): 'morning' | 'noon' | 'afternoon' | 'evening' {
   return 'evening';
 }
 
-const PART_LABELS: Record<string, { label: string; bg: string; accent: string }> = {
-  morning: { label: 'Sáng', bg: 'from-amber-300/30 via-orange-200/20 to-rose-200/10', accent: 'text-amber-200' },
-  noon: { label: 'Trưa', bg: 'from-sky-300/30 via-cyan-200/20 to-teal-200/10', accent: 'text-sky-200' },
-  afternoon: { label: 'Chiều', bg: 'from-violet-300/30 via-fuchsia-200/20 to-pink-200/10', accent: 'text-violet-200' },
-  evening: { label: 'Tối', bg: 'from-indigo-500/40 via-purple-400/25 to-slate-700/20', accent: 'text-indigo-200' },
+const PART_META: Record<
+  PartId,
+  {
+    label: string;
+    Icon: React.FC<React.SVGProps<SVGSVGElement>>;
+    iconColor: string;
+    railColor: string;
+  }
+> = {
+  morning: { label: 'Sáng', Icon: IconCoffee, iconColor: 'text-amber-300', railColor: 'bg-amber-400/60' },
+  noon: { label: 'Trưa', Icon: IconSun, iconColor: 'text-yellow-300', railColor: 'bg-yellow-400/60' },
+  afternoon: { label: 'Chiều', Icon: IconCloudSun, iconColor: 'text-orange-300', railColor: 'bg-orange-400/60' },
+  evening: { label: 'Tối', Icon: IconMoon, iconColor: 'text-indigo-300', railColor: 'bg-indigo-400/60' },
 };
 
 export const TripDayStoryboard: React.FC<TripDayStoryboardProps> = ({ day, dayIndex }) => {
@@ -30,84 +50,95 @@ export const TripDayStoryboard: React.FC<TripDayStoryboardProps> = ({ day, dayIn
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.55, delay: dayIndex * 0.1 }}
-      className="mb-12"
+      transition={{ duration: 0.45, delay: dayIndex * 0.08 }}
+      className="mb-10"
     >
-      <header className="flex items-center gap-4 mb-5">
-        <div className="flex-shrink-0 w-14 h-14 rounded-2xl gradient-nature flex items-center justify-center shadow-lg shadow-teal-500/20">
-          {isNight ? <IconMoon className="w-7 h-7 text-white" /> : <IconSun className="w-7 h-7 text-white" />}
+      <header className="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.06]">
+        <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+          {isNight ? <IconMoon className="w-5 h-5 text-white" /> : <IconSun className="w-5 h-5 text-white" />}
         </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-400">{day.day}</p>
-          <h3 className="text-2xl sm:text-3xl font-bold text-white leading-tight">{day.title}</h3>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-400">{day.day}</p>
+          <h3 className="text-xl sm:text-2xl font-bold text-white leading-tight truncate">{day.title}</h3>
         </div>
       </header>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <ol className="space-y-3">
         {day.schedule.map((item, i) => {
           const part = partOfDay(item.time);
-          const meta = PART_LABELS[part];
+          const meta = PART_META[part];
+          const Icon = meta.Icon;
           return (
-            <motion.article
+            <motion.li
               key={i}
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, delay: 0.15 + i * 0.06 }}
-              whileHover={{ y: -4 }}
-              className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] hover:border-teal-400/30 transition-colors group"
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.35, delay: 0.1 + i * 0.05 }}
+              className="relative pl-4"
             >
-              <div className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-br ${meta.bg} opacity-90`} />
-              <div className="relative p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`text-[10px] font-bold uppercase tracking-widest ${meta.accent}`}>
-                    {meta.label}
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm text-xs font-bold text-white">
-                    <IconClock className="w-3 h-3" /> {item.time}
-                  </span>
-                </div>
+              <span aria-hidden className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-full ${meta.railColor}`} />
 
-                <h4 className="text-lg font-bold text-white mb-2 leading-snug">{item.activity}</h4>
-
-                {item.is_trending && (
-                  <div className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 mb-2">
-                    <IconFire className="w-3 h-3" /> Trending
-                    {item.trending_reason && <span className="text-orange-200/80 font-normal">· {item.trending_reason}</span>}
+              <article className="rounded-2xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/15 transition-colors">
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-center gap-3 mb-2.5">
+                    <span className={`inline-flex items-center gap-1.5 ${meta.iconColor}`}>
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wider">{meta.label}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-sm font-bold text-white tabular-nums">
+                      <IconClock className="w-3.5 h-3.5 text-slate-400" />
+                      {item.time}
+                    </span>
+                    {item.is_trending && (
+                      <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-300 border border-orange-500/25">
+                        <IconFire className="w-3 h-3" />
+                        Trending
+                      </span>
+                    )}
                   </div>
-                )}
 
-                <div className="space-y-1.5 mt-3 text-sm">
-                  {item.venue && (
-                    <div className="flex items-center gap-2 text-slate-300">
-                      <IconMapPin className="w-4 h-4 text-teal-400 flex-shrink-0" />
-                      {item.google_maps_link ? (
-                        <a
-                          href={item.google_maps_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline hover:text-teal-300 transition-colors font-medium truncate"
-                        >
-                          {item.venue}
-                        </a>
-                      ) : (
-                        <span className="font-medium truncate">{item.venue}</span>
-                      )}
-                    </div>
+                  <h4 className="text-base sm:text-lg font-semibold text-white leading-snug mb-2">{item.activity}</h4>
+
+                  {item.is_trending && item.trending_reason && (
+                    <p className="text-xs text-orange-300/80 mb-2 flex items-start gap-1">
+                      <IconSparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>{item.trending_reason}</span>
+                    </p>
                   )}
-                  {item.estimated_cost && (
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <IconWallet className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                      <span>{item.estimated_cost}</span>
-                    </div>
-                  )}
+
+                  <div className="space-y-1.5 text-sm">
+                    {item.venue && (
+                      <div className="flex items-start gap-2 text-slate-300">
+                        <IconMapPin className="w-4 h-4 text-teal-400 flex-shrink-0 mt-0.5" />
+                        {item.google_maps_link ? (
+                          <a
+                            href={item.google_maps_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline hover:text-teal-300 transition-colors font-medium"
+                          >
+                            {item.venue}
+                          </a>
+                        ) : (
+                          <span className="font-medium">{item.venue}</span>
+                        )}
+                      </div>
+                    )}
+                    {item.estimated_cost && (
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <IconWallet className="w-4 h-4 text-yellow-400/80 flex-shrink-0" />
+                        <span>{item.estimated_cost}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.article>
+              </article>
+            </motion.li>
           );
         })}
-      </div>
+      </ol>
     </motion.section>
   );
 };

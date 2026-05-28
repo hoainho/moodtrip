@@ -395,3 +395,167 @@ export const IconTarget = (props: React.SVGProps<SVGSVGElement>) => (
         <circle cx="12" cy="12" r="2" />
     </SvgIcon>
 );
+
+export const IconHome = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    </SvgIcon>
+);
+
+export const IconCog = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </SvgIcon>
+);
+
+export const IconUser = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+    </SvgIcon>
+);
+
+export const IconFilm = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+        <line x1="7" y1="2" x2="7" y2="22" />
+        <line x1="17" y1="2" x2="17" y2="22" />
+        <line x1="2" y1="12" x2="22" y2="12" />
+        <line x1="2" y1="7" x2="7" y2="7" />
+        <line x1="2" y1="17" x2="7" y2="17" />
+        <line x1="17" y1="17" x2="22" y2="17" />
+        <line x1="17" y1="7" x2="22" y2="7" />
+    </SvgIcon>
+);
+
+export const IconLayoutList = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <rect x="3" y="4" width="7" height="7" />
+        <rect x="3" y="13" width="7" height="7" />
+        <line x1="14" y1="6" x2="21" y2="6" />
+        <line x1="14" y1="10" x2="21" y2="10" />
+        <line x1="14" y1="15" x2="21" y2="15" />
+        <line x1="14" y1="19" x2="21" y2="19" />
+    </SvgIcon>
+);
+
+export const IconLayoutGrid = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <rect x="3" y="3" width="7" height="7" />
+        <rect x="14" y="3" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" />
+    </SvgIcon>
+);
+
+export const IconSmartphone = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+        <line x1="12" y1="18" x2="12.01" y2="18" />
+    </SvgIcon>
+);
+
+export const IconWand = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M15 4V2" />
+        <path d="M15 16v-2" />
+        <path d="M8 9h2" />
+        <path d="M20 9h2" />
+        <path d="M17.8 11.8l1.4 1.4" />
+        <path d="M15 9h.01" />
+        <path d="M17.8 6.2l1.4-1.4" />
+        <path d="M3 21l9-9" />
+        <path d="M12.2 6.2l-1.4-1.4" />
+    </SvgIcon>
+);
+
+export const IconFeather = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+        <line x1="16" y1="8" x2="2" y2="22" />
+        <line x1="17.5" y1="15" x2="9" y2="15" />
+    </SvgIcon>
+);
+
+export const IconLogIn = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+        <polyline points="10 17 15 12 10 7" />
+        <line x1="15" y1="12" x2="3" y2="12" />
+    </SvgIcon>
+);
+
+export const IconRoute = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="6" cy="19" r="3" />
+        <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+        <circle cx="18" cy="5" r="3" />
+    </SvgIcon>
+);
+
+export const IconMic = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <line x1="12" y1="19" x2="12" y2="23" />
+        <line x1="8" y1="23" x2="16" y2="23" />
+    </SvgIcon>
+);
+
+export const IconRecord = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <circle cx="12" cy="12" r="6" fill="currentColor" />
+    </SvgIcon>
+);
+
+export const IconMail = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+        <polyline points="22,6 12,13 2,6" />
+    </SvgIcon>
+);
+
+export const IconSprout = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M7 20h10" />
+        <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+        <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+        <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+    </SvgIcon>
+);
+
+export const IconTree = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="M17 14a5 5 0 0 0-2-9.5 5.5 5.5 0 0 0-10 0A5 5 0 0 0 3 14h.5" />
+        <path d="M12 14v8" />
+        <path d="M9 22h6" />
+    </SvgIcon>
+);
+
+export const IconPackage = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" />
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+        <line x1="12" y1="22.08" x2="12" y2="12" />
+    </SvgIcon>
+);
+
+export const IconTrash = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <polyline points="3 6 5 6 21 6" />
+        <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </SvgIcon>
+);
+
+export const IconLanguages = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon {...props}>
+        <path d="m5 8 6 6" />
+        <path d="m4 14 6-6 2-3" />
+        <path d="M2 5h12" />
+        <path d="M7 2h1" />
+        <path d="m22 22-5-10-5 10" />
+        <path d="M14 18h6" />
+    </SvgIcon>
+);
