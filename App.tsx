@@ -23,7 +23,7 @@ import { PublicShareButton } from './components/PublicShareButton';
 import { PersonalWorldBadge } from './components/PersonalWorldBadge';
 import { PersonalWorldScene } from './components/PersonalWorldScene';
 import { AntiItineraryView } from './components/AntiItineraryView';
-import { DataPortabilityPanel } from './components/DataPortabilityPanel';
+
 import { generateAntiItinerary } from './services/antiItinerary';
 import { useAuth } from './services/useAuth';
 import { loadPreferences, savePreferencesFromTrip } from './services/preferencesApi';
@@ -31,7 +31,7 @@ import { parseCurrentRoute, type Route } from './services/sharedTripRouter';
 import { saveTrip } from './services/tripsApi';
 import { ITINERARY_LS_KEY, SAVED_ITINERARIES_LS_KEY } from './constants';
 import type { FormData, ItineraryPlan, Mood, ShortTripMood } from './types';
-import { IconWarning, IconHome, IconCog, IconGlobe, IconFeather, IconMoon } from './components/icons';
+import { IconWarning, IconHome, IconGlobe, IconFeather, IconMoon } from './components/icons';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -105,7 +105,7 @@ export default function App() {
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [worldSceneOpen, setWorldSceneOpen] = useState(false);
   const [antiItineraryForm, setAntiItineraryForm] = useState<FormData | null>(null);
-  const [portabilityOpen, setPortabilityOpen] = useState(false);
+
   const { user } = useAuth();
   void generateAntiItinerary;
 
@@ -710,15 +710,6 @@ export default function App() {
             <IconGlobe className="w-4 h-4" />
             <span>Thế giới</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setPortabilityOpen(true)}
-            className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-teal-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
-            aria-label="Cài đặt và dữ liệu"
-          >
-            <IconCog className="w-4 h-4" />
-            <span>Cài đặt</span>
-          </button>
         </div>
       )}
 
@@ -775,30 +766,6 @@ export default function App() {
           if (f) void handleGenerateItinerary(f);
         }}
       />
-      <AnimatePresence>
-        {portabilityOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-            onClick={() => setPortabilityOpen(false)}
-          >
-            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
-              <DataPortabilityPanel />
-              <div className="text-center mt-3">
-                <button
-                  onClick={() => setPortabilityOpen(false)}
-                  className="text-slate-400 hover:text-white text-xs"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (

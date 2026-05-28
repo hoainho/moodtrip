@@ -269,9 +269,13 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
   const HIGHLIGHTS_BOTTOM_LIMIT = 1750;
   const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
-  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 380, 160, 78, 1.08, 3, 'georgia');
-  const destLineHeight = destFit.fontSize * 1.08;
-  const destStartY = 520 - (destFit.lines.length - 1) * destLineHeight * 0.5;
+  const DEST_TOP_LIMIT = 430;
+  const DEST_BOTTOM_LIMIT = 870;
+  const DEST_AVAILABLE_H = DEST_BOTTOM_LIMIT - DEST_TOP_LIMIT;
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, DEST_AVAILABLE_H, 150, 62, 1.18, 3, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.18;
+  const destBlockH = destFit.lines.length * destLineHeight;
+  const destFirstBaselineY = DEST_TOP_LIMIT + (DEST_AVAILABLE_H - destBlockH) / 2 + destFit.fontSize * 0.82;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
   const costFontSize = cost.length > 14 ? 30 : cost.length > 10 ? 36 : 40;
@@ -354,8 +358,8 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
     <text x="120" y="34" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
   </g>
 
-  <text x="${PAD_LEFT}" y="380" font-family="Inter,system-ui,sans-serif" font-size="38" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="5">HÀNH TRÌNH CỦA TÔI</text>
-  <text font-family="Georgia,serif" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destStartY}">${destTspans}</text>
+  <text x="${PAD_LEFT}" y="380" font-family="${FONT_FAMILY.inter}" font-size="34" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="4">HÀNH TRÌNH CỦA TÔI</text>
+  <text font-family="${FONT_FAMILY.georgia}" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destFirstBaselineY}">${destTspans}</text>
 
   <g transform="translate(${PAD_LEFT},920)">
     <rect x="0" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
@@ -387,9 +391,13 @@ function layoutPortrait(palette: Palette, dest: string, days: number, activities
   const HIGHLIGHTS_BOTTOM_LIMIT = 1220;
   const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
-  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 260, 120, 64, 1.08, 2, 'georgia');
-  const destLineHeight = destFit.fontSize * 1.08;
-  const destStartY = 380 - (destFit.lines.length - 1) * destLineHeight * 0.5;
+  const DEST_TOP_LIMIT = 300;
+  const DEST_BOTTOM_LIMIT = 500;
+  const DEST_AVAILABLE_H = DEST_BOTTOM_LIMIT - DEST_TOP_LIMIT;
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, DEST_AVAILABLE_H, 110, 56, 1.18, 2, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.18;
+  const destBlockH = destFit.lines.length * destLineHeight;
+  const destFirstBaselineY = DEST_TOP_LIMIT + (DEST_AVAILABLE_H - destBlockH) / 2 + destFit.fontSize * 0.82;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
   const costFontSize = cost.length > 14 ? 26 : cost.length > 10 ? 30 : 36;
@@ -463,8 +471,8 @@ function layoutPortrait(palette: Palette, dest: string, days: number, activities
     <text x="100" y="30" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
   </g>
 
-  <text x="${PAD_LEFT}" y="270" font-family="Inter,system-ui,sans-serif" font-size="30" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="5">HÀNH TRÌNH CỦA TÔI</text>
-  <text font-family="Georgia,serif" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destStartY}">${destTspans}</text>
+  <text x="${PAD_LEFT}" y="260" font-family="${FONT_FAMILY.inter}" font-size="28" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="4">HÀNH TRÌNH CỦA TÔI</text>
+  <text font-family="${FONT_FAMILY.georgia}" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destFirstBaselineY}">${destTspans}</text>
 
   <g transform="translate(${PAD_LEFT},540)">
     <rect x="0" y="0" width="300" height="180" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
@@ -496,9 +504,13 @@ function layoutSquare(palette: Palette, dest: string, days: number, activities: 
   const HIGHLIGHTS_BOTTOM_LIMIT = 970;
   const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
-  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 200, 110, 56, 1.08, 2, 'georgia');
-  const destLineHeight = destFit.fontSize * 1.08;
-  const destStartY = 330 - (destFit.lines.length - 1) * destLineHeight * 0.5;
+  const DEST_TOP_LIMIT = 260;
+  const DEST_BOTTOM_LIMIT = 430;
+  const DEST_AVAILABLE_H = DEST_BOTTOM_LIMIT - DEST_TOP_LIMIT;
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, DEST_AVAILABLE_H, 100, 50, 1.18, 2, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.18;
+  const destBlockH = destFit.lines.length * destLineHeight;
+  const destFirstBaselineY = DEST_TOP_LIMIT + (DEST_AVAILABLE_H - destBlockH) / 2 + destFit.fontSize * 0.82;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
   const costFontSize = cost.length > 14 ? 24 : cost.length > 10 ? 26 : 32;
@@ -572,8 +584,8 @@ function layoutSquare(palette: Palette, dest: string, days: number, activities: 
     <text x="90" y="27" font-family="Inter,system-ui,sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
   </g>
 
-  <text x="${PAD_LEFT}" y="220" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="4">HÀNH TRÌNH CỦA TÔI</text>
-  <text font-family="Georgia,serif" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destStartY}">${destTspans}</text>
+  <text x="${PAD_LEFT}" y="220" font-family="${FONT_FAMILY.inter}" font-size="22" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="4">HÀNH TRÌNH CỦA TÔI</text>
+  <text font-family="${FONT_FAMILY.georgia}" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destFirstBaselineY}">${destTspans}</text>
 
   <g transform="translate(${PAD_LEFT},460)">
     <rect x="0" y="0" width="300" height="170" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
