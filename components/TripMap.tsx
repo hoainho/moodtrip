@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ItineraryPlan } from '../types';
 import { computeBounds, resolveVenues, type ResolvedVenue } from '../services/venueResolver';
-import { geocodeBatch } from '../services/geocoder';
-import { IconMapPin, IconRoute } from './icons';
+import { geocodeBatch, geocodeDestination, jitterAround } from '../services/geocoder';
+import { IconMapPin, IconRoute, IconInfo } from './icons';
 
 interface TripMapProps {
   itinerary: ItineraryPlan;
@@ -43,17 +43,28 @@ export function TripMap({ itinerary }: TripMapProps) {
 
       setGeocoding(true);
       setGeocodeProgress({ done: 0, total: missing.length });
-      const lookups = missing.map((v) => ({ venue: v.name, destination: itinerary.destination }));
-      const results = await geocodeBatch(lookups, (done, total) => {
-        if (!cancelled) setGeocodeProgress({ done, total });
-      });
+
+      const [destResult, batchResults] = await Promise.all([
+        geocodeDestination(itinerary.destination),
+        geocodeBatch(
+          missing.map((v) => ({ venue: v.name, destination: itinerary.destination })),
+          (done, total) => {
+            if (!cancelled) setGeocodeProgress({ done, total });
+          },
+        ),
+      ]);
       if (cancelled) return;
 
+      let fallbackIndex = 0;
       const enriched = initial.map((v) => {
         if (v.lat != null && v.lng != null) return v;
         const key = `${v.name.toLowerCase().trim()}|${itinerary.destination.toLowerCase().trim()}`;
-        const hit = results.get(key);
+        const hit = batchResults.get(key);
         if (hit) return { ...v, lat: hit.lat, lng: hit.lng };
+        if (destResult) {
+          const j = jitterAround({ lat: destResult.lat, lng: destResult.lng }, fallbackIndex++);
+          return { ...v, lat: j.lat, lng: j.lng, approximate: true };
+        }
         return v;
       });
       setVenues(enriched);
@@ -159,13 +170,23 @@ export function TripMap({ itinerary }: TripMapProps) {
           const el = document.createElement('button');
           el.type = 'button';
           el.className =
-            'flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-white cursor-pointer';
+            'flex items-center justify-center text-white text-xs font-bold shadow-lg cursor-pointer';
           el.style.width = '32px';
           el.style.height = '32px';
           el.style.borderRadius = '50%';
           el.style.backgroundColor = color;
+          if (v.approximate) {
+            el.style.border = '2px dashed #ffffff';
+            el.style.opacity = '0.72';
+            el.setAttribute(
+              'aria-label',
+              `Ngày ${v.day} · ${orderInDay}. ${v.name} (vị trí ước lượng quanh trung tâm thành phố)`,
+            );
+          } else {
+            el.style.border = '2px solid #ffffff';
+            el.setAttribute('aria-label', `Ngày ${v.day} · ${orderInDay}. ${v.name}`);
+          }
           el.textContent = String(orderInDay);
-          el.setAttribute('aria-label', `Ngày ${v.day} · ${orderInDay}. ${v.name}`);
           el.onclick = () => setSelected(v);
           const marker = new mod.default.Marker({ element: el }).setLngLat([v.lng, v.lat]).addTo(map);
           markers.push(marker);
@@ -192,6 +213,8 @@ export function TripMap({ itinerary }: TripMapProps) {
   }, [venues]);
 
   const located = venues.filter((v) => v.lat != null && v.lng != null);
+  const approximate = located.filter((v) => v.approximate);
+  const exact = located.filter((v) => !v.approximate);
   const totalVenues = venues.length;
 
   if (totalVenues === 0) {
@@ -221,9 +244,10 @@ export function TripMap({ itinerary }: TripMapProps) {
     return (
       <div className="rounded-2xl glass-dark border border-white/10 p-6 text-center text-slate-300 text-sm">
         <IconMapPin className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-        <p className="font-semibold mb-1">Không tìm thấy toạ độ chính xác.</p>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Mơ chưa định vị được {totalVenues} địa điểm. Bạn vẫn xem được tên + giờ ở phần lịch trình bên dưới.
+        <p className="font-semibold mb-1 text-base">Chưa tìm thấy toạ độ cho lịch trình này.</p>
+        <p className="text-sm text-slate-400 leading-relaxed">
+          Mơ đã thử tìm {totalVenues} địa điểm nhưng kết nối tới dịch vụ bản đồ bị gián đoạn.
+          Hãy thử lại sau, hoặc xem tên + giờ ở phần lịch trình bên dưới.
         </p>
       </div>
     );
@@ -250,9 +274,17 @@ export function TripMap({ itinerary }: TripMapProps) {
       )}
 
       {mapReady && located.length > 0 && !geocoding && (
-        <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/85 border border-white/10 text-xs text-slate-200">
-          <IconMapPin className="w-3.5 h-3.5 text-teal-400" />
-          {located.length} địa điểm
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/85 border border-white/10 text-xs text-slate-200">
+            <IconMapPin className="w-3.5 h-3.5 text-teal-400" />
+            {exact.length} chính xác{approximate.length > 0 ? ` · ${approximate.length} ước lượng` : ''}
+          </div>
+          {approximate.length > 0 && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-200 max-w-[260px]">
+              <IconInfo className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" />
+              <span className="leading-tight">Marker viền nét đứt là vị trí ước lượng quanh trung tâm.</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -261,7 +293,13 @@ export function TripMap({ itinerary }: TripMapProps) {
           <p className="text-white font-semibold text-sm mb-1">
             Ngày {selected.day} · {selected.time}
           </p>
-          <p className="text-slate-200 text-sm mb-2.5">{selected.name}</p>
+          <p className={`text-slate-200 text-sm ${selected.approximate ? 'mb-1' : 'mb-2.5'}`}>{selected.name}</p>
+          {selected.approximate && (
+            <p className="text-amber-300 text-[11px] mb-2.5 inline-flex items-start gap-1">
+              <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+              <span>Vị trí ước lượng quanh trung tâm — chưa tìm thấy chính xác trên OpenStreetMap.</span>
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             {selected.mapsLink && (
               <a

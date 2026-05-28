@@ -86,6 +86,83 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+const CHAR_WIDTH_RATIO = {
+  inter: { lower: 0.52, upper: 0.66, digit: 0.55, punct: 0.32, space: 0.27, vietnamese: 0.58 },
+  georgia: { lower: 0.50, upper: 0.62, digit: 0.55, punct: 0.32, space: 0.27, vietnamese: 0.56 },
+};
+
+const VIET_DIACRITIC_RE = /[\u00C0-\u1EF9]/;
+const UPPER_RE = /[A-Z\u00C0-\u00DE\u0100-\u017F]/;
+const DIGIT_RE = /[0-9]/;
+const SPACE_RE = /\s/;
+
+function estimateTextWidth(text: string, fontSize: number, font: 'inter' | 'georgia' = 'inter'): number {
+  const r = CHAR_WIDTH_RATIO[font];
+  let total = 0;
+  for (const ch of text) {
+    if (SPACE_RE.test(ch)) total += fontSize * r.space;
+    else if (DIGIT_RE.test(ch)) total += fontSize * r.digit;
+    else if (VIET_DIACRITIC_RE.test(ch)) total += fontSize * r.vietnamese;
+    else if (UPPER_RE.test(ch)) total += fontSize * r.upper;
+    else if (/[a-z]/.test(ch)) total += fontSize * r.lower;
+    else total += fontSize * r.punct;
+  }
+  return total;
+}
+
+function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: number, font: 'inter' | 'georgia' = 'inter'): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (estimateTextWidth(candidate, fontSize, font) <= maxWidth) {
+      current = candidate;
+      continue;
+    }
+    if (current) lines.push(current);
+    if (lines.length >= maxLines - 1) {
+      let truncated = word;
+      while (truncated && estimateTextWidth(truncated + '…', fontSize, font) > maxWidth) {
+        truncated = truncated.slice(0, -1);
+      }
+      const remaining = words.slice(words.indexOf(word) + 1);
+      const tail = remaining.length > 0 ? '…' : (estimateTextWidth(word, fontSize, font) > maxWidth ? '…' : '');
+      lines.push(tail === '…' ? (truncated || word.slice(0, Math.max(1, Math.floor(maxWidth / (fontSize * 0.5))))) + '…' : word);
+      return lines;
+    }
+    current = word;
+  }
+  if (current) lines.push(current);
+  return lines.slice(0, maxLines);
+}
+
+function fitTextToBox(text: string, maxWidth: number, maxHeight: number, startFontSize: number, minFontSize: number, lineHeightRatio: number, maxLines: number, font: 'inter' | 'georgia' = 'inter'): { fontSize: number; lines: string[] } {
+  for (let fs = startFontSize; fs >= minFontSize; fs -= 4) {
+    const lines = wrapText(text, maxWidth, fs, maxLines, font);
+    const totalHeight = lines.length * fs * lineHeightRatio;
+    if (totalHeight <= maxHeight) {
+      let allFit = true;
+      for (const line of lines) {
+        if (estimateTextWidth(line, fs, font) > maxWidth) {
+          allFit = false;
+          break;
+        }
+      }
+      if (allFit) return { fontSize: fs, lines };
+    }
+  }
+  const fs = minFontSize;
+  const lines = wrapText(text, maxWidth, fs, maxLines, font);
+  return { fontSize: fs, lines };
+}
+
+function renderTspans(lines: string[], x: number, lineHeight: number, firstLineDy = 0): string {
+  return lines
+    .map((line, i) => `<tspan x="${x}" dy="${i === 0 ? firstLineDy : lineHeight}">${escapeXml(line)}</tspan>`)
+    .join('');
+}
+
 function buildSparkles(w: number, h: number, seed: number, count: number): string {
   const rand = seededRandom(seed);
   const out: string[] = [];
@@ -111,32 +188,75 @@ function buildSparkles(w: number, h: number, seed: number, count: number): strin
 }
 
 function layoutStory(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
-  const highlightItems = highlights
-    .slice(0, 4)
-    .map((h, i) => {
-      const y = 1180 + i * 130;
-      const title = escapeXml(h.title.length > 36 ? h.title.slice(0, 34) + '…' : h.title);
-      const venue = h.venue ? escapeXml(h.venue.length > 30 ? h.venue.slice(0, 28) + '…' : h.venue) : '';
-      return `
-    <g transform="translate(80,${y})">
-      <rect x="0" y="0" width="920" height="104" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="32" y="42" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
-      <text x="150" y="42" font-family="Inter,system-ui,sans-serif" font-size="30" font-weight="600" fill="#ffffff">${title}</text>
-      ${venue ? `<g transform="translate(150,68)"><circle cx="6" cy="6" r="3" fill="${palette.accent}"/><text x="20" y="11" font-family="Inter,system-ui,sans-serif" font-size="22" fill="rgba(255,255,255,0.78)">${venue}</text></g>` : ''}
-    </g>`;
-    })
-    .join('');
+  const PAD_LEFT = 80;
+  const CONTENT_WIDTH = 920;
+
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 380, 170, 88, 1.05, 3, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.05;
+  const destStartY = 520 - (destFit.lines.length - 1) * destLineHeight * 0.5;
+  const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
+
+  const costFontSize = cost.length > 14 ? 32 : cost.length > 10 ? 38 : 40;
+
+  const HIGHLIGHT_TEXT_LEFT = 150;
+  const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
+  const HIGHLIGHT_TITLE_FS = 28;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.18;
+  const HIGHLIGHT_VENUE_FS = 20;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.2;
+  const HIGHLIGHT_PAD_TOP = 36;
+  const HIGHLIGHT_PAD_BETWEEN = 14;
+  const HIGHLIGHT_PAD_BOTTOM = 28;
+  const HIGHLIGHT_GAP = 22;
+
+  let cursorY = 1180;
+  const renderedHighlights: string[] = [];
+
+  for (const h of highlights.slice(0, 4)) {
+    const titleLines = wrapText(h.title, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_TITLE_FS, 2, 'inter');
+    const venueLines = h.venue ? wrapText(h.venue, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_VENUE_FS, 1, 'inter') : [];
+    const titleBlockH = titleLines.length * HIGHLIGHT_TITLE_LH;
+    const venueBlockH = venueLines.length * HIGHLIGHT_VENUE_LH;
+    const cardH = Math.max(
+      104,
+      HIGHLIGHT_PAD_TOP + titleBlockH + (venueLines.length > 0 ? HIGHLIGHT_PAD_BETWEEN + venueBlockH : 0) + HIGHLIGHT_PAD_BOTTOM,
+    );
+
+    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.85;
+    const titleTspans = renderTspans(titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
+
+    const timeY = titleYStart;
+
+    let venueRender = '';
+    if (venueLines.length > 0) {
+      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.85;
+      const venueTspans = renderTspans(venueLines, HIGHLIGHT_TEXT_LEFT + 20, HIGHLIGHT_VENUE_LH);
+      venueRender = `
+      <circle cx="${HIGHLIGHT_TEXT_LEFT + 6}" cy="${venueY - HIGHLIGHT_VENUE_FS * 0.35}" r="3.5" fill="${palette.accent}"/>
+      <text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.82)" y="${venueY}">${venueTspans}</text>`;
+    }
+
+    renderedHighlights.push(`
+    <g transform="translate(${PAD_LEFT},${cursorY})">
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${cardH}" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="32" y="${timeY}" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
+      <text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
+      ${venueRender}
+    </g>`);
+
+    cursorY += cardH + HIGHLIGHT_GAP;
+  }
 
   return `
-  <g transform="translate(80,140)">
+  <g transform="translate(${PAD_LEFT},140)">
     <rect x="0" y="0" width="240" height="50" rx="25" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
     <text x="120" y="34" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
   </g>
 
-  <text x="80" y="380" font-family="Inter,system-ui,sans-serif" font-size="40" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="5">HÀNH TRÌNH CỦA TÔI</text>
-  <text x="80" y="560" font-family="Georgia,serif" font-size="${Math.max(110, 180 - dest.length * 6)}" font-weight="700" fill="#ffffff" filter="url(#textGlow)">${dest}</text>
+  <text x="${PAD_LEFT}" y="380" font-family="Inter,system-ui,sans-serif" font-size="38" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="5">HÀNH TRÌNH CỦA TÔI</text>
+  <text font-family="Georgia,serif" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destStartY}">${destTspans}</text>
 
-  <g transform="translate(80,700)">
+  <g transform="translate(${PAD_LEFT},920)">
     <rect x="0" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
     <text x="140" y="84" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">NGÀY</text>
     <text x="140" y="174" font-family="Inter,system-ui,sans-serif" font-size="110" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
@@ -147,110 +267,192 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
 
     <rect x="640" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
     <text x="780" y="84" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">CHI PHÍ</text>
-    <text x="780" y="170" font-family="Inter,system-ui,sans-serif" font-size="${cost.length > 14 ? 32 : 40}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+    <text x="780" y="170" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
   </g>
 
-  <text x="80" y="1100" font-family="Inter,system-ui,sans-serif" font-size="32" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
-  ${highlightItems}
+  <text x="${PAD_LEFT}" y="1130" font-family="Inter,system-ui,sans-serif" font-size="30" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  ${renderedHighlights.join('')}
 
-  <g transform="translate(80,1760)">
-    <text x="0" y="40" font-family="Georgia,serif" font-size="42" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
-    <text x="0" y="92" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
+  <g transform="translate(${PAD_LEFT},1800)">
+    <text x="0" y="40" font-family="Georgia,serif" font-size="38" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
+    <text x="0" y="86" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
   </g>`;
 }
 
 function layoutPortrait(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
-  const highlightItems = highlights
-    .slice(0, 3)
-    .map((h, i) => {
-      const y = 760 + i * 130;
-      const title = escapeXml(h.title.length > 32 ? h.title.slice(0, 30) + '…' : h.title);
-      return `
-    <g transform="translate(60,${y})">
-      <rect x="0" y="0" width="960" height="104" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="32" y="42" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
-      <text x="150" y="42" font-family="Inter,system-ui,sans-serif" font-size="28" font-weight="600" fill="#ffffff">${title}</text>
-      ${h.venue ? `<text x="150" y="78" font-family="Inter,system-ui,sans-serif" font-size="20" fill="rgba(255,255,255,0.78)">${escapeXml(h.venue.length > 38 ? h.venue.slice(0, 36) + '…' : h.venue)}</text>` : ''}
-    </g>`;
-    })
-    .join('');
+  const PAD_LEFT = 60;
+  const CONTENT_WIDTH = 960;
+
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 260, 130, 72, 1.05, 2, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.05;
+  const destStartY = 380 - (destFit.lines.length - 1) * destLineHeight * 0.5;
+  const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
+
+  const costFontSize = cost.length > 14 ? 28 : cost.length > 10 ? 32 : 36;
+
+  const HIGHLIGHT_TEXT_LEFT = 150;
+  const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
+  const HIGHLIGHT_TITLE_FS = 26;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.18;
+  const HIGHLIGHT_VENUE_FS = 18;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.2;
+  const HIGHLIGHT_PAD_TOP = 32;
+  const HIGHLIGHT_PAD_BETWEEN = 12;
+  const HIGHLIGHT_PAD_BOTTOM = 26;
+  const HIGHLIGHT_GAP = 18;
+
+  let cursorY = 760;
+  const renderedHighlights: string[] = [];
+
+  for (const h of highlights.slice(0, 3)) {
+    const titleLines = wrapText(h.title, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_TITLE_FS, 2, 'inter');
+    const venueLines = h.venue ? wrapText(h.venue, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_VENUE_FS, 1, 'inter') : [];
+    const titleBlockH = titleLines.length * HIGHLIGHT_TITLE_LH;
+    const venueBlockH = venueLines.length * HIGHLIGHT_VENUE_LH;
+    const cardH = Math.max(
+      96,
+      HIGHLIGHT_PAD_TOP + titleBlockH + (venueLines.length > 0 ? HIGHLIGHT_PAD_BETWEEN + venueBlockH : 0) + HIGHLIGHT_PAD_BOTTOM,
+    );
+
+    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.85;
+    const titleTspans = renderTspans(titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
+    const timeY = titleYStart;
+
+    let venueRender = '';
+    if (venueLines.length > 0) {
+      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.85;
+      const venueTspans = renderTspans(venueLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_VENUE_LH);
+      venueRender = `<text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.78)" y="${venueY}">${venueTspans}</text>`;
+    }
+
+    renderedHighlights.push(`
+    <g transform="translate(${PAD_LEFT},${cursorY})">
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${cardH}" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="32" y="${timeY}" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
+      <text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
+      ${venueRender}
+    </g>`);
+
+    cursorY += cardH + HIGHLIGHT_GAP;
+  }
 
   return `
-  <g transform="translate(60,100)">
+  <g transform="translate(${PAD_LEFT},100)">
     <rect x="0" y="0" width="200" height="44" rx="22" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
     <text x="100" y="30" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
   </g>
 
-  <text x="60" y="270" font-family="Inter,system-ui,sans-serif" font-size="32" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="5">HÀNH TRÌNH CỦA TÔI</text>
-  <text x="60" y="410" font-family="Georgia,serif" font-size="${Math.max(90, 140 - dest.length * 5)}" font-weight="700" fill="#ffffff" filter="url(#textGlow)">${dest}</text>
+  <text x="${PAD_LEFT}" y="270" font-family="Inter,system-ui,sans-serif" font-size="30" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="5">HÀNH TRÌNH CỦA TÔI</text>
+  <text font-family="Georgia,serif" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destStartY}">${destTspans}</text>
 
-  <g transform="translate(60,500)">
-    <rect x="0" y="0" width="300" height="200" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
-    <text x="150" y="74" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">NGÀY</text>
-    <text x="150" y="160" font-family="Inter,system-ui,sans-serif" font-size="96" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
+  <g transform="translate(${PAD_LEFT},540)">
+    <rect x="0" y="0" width="300" height="180" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="150" y="68" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">NGÀY</text>
+    <text x="150" y="148" font-family="Inter,system-ui,sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
 
-    <rect x="330" y="0" width="300" height="200" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
-    <text x="480" y="74" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">HOẠT ĐỘNG</text>
-    <text x="480" y="160" font-family="Inter,system-ui,sans-serif" font-size="96" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
+    <rect x="330" y="0" width="300" height="180" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="480" y="68" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">HOẠT ĐỘNG</text>
+    <text x="480" y="148" font-family="Inter,system-ui,sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
 
-    <rect x="660" y="0" width="300" height="200" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
-    <text x="810" y="74" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">CHI PHÍ</text>
-    <text x="810" y="156" font-family="Inter,system-ui,sans-serif" font-size="${cost.length > 14 ? 28 : 36}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+    <rect x="660" y="0" width="300" height="180" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="810" y="68" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">CHI PHÍ</text>
+    <text x="810" y="142" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
   </g>
 
-  <text x="60" y="730" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
-  ${highlightItems}
+  <text x="${PAD_LEFT}" y="730" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  ${renderedHighlights.join('')}
 
-  <g transform="translate(60,1240)">
-    <text x="0" y="36" font-family="Georgia,serif" font-size="38" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
+  <g transform="translate(${PAD_LEFT},1260)">
+    <text x="0" y="36" font-family="Georgia,serif" font-size="36" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
     <text x="0" y="80" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
   </g>`;
 }
 
 function layoutSquare(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
-  const highlightItems = highlights
-    .slice(0, 2)
-    .map((h, i) => {
-      const y = 720 + i * 110;
-      const title = escapeXml(h.title.length > 30 ? h.title.slice(0, 28) + '…' : h.title);
-      return `
-    <g transform="translate(60,${y})">
-      <rect x="0" y="0" width="960" height="90" rx="20" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="32" y="38" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
-      <text x="140" y="38" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="600" fill="#ffffff">${title}</text>
-      ${h.venue ? `<text x="140" y="68" font-family="Inter,system-ui,sans-serif" font-size="18" fill="rgba(255,255,255,0.78)">${escapeXml(h.venue.length > 40 ? h.venue.slice(0, 38) + '…' : h.venue)}</text>` : ''}
-    </g>`;
-    })
-    .join('');
+  const PAD_LEFT = 60;
+  const CONTENT_WIDTH = 960;
+
+  const destFit = fitTextToBox(dest, CONTENT_WIDTH, 200, 120, 60, 1.05, 2, 'georgia');
+  const destLineHeight = destFit.fontSize * 1.05;
+  const destStartY = 330 - (destFit.lines.length - 1) * destLineHeight * 0.5;
+  const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
+
+  const costFontSize = cost.length > 14 ? 26 : cost.length > 10 ? 28 : 32;
+
+  const HIGHLIGHT_TEXT_LEFT = 140;
+  const HIGHLIGHT_TEXT_WIDTH = CONTENT_WIDTH - HIGHLIGHT_TEXT_LEFT - 32;
+  const HIGHLIGHT_TITLE_FS = 24;
+  const HIGHLIGHT_TITLE_LH = HIGHLIGHT_TITLE_FS * 1.18;
+  const HIGHLIGHT_VENUE_FS = 17;
+  const HIGHLIGHT_VENUE_LH = HIGHLIGHT_VENUE_FS * 1.2;
+  const HIGHLIGHT_PAD_TOP = 26;
+  const HIGHLIGHT_PAD_BETWEEN = 10;
+  const HIGHLIGHT_PAD_BOTTOM = 22;
+  const HIGHLIGHT_GAP = 16;
+
+  let cursorY = 720;
+  const renderedHighlights: string[] = [];
+
+  for (const h of highlights.slice(0, 2)) {
+    const titleLines = wrapText(h.title, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_TITLE_FS, 2, 'inter');
+    const venueLines = h.venue ? wrapText(h.venue, HIGHLIGHT_TEXT_WIDTH, HIGHLIGHT_VENUE_FS, 1, 'inter') : [];
+    const titleBlockH = titleLines.length * HIGHLIGHT_TITLE_LH;
+    const venueBlockH = venueLines.length * HIGHLIGHT_VENUE_LH;
+    const cardH = Math.max(
+      88,
+      HIGHLIGHT_PAD_TOP + titleBlockH + (venueLines.length > 0 ? HIGHLIGHT_PAD_BETWEEN + venueBlockH : 0) + HIGHLIGHT_PAD_BOTTOM,
+    );
+
+    const titleYStart = HIGHLIGHT_PAD_TOP + HIGHLIGHT_TITLE_FS * 0.85;
+    const titleTspans = renderTspans(titleLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_TITLE_LH);
+    const timeY = titleYStart;
+
+    let venueRender = '';
+    if (venueLines.length > 0) {
+      const venueY = HIGHLIGHT_PAD_TOP + titleBlockH + HIGHLIGHT_PAD_BETWEEN + HIGHLIGHT_VENUE_FS * 0.85;
+      const venueTspans = renderTspans(venueLines, HIGHLIGHT_TEXT_LEFT, HIGHLIGHT_VENUE_LH);
+      venueRender = `<text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_VENUE_FS}" fill="rgba(255,255,255,0.78)" y="${venueY}">${venueTspans}</text>`;
+    }
+
+    renderedHighlights.push(`
+    <g transform="translate(${PAD_LEFT},${cursorY})">
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${cardH}" rx="20" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
+      <text x="32" y="${timeY}" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="${palette.accent}">${escapeXml(h.time)}</text>
+      <text font-family="Inter,system-ui,sans-serif" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
+      ${venueRender}
+    </g>`);
+
+    cursorY += cardH + HIGHLIGHT_GAP;
+  }
 
   return `
-  <g transform="translate(60,80)">
+  <g transform="translate(${PAD_LEFT},80)">
     <rect x="0" y="0" width="180" height="40" rx="20" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
     <text x="90" y="27" font-family="Inter,system-ui,sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">MOODTRIP</text>
   </g>
 
-  <text x="60" y="220" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="4">HÀNH TRÌNH CỦA TÔI</text>
-  <text x="60" y="350" font-family="Georgia,serif" font-size="${Math.max(80, 130 - dest.length * 5)}" font-weight="700" fill="#ffffff" filter="url(#textGlow)">${dest}</text>
+  <text x="${PAD_LEFT}" y="220" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="4">HÀNH TRÌNH CỦA TÔI</text>
+  <text font-family="Georgia,serif" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destStartY}">${destTspans}</text>
 
-  <g transform="translate(60,440)">
-    <rect x="0" y="0" width="300" height="180" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
-    <text x="150" y="66" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">NGÀY</text>
-    <text x="150" y="146" font-family="Inter,system-ui,sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
+  <g transform="translate(${PAD_LEFT},460)">
+    <rect x="0" y="0" width="300" height="170" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="150" y="62" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">NGÀY</text>
+    <text x="150" y="138" font-family="Inter,system-ui,sans-serif" font-size="82" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
 
-    <rect x="330" y="0" width="300" height="180" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
-    <text x="480" y="66" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">HOẠT ĐỘNG</text>
-    <text x="480" y="146" font-family="Inter,system-ui,sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
+    <rect x="330" y="0" width="300" height="170" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="480" y="62" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">HOẠT ĐỘNG</text>
+    <text x="480" y="138" font-family="Inter,system-ui,sans-serif" font-size="82" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
 
-    <rect x="660" y="0" width="300" height="180" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
-    <text x="810" y="66" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">CHI PHÍ</text>
-    <text x="810" y="140" font-family="Inter,system-ui,sans-serif" font-size="${cost.length > 14 ? 26 : 32}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+    <rect x="660" y="0" width="300" height="170" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <text x="810" y="62" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">CHI PHÍ</text>
+    <text x="810" y="132" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
   </g>
 
-  <text x="60" y="690" font-family="Inter,system-ui,sans-serif" font-size="24" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
-  ${highlightItems}
+  <text x="${PAD_LEFT}" y="690" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  ${renderedHighlights.join('')}
 
-  <g transform="translate(60,970)">
-    <text x="0" y="34" font-family="Georgia,serif" font-size="34" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
+  <g transform="translate(${PAD_LEFT},980)">
+    <text x="0" y="34" font-family="Georgia,serif" font-size="32" font-style="italic" fill="rgba(255,255,255,0.92)">Tạo bởi Mơ</text>
     <text x="0" y="74" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.65)" letter-spacing="4">moodtrip.app</text>
   </g>`;
 }

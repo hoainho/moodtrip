@@ -8,6 +8,7 @@ export interface ResolvedVenue {
   lng?: number;
   mapsLink?: string;
   tiktokQuery?: string;
+  approximate?: boolean;
 }
 
 const GOOGLE_MAPS_COORD_RE = /[?&](?:q|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
