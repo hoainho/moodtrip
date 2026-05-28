@@ -55,12 +55,32 @@ export function TripMap({ itinerary }: TripMapProps) {
       ]);
       if (cancelled) return;
 
+      const MAX_VENUE_DISTANCE_KM = 60;
+      const KM_PER_DEG_LAT = 111.32;
+      const haversineKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+        const dLat = (a.lat - b.lat) * KM_PER_DEG_LAT;
+        const meanLat = ((a.lat + b.lat) / 2) * (Math.PI / 180);
+        const dLng = (a.lng - b.lng) * KM_PER_DEG_LAT * Math.cos(meanLat);
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+      };
+
       let fallbackIndex = 0;
       const enriched = initial.map((v) => {
         if (v.lat != null && v.lng != null) return v;
         const key = `${v.name.toLowerCase().trim()}|${itinerary.destination.toLowerCase().trim()}`;
         const hit = batchResults.get(key);
+
+        if (hit && destResult) {
+          const dist = haversineKm({ lat: hit.lat, lng: hit.lng }, { lat: destResult.lat, lng: destResult.lng });
+          if (dist > MAX_VENUE_DISTANCE_KM) {
+            const j = jitterAround({ lat: destResult.lat, lng: destResult.lng }, fallbackIndex++);
+            return { ...v, lat: j.lat, lng: j.lng, approximate: true };
+          }
+          return { ...v, lat: hit.lat, lng: hit.lng };
+        }
+
         if (hit) return { ...v, lat: hit.lat, lng: hit.lng };
+
         if (destResult) {
           const j = jitterAround({ lat: destResult.lat, lng: destResult.lng }, fallbackIndex++);
           return { ...v, lat: j.lat, lng: j.lng, approximate: true };

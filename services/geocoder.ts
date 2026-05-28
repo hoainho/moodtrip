@@ -64,24 +64,72 @@ function sleep(ms: number): Promise<void> {
 }
 
 const COUNTRY_NOISE_RE = /,?\s*(việt\s*nam|vietnam|vn)\s*$/i;
+const PROVINCE_PREFIX_RE = /^(tỉnh|thành\s+phố|tp\.?|huyện|quận|phường|xã)\s+/i;
+const PAREN_RE = /\s*[\(（][^)）]*[\)）]\s*/g;
+const SEPARATOR_RE = /\s+[-–—:|·]\s+/g;
+const LEADING_NUMBER_RE = /^\d+[\.\)]\s+/;
+const STOP_PREFIXES = [
+  'thưởng thức', 'ăn ', 'ăn sáng', 'ăn trưa', 'ăn tối', 'uống', 'nghỉ',
+  'check-in', 'tham quan', 'khám phá', 'dạo', 'đi ', 'di chuyển', 'mua sắm',
+  'ghé thăm', 'trải nghiệm', 'cà phê sáng',
+];
 
 function cleanDestination(destination: string): string {
-  return destination.replace(COUNTRY_NOISE_RE, '').trim();
+  return destination
+    .replace(COUNTRY_NOISE_RE, '')
+    .split(',')
+    .map((part) => part.replace(PROVINCE_PREFIX_RE, '').trim())
+    .filter(Boolean)
+    .join(', ')
+    .trim();
+}
+
+function cleanVenue(venue: string): string {
+  let v = venue
+    .replace(PAREN_RE, ' ')
+    .replace(LEADING_NUMBER_RE, '')
+    .trim();
+
+  const lowerV = v.toLowerCase();
+  for (const prefix of STOP_PREFIXES) {
+    if (lowerV.startsWith(prefix)) {
+      const afterPrefix = v.slice(prefix.length).trim();
+      const sepMatch = afterPrefix.match(/^(?:với|tại|ở|đến)\s+/i);
+      const tail = sepMatch ? afterPrefix.slice(sepMatch[0].length).trim() : afterPrefix;
+      if (tail) v = tail;
+      break;
+    }
+  }
+
+  const sepIdx = v.search(SEPARATOR_RE);
+  if (sepIdx > 0) {
+    const before = v.slice(0, sepIdx).trim();
+    const after = v.slice(sepIdx).replace(SEPARATOR_RE, '').trim();
+    v = after.length > before.length ? after : before;
+  }
+
+  return v.replace(/\s+/g, ' ').trim();
 }
 
 function buildQueryCandidates(venue: string, destination: string): string[] {
   const cleanDest = cleanDestination(destination);
-  const v = venue.trim();
+  const cleanV = cleanVenue(venue);
+  const rawV = venue.trim();
+  const destFirstToken = cleanDest.split(',')[0]?.trim() ?? cleanDest;
   const candidates = [
-    `${v} ${cleanDest}`,
-    `${v}, ${cleanDest}`,
-    v,
+    `${cleanV} ${destFirstToken}`,
+    `${cleanV} ${cleanDest}`,
+    `${cleanV}, ${cleanDest}`,
+    cleanV,
+    `${rawV} ${destFirstToken}`,
+    rawV,
   ];
   return Array.from(new Set(candidates.filter(Boolean)));
 }
 
-async function tryPhoton(query: string): Promise<GeocodeResult | null> {
-  const url = `${PHOTON_BASE}?q=${encodeURIComponent(query)}&limit=1&lang=vi`;
+async function tryPhoton(query: string, osmTag?: string): Promise<GeocodeResult | null> {
+  const tagParam = osmTag ? `&osm_tag=${encodeURIComponent(osmTag)}` : '';
+  const url = `${PHOTON_BASE}?q=${encodeURIComponent(query)}&limit=1&lang=vi${tagParam}`;
   try {
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
     if (!res.ok) return null;
@@ -124,6 +172,17 @@ async function tryNominatim(query: string): Promise<GeocodeResult | null> {
   }
 }
 
+const AMENITY_HINT_RE = /(cafe|c[àa]\s*ph[êe]|qu[áa]n|nh[àa]\s*h[àa]ng|nem|b[áa]nh|l[ẩa]u|ph[ởo]|c[ơo]m|tr[àa]\s*sữa|bar|pub|club|kem)/i;
+const TOURISM_HINT_RE = /(ch[ợo]|đ[ềe]n|ch[ùu]a|nh[àa]\s*th[ờo]|b[ảa]o\s*t[àa]ng|c[ôo]ng\s*vi[êe]n|h[ồo]|th[áa]c|n[úu]i|b[ãa]i\s*bi[ểe]n|v[ưu]?ờn|tr[ưu]?ờng)/i;
+const ACCOMMODATION_HINT_RE = /(homestay|hostel|kh[áa]ch\s*s[ạa]n|hotel|villa|resort|nh[àa]\s*ngh[ỉi])/i;
+
+function osmTagForVenue(venue: string): string | undefined {
+  if (AMENITY_HINT_RE.test(venue)) return 'amenity';
+  if (ACCOMMODATION_HINT_RE.test(venue)) return 'tourism';
+  if (TOURISM_HINT_RE.test(venue)) return 'tourism';
+  return undefined;
+}
+
 export async function geocode(venue: string, destination: string): Promise<GeocodeResult | null> {
   const trimmed = venue.trim();
   if (!trimmed) return null;
@@ -141,6 +200,19 @@ export async function geocode(venue: string, destination: string): Promise<Geoco
   }
 
   const queries = buildQueryCandidates(trimmed, destination);
+  const osmTag = osmTagForVenue(trimmed);
+
+  if (osmTag) {
+    for (const q of queries.slice(0, 3)) {
+      const result = await tryPhoton(q, osmTag);
+      if (result) {
+        const fresh = readCache();
+        fresh[key] = { ...result, ts: Date.now() };
+        writeCache(fresh);
+        return result;
+      }
+    }
+  }
 
   for (const q of queries) {
     const result = await tryPhoton(q);

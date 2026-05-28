@@ -89,8 +89,8 @@ function seededRandom(seed: number): () => number {
 type FontId = 'inter' | 'georgia';
 
 const FONT_FAMILY: Record<FontId, string> = {
-  inter: '"Inter", "Be Vietnam Pro", system-ui, -apple-system, sans-serif',
-  georgia: '"Georgia", "Times New Roman", serif',
+  inter: "'Inter', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif",
+  georgia: "'Georgia', 'Times New Roman', serif",
 };
 
 const FONT_WEIGHT: Record<FontId, number> = {
