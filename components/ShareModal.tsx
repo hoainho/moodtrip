@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { IconX, IconCopy, IconCheck, IconShare, IconMapPin, IconFood, IconCalendar } from './icons';
 import { generateShareUrl } from '../services/shareService';
 import { getQrCodeUrl } from '../services/qrCode';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import type { ItineraryPlan } from '../types';
 
 interface ShareModalProps {
@@ -13,7 +15,17 @@ interface ShareModalProps {
 export const ShareModal: React.FC<ShareModalProps> = ({ itinerary, onClose }) => {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  useBodyScrollLock(true);
+  useEscapeKey(true, onClose);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => closeBtnRef.current?.focus(), 400);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     generateShareUrl(itinerary)
@@ -26,9 +38,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({ itinerary, onClose }) =>
 
   const handleCopy = async () => {
     if (!shareUrl) return;
-    await navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setCopyError(false);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 3000);
+    }
   };
 
   const qrUrl = shareUrl ? getQrCodeUrl(shareUrl, 200) : null;
@@ -38,7 +56,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({ itinerary, onClose }) =>
   const topFoods = itinerary.food.slice(0, 3);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Chia sẻ chuyến đi"
+    >
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -58,8 +81,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({ itinerary, onClose }) =>
       >
         {/* Close button */}
         <button
+          ref={closeBtnRef}
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-1.5 rounded-full hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+          aria-label="Đóng"
+          className="absolute top-4 right-4 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
         >
           <IconX className="w-5 h-5" />
         </button>
@@ -154,12 +180,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({ itinerary, onClose }) =>
                 className={`flex-shrink-0 p-2.5 rounded-xl border transition-all ${
                   copied
                     ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : copyError
+                    ? 'bg-red-500/20 text-red-400 border-red-500/30'
                     : 'bg-teal-500/20 text-teal-400 border-teal-500/30 hover:bg-teal-500/30'
                 }`}
               >
                 {copied ? <IconCheck className="w-5 h-5" /> : <IconCopy className="w-5 h-5" />}
               </motion.button>
             </div>
+
+            {copyError && (
+              <p className="text-xs text-red-400 mt-2 text-center">
+                Không thể sao chép. Hãy sao chép link thủ công.
+              </p>
+            )}
           </>
         ) : (
           <p className="text-center text-sm text-red-400 py-8">

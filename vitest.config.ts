@@ -4,6 +4,13 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: false,
+    setupFiles: ['./vitest.setup.ts'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        execArgv: ['--no-experimental-webstorage'],
+      },
+    },
     include: ['services/**/*.test.ts', 'services/**/__tests__/**/*.test.ts', 'src/**/*.test.ts', 'components/**/*.test.tsx'],
     exclude: ['workers/**', 'node_modules/**'],
     coverage: {

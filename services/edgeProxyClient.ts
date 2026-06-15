@@ -82,6 +82,8 @@ export interface GenerateOptions {
   generationConfig?: Record<string, unknown>;
   systemInstruction?: unknown;
   supabaseToken?: string | null;
+  /** Aborts the underlying fetch(es) when triggered (timeout or user cancel). */
+  signal?: AbortSignal;
 }
 
 export interface GeminiContent {
@@ -116,6 +118,7 @@ export async function generate(
         'x-moodtrip-client': 'web',
       },
       credentials: 'omit',
+      signal: opts.signal,
       body: JSON.stringify({
         model: opts.model ?? 'flash',
         contents,

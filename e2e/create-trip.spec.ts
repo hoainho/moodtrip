@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { preacceptConsent, gotoHome } from './_helpers';
+import { preacceptConsent, gotoHome, clickExplore } from './_helpers';
 
 test.describe('Create trip happy path (MOCK_ITINERARY)', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,7 +16,7 @@ test.describe('Create trip happy path (MOCK_ITINERARY)', () => {
     });
 
     await gotoHome(page);
-    await page.locator('button:has-text("Khám phá ngay")').first().click();
+    await clickExplore(page);
     await expect(page.locator('button:has-text("Tôi muốn chọn thủ công")').first()).toBeVisible({ timeout: 10_000 });
     await page.locator('button:has-text("Tôi muốn chọn thủ công")').first().click();
     await expect(page.locator('input[placeholder*="AI gợi ý"]').first()).toBeVisible({ timeout: 10_000 });
@@ -50,7 +50,7 @@ test.describe('Create trip happy path (MOCK_ITINERARY)', () => {
 
   test('Result view shows 3 "why you will love it" reasons', async ({ page }) => {
     await gotoHome(page);
-    await page.locator('button:has-text("Khám phá ngay")').first().click();
+    await clickExplore(page);
     await expect(page.locator('button:has-text("Tôi muốn chọn thủ công")').first()).toBeVisible({ timeout: 10_000 });
     await page.locator('button:has-text("Tôi muốn chọn thủ công")').first().click();
     await expect(page.locator('input[placeholder*="AI gợi ý"]').first()).toBeVisible({ timeout: 10_000 });

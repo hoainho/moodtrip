@@ -29,3 +29,10 @@ dist-ssr
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Agent / session runtime artifacts (not source)
+.omc/
+.sisyphus/
+progress.txt
+.agent/
+.campaign/

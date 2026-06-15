@@ -2,20 +2,60 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion } from 'motion/react';
-import { IconChevronLeft } from './icons';
+import { PageNavActions } from './PageNavActions';
 
 interface ReleaseProps {
   onGoHome: () => void;
+  onOpenQue?: () => void;
+  onOpenWorld?: () => void;
 }
 
 const CHANGELOG_CONTENT = `# MoodTrip - Ghi Ch\u00fa Ph\u00e1t H\u00e0nh
 
-> **Phi\u00ean B\u1ea3n T\u00e0i Li\u1ec7u:** 4.2  
-> **C\u1eadp Nh\u1eadt L\u1ea7n Cu\u1ed1i:** 01/03/2026
+> **Phi\u00ean B\u1ea3n T\u00e0i Li\u1ec7u:** 4.3  
+> **C\u1eadp Nh\u1eadt L\u1ea7n Cu\u1ed1i:** 15/06/2026
 
 ---
 
-## \uD83C\uDD95 Phi\u00ean B\u1ea3n 4.2
+## Phi\u00ean B\u1ea3n 4.3
+
+_15/06/2026_
+
+### \u0110i\u1ec3m N\u1ed5i B\u1eadt
+- L\u00e0m m\u1edbi m\u00e0n R\u00fat b\u00e0i th\u00e0nh tr\u1ea3i nghi\u1ec7m "r\u00fat qu\u1ebb" 3D nhi\u1ec1u hi\u1ec7u \u1ee9ng
+- Th\u1ebf gi\u1edbi c\u1ee7a b\u1ea1n: \u0111\u1ea3o 3D ph\u00e1t s\u00e1ng, m\u00f4 h\u00ecnh chi ti\u1ebft, hi\u1ec3n th\u1ecb \u0111\u1ee7 th\u00f4ng tin
+- \u0110\u01b0\u1eddng v\u1ec1 qu\u00ea m\u1edf r\u1ed9ng 52 t\u1ec9nh/th\u00e0nh v\u00e0 cho ph\u00e9p nh\u1eadp qu\u00ea t\u1ef1 do
+- Lo\u1ea1i b\u1ecf to\u00e0n b\u1ed9 emoji, thay b\u1eb1ng bi\u1ec3u t\u01b0\u1ee3ng SVG \u0111\u1ed3ng nh\u1ea5t
+- T\u1ed1i \u01b0u giao di\u1ec7n mobile, s\u1eeda nhi\u1ec1u l\u1ed7i \u0111\u00e8 ch\u1eef
+
+### T\u00ednh N\u0103ng M\u1edbi
+| T\u00ednh N\u0103ng | M\u00f4 T\u1ea3 |
+| --- | --- |
+| R\u00fat b\u00e0i 3D | L\u1eadt b\u00e0i ki\u1ec3u oracle v\u1edbi hi\u1ec7u \u1ee9ng \u00e1nh s\u00e1ng, l\u1eafc \u0111i\u1ec7n tho\u1ea1i \u0111\u1ec3 r\u00fat qu\u1ebb |
+| Th\u1ebf gi\u1edbi 3D n\u00e2ng c\u1ea5p | \u0110\u1ea3o bay ph\u00e1t s\u00e1ng, c\u00e2y s\u1ef1 s\u1ed1ng l\u1edbn d\u1ea7n theo s\u1ed1 chuy\u1ebfn, nh\u00e3n \u0111i\u1ec3m \u0111\u1ebfn v\u00e0 \u0111\u01b0\u1eddng n\u1ed1i h\u00e0nh tr\u00ecnh |
+| M\u00f4 h\u00ecnh chi ti\u1ebft | H\u1ea3i \u0111\u0103ng, \u0111\u00e8n l\u1ed3ng, ch\u00f9a nhi\u1ec1u t\u1ea7ng, ghe, ru\u1ed9ng b\u1eadc thang\u2026 d\u1ea1ng low-poly tinh t\u1ebf |
+| \u0110\u01b0\u1eddng v\u1ec1 qu\u00ea m\u1edf r\u1ed9ng | 52 t\u1ec9nh/th\u00e0nh c\u00f3 \u0111\u1ecba danh v\u00e0 m\u00f3n \u0103n; t\u00ecm theo t\u00ean th\u00e0nh ph\u1ed1; nh\u1eadp qu\u00ea b\u1ea5t k\u1ef3 |
+| H\u1ee7y & h\u1ebft gi\u1edd khi t\u1ea1o l\u1ecbch tr\u00ecnh | C\u00f3 n\u00fat H\u1ee7y, t\u1ef1 d\u1eebng sau 40 gi\u00e2y, th\u00f4ng b\u00e1o l\u1ed7i th\u00e2n thi\u1ec7n ti\u1ebfng Vi\u1ec7t |
+| Reel \u0111a \u0111\u1ecbnh d\u1ea1ng | Story 9:16, Feed 4:5, Square 1:1 \u2014 b\u1ed1 c\u1ee5c t\u1ef1 canh, kh\u00f4ng tr\u00e0n khung |
+
+### C\u1ea3i Ti\u1ebfn
+| C\u1ea3i Ti\u1ebfn | M\u00f4 T\u1ea3 |
+| --- | --- |
+| Reel r\u00f5 n\u00e9t h\u01a1n | S\u1eeda \u0111\u00e8 ch\u1eef, canh v\u1eeba khung, n\u1ec1n th\u1ebb \u0111\u1eadm \u0111\u1ec3 d\u1ec5 \u0111\u1ecdc tr\u00ean m\u1ecdi n\u1ec1n |
+| Tr\u1ee3 n\u0103ng (a11y) | T\u00f4n tr\u1ecdng gi\u1ea3m chuy\u1ec3n \u0111\u1ed9ng, cho ph\u00e9p ph\u00f3ng to, b\u1eaby focus trong h\u1ed9p tho\u1ea1i, v\u00f9ng ch\u1ea1m t\u1ed1i thi\u1ec3u 44px |
+| M\u00e0n h\u00ecnh gi\u1edbi thi\u1ec7u | Th\u00eam n\u00fat B\u1ecf qua, t\u1ef1 r\u00fat g\u1ecdn khi b\u1eadt gi\u1ea3m chuy\u1ec3n \u0111\u1ed9ng |
+| Giao di\u1ec7n mobile | H\u1ebft \u0111\u00e8 ch\u1eef \u1edf trang ch\u1ee7 v\u00e0 header; n\u00fat \u0111\u00f3ng/x\u00f3a g\u1ecdn h\u01a1n; \u0111\u01b0a "V\u1ec1 qu\u00ea / Th\u1ebf gi\u1edbi" v\u00e0o header |
+| \u0110\u1ed9 tin c\u1eady | Ki\u1ec3m tra d\u1eef li\u1ec7u l\u1ecbch tr\u00ecnh ch\u1eb7t h\u01a1n, tr\u00e1nh treo m\u00e0n h\u00ecnh khi g\u1eb7p l\u1ed7i |
+
+### S\u1eeda L\u1ed7i
+| S\u1eeda L\u1ed7i | M\u00f4 T\u1ea3 |
+| --- | --- |
+| Tr\u00f9ng thanh \u0111i\u1ec1u h\u01b0\u1edbng | H\u1ebft tr\u00f9ng navbar \u1edf trang M\u1eb9o du l\u1ecbch / Gi\u1edbi thi\u1ec7u / Phi\u00ean b\u1ea3n |
+| \u0110\u00e8 ch\u1eef tr\u00ean mobile | H\u1ebft \u0111\u00e8 gi\u1eefa n\u00fat "Kh\u00e1m ph\u00e1 ngay" v\u00e0 ph\u1ea7n l\u1ecbch s\u1eed chuy\u1ebfn \u0111i |
+
+---
+
+## Phi\u00ean B\u1ea3n 4.2
 
 _01/03/2026_
 
@@ -59,7 +99,7 @@ _28/02/2026_
 
 ### Điểm Nổi Bật
 - Chế độ Ngắn hạn mới — lên kế hoạch khám phá thành phố trong vài giờ
-- Gợi ý địa điểm trending với badge 🔥 trên các điểm hot
+- Gợi ý địa điểm trending với badge trên các điểm hot
 - Sửa lỗi responsive cho nút chọn ngày/đêm trên mobile
 
 ### Tính Năng Mới
@@ -70,7 +110,7 @@ _28/02/2026_
 | 6 Phong cách mới | Hẹn hò, Cà phê, Food Tour, Nightlife, Vui chơi, Chill |
 | Chọn giờ bắt đầu / kết thúc | Time picker cho chế độ ngắn hạn thay vì chọn ngày |
 | Ngân sách 100K - 5M | Phạm vi ngân sách phù hợp cho chuyến ngắn |
-| Trending Badge | Đánh dấu 🔥 và lý do trending cho địa điểm hot |
+| Trending Badge | Đánh dấu và lý do trending cho địa điểm hot |
 | Ẩn thông tin không cần thiết | Tự động ẩn chỗ nghỉ và gợi ý trang phục khi đi ngắn |
 
 ### Sửa Lỗi
@@ -182,21 +222,13 @@ _01/07/2025_
 
 _Bản quyền © 2025-2026 MoodTrip. Phát triển bởi Hoài Nhớ. Mọi quyền được bảo lưu._`;
 
-export const Release: React.FC<ReleaseProps> = ({ onGoHome }) => {
+export const Release: React.FC<ReleaseProps> = ({ onGoHome, onOpenQue, onOpenWorld }) => {
   return (
     <div className="min-h-screen pb-10">
       <header className="sticky top-0 z-30 glass-dark border-b border-white/5">
-        <div className="max-w-5xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+        <div className="max-w-5xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-3">
           <div className="text-2xl font-bold text-gradient-nature">MoodTrip</div>
-          <motion.button
-            onClick={onGoHome}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-4 py-2 text-sm font-medium text-teal-400 hover:text-teal-300 flex items-center rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <IconChevronLeft className="w-5 h-5 mr-1" />
-            Quay lại trang chủ
-          </motion.button>
+          <PageNavActions onGoHome={onGoHome} onOpenQue={onOpenQue} onOpenWorld={onOpenWorld} />
         </div>
       </header>
       <main className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

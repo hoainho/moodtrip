@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { IconX } from './icons';
 import {
   PROVINCE_LANDMARKS,
   buildQueSeed,
   buildQuePersonalNote,
+  buildCustomQueSeed,
+  matchProvinces,
+  matchedAlias,
   type Province,
 } from '../services/duongVeQue';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import type { FormData } from '../types';
 
 interface DuongVeQueModalProps {
@@ -17,17 +22,41 @@ interface DuongVeQueModalProps {
 
 export function DuongVeQueModal({ open, onClose, onSeed }: DuongVeQueModalProps) {
   const [query, setQuery] = useState('');
-  const provinces = useMemo(
-    () =>
-      PROVINCE_LANDMARKS.filter((p) =>
-        p.province.toLowerCase().includes(query.toLowerCase()),
-      ),
-    [query],
-  );
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useBodyScrollLock(open);
+  useEscapeKey(open, onClose);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => searchInputRef.current?.focus(), 100);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
+  const provinces = useMemo(() => matchProvinces(query), [query]);
+
+  const trimmedQuery = query.trim();
+  const isExactMatch = trimmedQuery
+    ? PROVINCE_LANDMARKS.some(
+        (p) => p.province.toLowerCase() === trimmedQuery.toLowerCase(),
+      )
+    : false;
+  const showCustomButton = trimmedQuery.length > 0 && !isExactMatch;
 
   function handlePick(province: Province) {
     const seed = buildQueSeed(province);
     if (!seed) return;
+    onSeed({
+      destination: seed.province,
+      personalNote: buildQuePersonalNote(seed),
+      moods: ['cultural', 'relax'],
+    });
+    onClose();
+  }
+
+  function handleCustomPick() {
+    const seed = buildCustomQueSeed(trimmedQuery);
     onSeed({
       destination: seed.province,
       personalNote: buildQuePersonalNote(seed),
@@ -46,6 +75,9 @@ export function DuongVeQueModal({ open, onClose, onSeed }: DuongVeQueModalProps)
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Đường về quê"
       >
         <motion.div
           initial={{ scale: 0.95 }}
@@ -55,9 +87,10 @@ export function DuongVeQueModal({ open, onClose, onSeed }: DuongVeQueModalProps)
           onClick={(e) => e.stopPropagation()}
         >
           <button
+            ref={closeBtnRef}
             onClick={onClose}
             aria-label="Đóng"
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
+            className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
           >
             <IconX className="w-5 h-5" />
           </button>
@@ -69,6 +102,7 @@ export function DuongVeQueModal({ open, onClose, onSeed }: DuongVeQueModalProps)
               Mơ sẽ gợi ý một chuyến về thăm quê — không phải tour du khách, mà là về với cảm giác.
             </p>
             <input
+              ref={searchInputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -78,18 +112,46 @@ export function DuongVeQueModal({ open, onClose, onSeed }: DuongVeQueModalProps)
           </div>
 
           <ul className="px-3 pb-6 overflow-y-auto flex-1">
-            {provinces.length === 0 && (
-              <li className="px-4 py-2 text-slate-500 text-sm">
-                Không có tỉnh phù hợp. Mơ chưa biết về quê này — gửi cho team nhé.
+            {showCustomButton && (
+              <li>
+                <button
+                  onClick={handleCustomPick}
+                  className="w-full text-left px-4 py-3 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 transition-colors mb-2"
+                >
+                  <p className="text-teal-300 font-semibold text-sm">Về quê {trimmedQuery}</p>
+                  <p className="text-teal-400/60 text-xs mt-0.5">
+                    Mơ sẽ tạo chuyến đi riêng cho quê bạn
+                  </p>
+                </button>
               </li>
             )}
+
+            {provinces.length === 0 && !showCustomButton && (
+              <li className="px-4 py-2 text-slate-500 text-sm">
+                {trimmedQuery.length === 0
+                  ? 'Gõ tên quê để tìm kiếm hoặc tạo chuyến đi riêng.'
+                  : 'Không tìm thấy tỉnh phù hợp. Dùng nút "Về quê" bên trên để tạo chuyến đi riêng nhé.'}
+              </li>
+            )}
+
+            {provinces.length === 0 && showCustomButton && (
+              <li className="px-4 py-2 text-slate-500 text-sm">
+                Không tìm thấy tỉnh phù hợp trong danh sách.
+              </li>
+            )}
+
             {provinces.map((p) => (
               <li key={p.province}>
                 <button
                   onClick={() => handlePick(p.province)}
                   className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 transition-colors"
                 >
-                  <p className="text-white font-medium">{p.province}</p>
+                  <p className="text-white font-medium">
+                    {p.province}
+                    {matchedAlias(p.province, query) && (
+                      <span className="text-teal-400/80 font-normal"> · {matchedAlias(p.province, query)}</span>
+                    )}
+                  </p>
                   <p className="text-slate-500 text-xs">
                     {p.signatureLandmarks.slice(0, 2).join(' · ')}
                   </p>

@@ -63,7 +63,7 @@ function SkeletonTimeline({ delay = 0 }: { delay?: number }) {
   );
 }
 
-export const LoadingAnimation: React.FC = () => {
+export const LoadingAnimation: React.FC<{ onCancel?: () => void }> = ({ onCancel }) => {
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
@@ -211,6 +211,19 @@ export const LoadingAnimation: React.FC = () => {
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           />
         </motion.div>
+
+        {onCancel && (
+          <motion.button
+            type="button"
+            onClick={onCancel}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+            className="mt-6 min-h-[44px] px-5 py-2 text-sm font-medium text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+          >
+            Hủy
+          </motion.button>
+        )}
       </motion.div>
     </div>
   );

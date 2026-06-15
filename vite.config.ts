@@ -5,6 +5,24 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { devEdgeProxy } from './vite.devEdgeProxy';
 
 export default defineConfig({
+    server: {
+      watch: {
+        // Do NOT trigger HMR full-page reloads when in-repo agent/tooling state
+        // directories change. They are not app source, but writes to them (e.g.
+        // oh-my-claudecode's `.omc/state/*`, Playwright's `test-results/`) otherwise
+        // reload the browser mid-session — restarting the intro splash and detaching
+        // whatever element is being interacted with, which causes spurious E2E flakiness.
+        ignored: [
+          '**/.omc/**',
+          '**/.sisyphus/**',
+          '**/.agent/**',
+          '**/.campaign/**',
+          '**/test-results/**',
+          '**/.playwright-mcp/**',
+          '**/playwright-report/**',
+        ],
+      },
+    },
     plugins: [
       tailwindcss(),
       devEdgeProxy(),

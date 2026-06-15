@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Logo } from './Logo';
 import { IconMapPin, IconSparkles, IconGlobe, IconCompass, IconX } from './icons';
 import type { ItineraryPlan } from '../types';
@@ -30,6 +30,29 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
 
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const firstMenuItemRef = useRef<HTMLButtonElement>(null);
+
+  // Escape key closes menu and restores focus to hamburger
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+        hamburgerRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
+
+  // Move focus to first menu item when menu opens
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      firstMenuItemRef.current?.focus();
+    }
+  }, [mobileMenuOpen]);
+
   const navItems = [
     { label: 'Mẹo du lịch', onClick: onGoToTips },
     { label: 'Giới thiệu', onClick: onGoToAbout },
@@ -38,13 +61,12 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
 
   return (
     <div
-      className="relative flex flex-col items-center justify-center min-h-screen text-white"
+      className="relative flex flex-col items-center justify-start sm:justify-center min-h-screen text-white pt-24 pb-8 sm:py-0"
       style={{
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
         minHeight: '100vh',
         color: 'white',
         overflowX: 'hidden',
@@ -73,10 +95,13 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
 
         {/* Mobile hamburger */}
         <motion.button
+          ref={hamburgerRef}
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           whileTap={{ scale: 0.9 }}
           className="md:hidden p-2.5 glass rounded-full border border-white/10"
           aria-label="Menu"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="hero-mobile-menu"
         >
           <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             {mobileMenuOpen ? (
@@ -98,18 +123,21 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
               exit={{ opacity: 0 }}
               onClick={() => setMobileMenuOpen(false)}
               className="fixed inset-0 z-20 md:hidden"
+              aria-hidden="true"
             />
             <motion.div
+              id="hero-mobile-menu"
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               className="absolute top-16 right-4 z-30 glass-dark rounded-2xl p-2 min-w-[180px] border border-white/10 md:hidden shadow-2xl shadow-black/40"
             >
-              {navItems.map((item) => (
+              {navItems.map((item, i) => (
                 <button
                   key={item.label}
-                  onClick={() => { item.onClick(); setMobileMenuOpen(false); }}
+                  ref={i === 0 ? firstMenuItemRef : undefined}
+                  onClick={() => { item.onClick(); setMobileMenuOpen(false); hamburgerRef.current?.focus(); }}
                   className="w-full text-left px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors font-medium"
                 >
                   {item.label}
@@ -153,7 +181,7 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
       </motion.div>
 
       {/* Main content */}
-      <div className="relative z-10 text-center px-4 sm:px-8 max-w-3xl bg-black/10 backdrop-blur-[2px] rounded-3xl py-8 sm:py-12 mt-16 sm:mt-0 mb-24 sm:mb-0">
+      <div className="relative z-10 text-center px-4 sm:px-8 max-w-3xl bg-black/10 backdrop-blur-[2px] rounded-3xl py-8 sm:py-12 mb-10 sm:mb-0">
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -226,10 +254,10 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2, duration: 0.6 }}
-          className="absolute bottom-0 left-0 w-full z-10 pb-4 sm:pb-8 px-4"
+          className="relative w-full z-10 px-4 pb-4 sm:pb-8 sm:absolute sm:bottom-0 sm:left-0"
         >
           <h3 className="text-center text-slate-400 text-xs sm:text-sm font-medium mb-3 tracking-wider uppercase">Lịch sử chuyến đi</h3>
-          <div className="max-w-3xl mx-auto max-h-[35vh] overflow-y-auto scrollbar-thin">
+          <div className="max-w-3xl mx-auto sm:max-h-[35vh] sm:overflow-y-auto scrollbar-thin">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {savedItineraries.map((trip, index) => {
                 const gradient = gradientClasses[index % gradientClasses.length];
@@ -245,7 +273,8 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
                   >
                     <button
                       onClick={(e) => { e.stopPropagation(); if (trip.id) onDeleteItinerary(trip.id); }}
-                      className="absolute top-2 right-2 p-1 rounded-full bg-black/30 text-white/50 hover:text-white hover:bg-red-500/50 transition-all opacity-0 group-hover:opacity-100"
+                      aria-label="Xóa lịch trình"
+                      className="absolute top-1.5 right-1.5 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-black/40 text-white/60 hover:text-white hover:bg-red-500/60 transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-90"
                     >
                       <IconX className="w-3.5 h-3.5" />
                     </button>

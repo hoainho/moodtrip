@@ -559,3 +559,101 @@ export const IconLanguages = (props: React.SVGProps<SVGSVGElement>) => (
         <path d="M14 18h6" />
     </SvgIcon>
 );
+
+// ===== Card-pull deck icons (drawn, stroke-only, currentColor) =====
+
+export const IconMountain = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <path d="m8 4 4 7 2.5-3.5L21 19H3z" />
+        <path d="m9 11 1.5 2" />
+    </SvgIcon>
+);
+
+export const IconWave = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <path d="M2 8c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2" />
+        <path d="M2 13c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2" />
+        <path d="M2 18c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2" />
+    </SvgIcon>
+);
+
+export const IconBoat = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <path d="M3 15h18l-2.2 4.4a2 2 0 0 1-1.8 1.1H7a2 2 0 0 1-1.8-1.1L3 15z" />
+        <path d="M5 15V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7" />
+        <path d="M12 3v3" />
+    </SvgIcon>
+);
+
+export const IconBuilding = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <path d="M3 21V9l5-3v15" />
+        <path d="M8 21V3l8 4v14" />
+        <path d="M16 21v-9l5 3v6" />
+        <path d="M21 21H2" />
+        <path d="M11 8h1.5M11 11h1.5M11 14h1.5" />
+    </SvgIcon>
+);
+
+export const IconWheat = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <path d="M12 22V8" />
+        <path d="M12 8c0-2 1.5-3.5 3.5-4-.2 2-1.5 3.5-3.5 4z" />
+        <path d="M12 8c0-2-1.5-3.5-3.5-4 .2 2 1.5 3.5 3.5 4z" />
+        <path d="M12 13c0-2 1.5-3.5 3.5-4-.2 2-1.5 3.5-3.5 4z" />
+        <path d="M12 13c0-2-1.5-3.5-3.5-4 .2 2 1.5 3.5 3.5 4z" />
+    </SvgIcon>
+);
+
+export const IconBook = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </SvgIcon>
+);
+
+export const IconTelescope = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <path d="m10.5 3 6 2.2a1 1 0 0 1 .6 1.3l-1 2.8a1 1 0 0 1-1.3.6L3.5 6.3a1 1 0 0 1-.6-1.3l.7-1.9a1 1 0 0 1 1.3-.6z" />
+        <path d="m6 8 2 5" />
+        <path d="M11 9.5 13 14" />
+        <path d="M11 20a2 2 0 1 0 4 0" />
+        <path d="M13 14v6" />
+    </SvgIcon>
+);
+
+export const IconUserHeart = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <circle cx="8.5" cy="7" r="3.5" />
+        <path d="M2.5 21v-1.5A4.5 4.5 0 0 1 7 15h3a4.5 4.5 0 0 1 4.5 4.5V21" />
+        <path d="M18.4 8.6a1.8 1.8 0 0 0-2.6 0l-.3.3-.3-.3a1.8 1.8 0 1 0-2.6 2.6l2.9 2.8 2.9-2.8a1.8 1.8 0 0 0 0-2.6z" />
+    </SvgIcon>
+);
+
+export const IconGlassCheers = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <path d="M5 3l3 7-1.5 7" />
+        <path d="M19 3l-3 7 1.5 7" />
+        <path d="m4 9 5 1.5M20 9l-5 1.5" />
+        <path d="M4 21h6M14 21h6" />
+        <path d="m11 4 2 1.5" />
+    </SvgIcon>
+);
+
+export const IconBriefcase = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <rect x="2" y="7" width="20" height="14" rx="2" />
+        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        <path d="M2 13h20" />
+    </SvgIcon>
+);
+
+export const IconPaw = (props: React.SVGProps<SVGSVGElement>) => (
+    <SvgIcon strokeWidth={1.8} {...props}>
+        <ellipse cx="6" cy="9" rx="1.6" ry="2.2" />
+        <ellipse cx="18" cy="9" rx="1.6" ry="2.2" />
+        <ellipse cx="9.5" cy="5.5" rx="1.5" ry="2" />
+        <ellipse cx="14.5" cy="5.5" rx="1.5" ry="2" />
+        <path d="M12 12.5c-2.2 0-4 1.6-4 3.6 0 1.6 1.3 2.4 2.6 2.4.7 0 1-.3 1.4-.3s.7.3 1.4.3c1.3 0 2.6-.8 2.6-2.4 0-2-1.8-3.6-4-3.6z" />
+    </SvgIcon>
+);

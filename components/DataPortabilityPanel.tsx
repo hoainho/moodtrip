@@ -131,8 +131,8 @@ export function DataPortabilityPanel() {
             </div>
           </div>
         ) : state.kind === 'deleted' ? (
-          <p className="text-rose-200 text-xs">
-            ✓ Tài khoản đã được xoá. Hẹn gặp lại nếu bạn quay lại.
+          <p className="text-rose-200 text-xs inline-flex items-center gap-1.5">
+            <IconCheck className="w-4 h-4" aria-hidden="true" /> Tài khoản đã được xoá. Hẹn gặp lại nếu bạn quay lại.
           </p>
         ) : (
           <button

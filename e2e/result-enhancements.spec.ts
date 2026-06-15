@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { preacceptConsent, gotoHome } from './_helpers';
+import { preacceptConsent, gotoHome, clickExplore } from './_helpers';
 
 async function createTrip(page: import('@playwright/test').Page): Promise<void> {
-  await page.locator('button:has-text("Khám phá ngay")').first().click();
+  await clickExplore(page);
   await expect(page.locator('button:has-text("Tôi muốn chọn thủ công")').first()).toBeVisible({ timeout: 10_000 });
   await page.locator('button:has-text("Tôi muốn chọn thủ công")').first().click();
   await expect(page.locator('input[placeholder*="AI gợi ý"]').first()).toBeVisible({ timeout: 10_000 });
@@ -68,10 +68,15 @@ test.describe('Result view enhancements', () => {
     await page.locator('button:has-text("Tạo Reel")').first().click();
     await page.waitForTimeout(1000);
 
+    // Ensure the 9:16 "Reels / Story" format is selected (it is the default, but be explicit).
+    await page.getByRole('tab', { name: 'Reels / Story' }).click();
+
+    // The reel modal exposes separate "Tải PNG" and "SVG" download buttons (plus "Copy").
     const downloadPromise = page.waitForEvent('download');
-    await page.locator('button:has-text("Tải về")').first().click();
+    await page.locator('button:has-text("SVG")').first().click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/^moodtrip-.*-reel\.svg$/);
+    // Filename: moodtrip-<slug>-<formatId>-<w>x<h>.svg  → e.g. moodtrip-da-lat-story-1080x1920.svg
+    expect(download.suggestedFilename()).toMatch(/^moodtrip-.*-story-1080x1920\.svg$/);
 
     const path = await download.path();
     expect(path).not.toBeNull();

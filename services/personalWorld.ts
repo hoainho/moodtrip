@@ -1,3 +1,4 @@
+import type { ItineraryPlan } from '../types';
 import type { TripRecord } from './tripsApi';
 
 export interface PersonalWorldStats {
@@ -75,4 +76,44 @@ export function nextMilestone(tripCount: number): WorldMilestone | null {
 export function currentMilestone(tripCount: number): WorldMilestone | null {
   const eligible = MILESTONES.filter((m) => m.threshold <= tripCount);
   return eligible[eligible.length - 1] ?? null;
+}
+
+export const REGION_LABELS: Record<string, string> = {
+  north: 'Miền Bắc',
+  central: 'Miền Trung',
+  south: 'Miền Nam',
+  mekong: 'Miền Tây',
+  highlands: 'Tây Nguyên',
+  unknown: 'Khác',
+};
+
+export const MOOD_LABELS: Record<string, string> = {
+  relax: 'Thư giãn',
+  explore: 'Khám phá',
+  nature: 'Thiên nhiên',
+  romantic: 'Lãng mạn',
+  adventure: 'Mạo hiểm',
+  cultural: 'Văn hóa',
+  date: 'Hẹn hò',
+  cafe: 'Cà phê',
+  food_tour: 'Ẩm thực',
+  nightlife: 'Về đêm',
+  fun: 'Vui chơi',
+  chill: 'Chill',
+};
+
+export function tripRecordsFromItineraries(items: ItineraryPlan[]): TripRecord[] {
+  return items.map((it) => ({
+    id: String(it.id ?? it.destination),
+    ownerId: '',
+    destination: it.destination,
+    tripMode: 'long' as const,
+    itinerary: it,
+    formInput: null,
+    isPublic: false,
+    shareSlug: null,
+    parentRemixId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }));
 }

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { preacceptConsent, gotoHome } from './_helpers';
+import { preacceptConsent, gotoHome, clickExplore } from './_helpers';
 
 test.describe('Card-pull onboarding (Phase 1 A2)', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,18 +8,21 @@ test.describe('Card-pull onboarding (Phase 1 A2)', () => {
 
   test('Khám phá ngay leads to card-pull view', async ({ page }) => {
     await gotoHome(page);
-    await page.locator('button:has-text("Khám phá ngay")').first().click();
-    await page.waitForTimeout(2500);
+    await clickExplore(page);
 
-    await expect(page.locator('text=RÚT QUẺ DU LỊCH')).toBeVisible();
-    await expect(page.locator('text=NGUYÊN TỐ')).toBeVisible();
-    await expect(page.locator('text=NHỊP')).toBeVisible();
-    await expect(page.locator('text=BẠN ĐI CÙNG')).toBeVisible();
+    // Card-pull onboarding: eyebrow "Rút quẻ du lịch", headline, and the three card
+    // slots (Nguyên tố / Nhịp / Bạn đi cùng). Labels are styled uppercase via CSS but
+    // the DOM text is title-case — assert the real text content.
+    await expect(page.getByText('Rút quẻ du lịch', { exact: false })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Hôm nay bạn muốn đi đâu?')).toBeVisible();
+    await expect(page.getByText('Nguyên tố', { exact: true })).toBeVisible();
+    await expect(page.getByText('Nhịp', { exact: true })).toBeVisible();
+    await expect(page.getByText('Bạn đi cùng', { exact: true })).toBeVisible();
   });
 
   test('Manual fallback button is present and reaches TripForm', async ({ page }) => {
     await gotoHome(page);
-    await page.locator('button:has-text("Khám phá ngay")').first().click();
+    await clickExplore(page);
     await page.waitForTimeout(2500);
 
     const manual = page.locator('button:has-text("Tôi muốn chọn thủ công")');
@@ -37,7 +40,7 @@ test.describe('Card-pull onboarding (Phase 1 A2)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await gotoHome(page);
-    await page.locator('button:has-text("Khám phá ngay")').first().click();
+    await clickExplore(page);
     await page.waitForTimeout(2500);
     await page.locator('button:has-text("Tôi muốn chọn thủ công")').first().click();
     await page.waitForTimeout(2500);

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import type { ItineraryPlan, TravelTip, FormData } from '../types';
-import { IconFood, IconHotel, IconTip, IconMapPin, IconDownload, IconRestart, IconSun, IconMoon, IconInfo, IconWallet, IconEdit, IconBookmark, IconCheck, IconX, IconThermometer, IconCloudSun, IconShirt, IconAlertTriangle, IconConstruction, IconReceipt, IconFire, IconShare, IconClock, IconHeart } from './icons';
+import { IconFood, IconHotel, IconTip, IconMapPin, IconDownload, IconRestart, IconSun, IconMoon, IconInfo, IconWallet, IconEdit, IconBookmark, IconCheck, IconX, IconThermometer, IconCloudSun, IconShirt, IconAlertTriangle, IconConstruction, IconReceipt, IconFire, IconShare, IconClock, IconHeart, IconHome, IconGlobe } from './icons';
 import { Logo } from './Logo';
 import { TravelTipsModal } from './TravelTipsModal';
 import { motion } from 'motion/react';
@@ -11,6 +11,7 @@ import { TripHeroBanner } from './TripHeroBanner';
 import { TripViewModeToggle, type TripViewMode } from './TripViewModeToggle';
 import { TripDayStoryboard } from './TripDayStoryboard';
 import { TripReelModal } from './TripReelModal';
+import { ITINERARY_LS_KEY } from '../constants';
 
 interface ItineraryDisplayProps {
   itinerary: ItineraryPlan;
@@ -22,6 +23,8 @@ interface ItineraryDisplayProps {
   isSaved: boolean;
   isExportingPDF?: boolean;
   formData?: FormData | null;
+  onOpenQue?: () => void;
+  onOpenWorld?: () => void;
 }
 
 const InfoCard: React.FC<{ icon: React.ReactNode, title: string, children: React.ReactNode }> = ({ icon, title, children }) => (
@@ -42,7 +45,7 @@ const InfoCard: React.FC<{ icon: React.ReactNode, title: string, children: React
     </motion.div>
 );
 
-export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, onReset, onExportPDF, onSaveToList, onItineraryChange, onGoHome, isSaved, isExportingPDF, formData }) => {
+export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, onReset, onExportPDF, onSaveToList, onItineraryChange, onGoHome, isSaved, isExportingPDF, formData, onOpenQue, onOpenWorld }) => {
   const [activeTips, setActiveTips] = useState<{ tips: TravelTip[], venue: string } | null>(null);
   const [editingTime, setEditingTime] = useState<{ dayIndex: number, itemIndex: number} | null>(null);
   const [currentTimeValue, setCurrentTimeValue] = useState('');
@@ -52,6 +55,17 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
   const [viewMode, setViewMode] = useState<TripViewMode>('timeline');
   const [showReel, setShowReel] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Persist the itinerary only after this view has successfully rendered. If rendering throws, the
+  // ItineraryErrorBoundary catches it before this effect runs and purges the cache instead — so a
+  // malformed itinerary can never get cached and re-crash on the next reload.
+  useEffect(() => {
+    try {
+      localStorage.setItem(ITINERARY_LS_KEY, JSON.stringify(itinerary));
+    } catch {
+      void 0;
+    }
+  }, [itinerary]);
 
   const scrollToSection = (id: string) => {
     setActiveSection(id);
@@ -165,6 +179,32 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
             <IconMapPin className="w-4 h-4 mr-1.5 text-teal-400 flex-shrink-0" />
             <span className="truncate">{itinerary.destination}</span>
           </h1>
+          {(onOpenQue || onOpenWorld) && (
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {onOpenQue && (
+                <button
+                  type="button"
+                  onClick={onOpenQue}
+                  aria-label="Đường về quê"
+                  className="inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 sm:px-3 rounded-full text-xs font-medium text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                >
+                  <IconHome className="w-4 h-4" />
+                  <span className="hidden md:inline">Về quê</span>
+                </button>
+              )}
+              {onOpenWorld && (
+                <button
+                  type="button"
+                  onClick={onOpenWorld}
+                  aria-label="Thế giới của bạn"
+                  className="inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 sm:px-3 rounded-full text-xs font-medium text-emerald-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                >
+                  <IconGlobe className="w-4 h-4" />
+                  <span className="hidden md:inline">Thế giới</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -411,7 +451,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           <div ref={el => { sectionRefs.current['food'] = el; }} className="scroll-mt-20">
           <InfoCard icon={<IconFood className="w-6 h-6"/>} title="Món ăn nên thử">
             <ul className="space-y-3">
-              {itinerary.food.map((item, index) => (
+              {(itinerary.food ?? []).map((item, index) => (
                 <li key={index} className="p-3 bg-white/5 rounded-xl border border-white/5">
                   <p className="font-bold text-white">{item.name}</p>
                   <p className="text-sm text-slate-400">{item.description}</p>
@@ -440,7 +480,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
           <div ref={el => { sectionRefs.current['tips'] = el; }} className="md:col-span-2 scroll-mt-20">
             <InfoCard icon={<IconTip className="w-6 h-6"/>} title="Mẹo du lịch hữu ích">
               <ul className="space-y-2 text-slate-300">
-                {itinerary.tips.map((tip, index) => (
+                {(itinerary.tips ?? []).map((tip, index) => (
                   <li key={index} className="flex items-start gap-3 p-2">
                     <span className="text-teal-400 mt-0.5">•</span>
                     <span>{tip}</span>

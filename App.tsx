@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, Component, Suspense, lazy } from 'react';
+import { useState, useEffect, useCallback, useRef, Component, Suspense, lazy } from 'react';
 import type { ReactNode } from 'react';
 import { generateItinerary } from './services/geminiService';
+import { mapGenerationError } from './services/errorCopy';
+import { ItineraryErrorBoundary } from './components/ItineraryErrorBoundary';
 import { Hero } from './components/Hero';
 import { TripForm } from './components/TripForm';
 import { LoadingAnimation } from './components/LoadingAnimation';
@@ -105,6 +107,12 @@ export default function App() {
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [worldSceneOpen, setWorldSceneOpen] = useState(false);
   const [antiItineraryForm, setAntiItineraryForm] = useState<FormData | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const [prefersReducedMotion] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  });
 
   const { user } = useAuth();
   void generateAntiItinerary;
@@ -220,18 +228,25 @@ export default function App() {
   };
 
   const handleGenerateItinerary = useCallback(async (formData: FormData) => {
+    // Double-submit guard: ignore re-entry while a generation is already in flight.
+    if (abortRef.current) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setIsGenerating(true);
     setView('loading');
     setError(null);
     setLastFormData(formData);
 
     try {
-      const result = await generateItinerary(formData);
-      
+      const result = await generateItinerary(formData, controller.signal);
+      if (controller.signal.aborted) return; // user cancelled mid-flight
+
       const resultWithId = { ...result, id: `${result.destination}-${Date.now()}` };
       setItinerary(resultWithId);
       setView('result');
-      localStorage.setItem(ITINERARY_LS_KEY, JSON.stringify(resultWithId));
-      setLastFormData(null);
+      // Persistence happens after a successful render (ItineraryDisplay effect), not here — so a
+      // malformed itinerary that crashes the view is never cached. lastFormData is intentionally kept
+      // so retry-after-error and the Anti-Itinerary affordance keep working.
 
       if (user) {
         try {
@@ -247,25 +262,21 @@ export default function App() {
         }
       }
     } catch (e: unknown) {
-      const err = e as Error;
-      const knownApiErrors = ['API_KEY_INVALID', 'RATE_LIMIT_EXCEEDED', 'BUDGET_EXCEEDED'];
-
-      if (knownApiErrors.includes(err.message)) {
-          let userMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
-          if (err.message === 'API_KEY_INVALID') {
-              userMessage = 'Lỗi xác thực với hệ thống AI. Vui lòng thử lại sau.';
-          } else if (err.message === 'RATE_LIMIT_EXCEEDED') {
-              userMessage = 'Bạn đã đạt giới hạn tạo lịch trình hôm nay. Vui lòng thử lại vào ngày mai.';
-          } else if (err.message === 'BUDGET_EXCEEDED') {
-              userMessage = 'Hệ thống AI đang nghỉ để cân bằng tài nguyên. Vui lòng quay lại vào ngày mai nhé.';
-          }
-          setError(userMessage);
-          setView('form');
-      } else {
-        setError(err.message || 'Đã có lỗi xảy ra không mong muốn. Vui lòng thử lại.');
-        setView('error');
+      const mapped = mapGenerationError(e);
+      if (mapped.cancelled) {
+        setView('form');
+        return;
       }
+      setError(mapped.message);
+      setView(mapped.view);
+    } finally {
+      setIsGenerating(false);
+      abortRef.current = null;
     }
+  }, [user]);
+
+  const handleCancelGeneration = useCallback(() => {
+    abortRef.current?.abort();
   }, []);
 
   const handleReset = () => {
@@ -513,6 +524,7 @@ export default function App() {
               error={error}
               initialData={lastFormData ?? cardPullPrefill ?? preferenceDefaults}
               onGoHome={handleGoHome}
+              isSubmitting={isGenerating}
             />
           </motion.div>
         );
@@ -525,7 +537,7 @@ export default function App() {
             exit={{ opacity: 0, scale: 1.05 }}
             transition={{ duration: 0.5 }}
           >
-            <LoadingAnimation />
+            <LoadingAnimation onCancel={handleCancelGeneration} />
           </motion.div>
         );
       case 'result': {
@@ -539,17 +551,21 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <ItineraryDisplay 
-              itinerary={itinerary} 
-              onReset={handleReset} 
-              onExportPDF={handleExportPDF} 
-              onSaveToList={handleSaveItineraryToList}
-              onItineraryChange={handleItineraryChange}
-              onGoHome={handleGoHome}
-              isSaved={isSaved || isSharedView}
-              isExportingPDF={isExportingPDF}
-              formData={lastFormData}
-            />
+            <ItineraryErrorBoundary onRecover={handleReset}>
+              <ItineraryDisplay
+                itinerary={itinerary}
+                onReset={handleReset}
+                onExportPDF={handleExportPDF}
+                onSaveToList={handleSaveItineraryToList}
+                onItineraryChange={handleItineraryChange}
+                onGoHome={handleGoHome}
+                isSaved={isSaved || isSharedView}
+                isExportingPDF={isExportingPDF}
+                formData={lastFormData}
+                onOpenQue={() => setQueModalOpen(true)}
+                onOpenWorld={() => setWorldSceneOpen(true)}
+              />
+            </ItineraryErrorBoundary>
             <div className="max-w-3xl mx-auto px-4 mt-6 space-y-6 mb-10">
               <PersonalWorldBadge />
 
@@ -590,7 +606,7 @@ export default function App() {
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.4 }}
           >
-            <Release onGoHome={handleGoHome} />
+            <Release onGoHome={handleGoHome} onOpenQue={() => setQueModalOpen(true)} onOpenWorld={() => setWorldSceneOpen(true)} />
           </motion.div>
         );
       case 'tips':
@@ -602,7 +618,7 @@ export default function App() {
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.4 }}
           >
-            <TipsPage onGoHome={handleGoHome} />
+            <TipsPage onGoHome={handleGoHome} onOpenQue={() => setQueModalOpen(true)} onOpenWorld={() => setWorldSceneOpen(true)} />
           </motion.div>
         );
       case 'about':
@@ -614,7 +630,7 @@ export default function App() {
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.4 }}
           >
-            <AboutPage onGoHome={handleGoHome} />
+            <AboutPage onGoHome={handleGoHome} onOpenQue={() => setQueModalOpen(true)} onOpenWorld={() => setWorldSceneOpen(true)} />
           </motion.div>
         );
       case 'error':
@@ -672,13 +688,23 @@ export default function App() {
         position: 'relative',
       }}
     >
-      {/* 3D Background Scene — delayed mount, lazy loaded, error-safe */}
-      {sceneReady && (
+      {/* 3D Background Scene — delayed mount, lazy loaded, error-safe.
+          Skipped entirely when the user prefers reduced motion: the WebGL render loop runs continuous
+          animation that the CSS reduced-motion block cannot reach (WCAG 2.3.3). A static gradient stands
+          in so the layout is unchanged. */}
+      {sceneReady && !prefersReducedMotion && (
         <SceneErrorBoundary>
           <Suspense fallback={null}>
             <NatureScene />
           </Suspense>
         </SceneErrorBoundary>
+      )}
+      {prefersReducedMotion && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-0"
+          style={{ background: 'radial-gradient(ellipse at 50% 30%, #0f2a2e 0%, #0a0e1a 60%)' }}
+        />
       )}
 
       {/* Dark vignette overlay for text readability */}
@@ -690,25 +716,28 @@ export default function App() {
       <Analytics />
       <SpeedInsights />
 
-      {view !== 'hero' && (
+      {/* Floating quick-actions. Hidden on pages that render their own sticky header
+          (tips/about/release) — those expose Về quê / Thế giới inside their navbar via
+          PageNavActions, so showing the floating cluster too would duplicate the navbar. */}
+      {view !== 'hero' && view !== 'tips' && view !== 'about' && view !== 'release' && view !== 'result' && (
         <div className="fixed top-4 right-4 z-30 flex gap-2">
           <button
             type="button"
             onClick={() => setQueModalOpen(true)}
-            className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-purple-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 min-w-[44px] min-h-[44px] px-2.5 sm:px-3 py-1.5 text-xs font-medium text-purple-300 hover:text-white bg-white/10 hover:bg-white/15 border border-white/10 rounded-full backdrop-blur-sm transition-colors"
             aria-label="Đường về quê"
           >
             <IconHome className="w-4 h-4" />
-            <span>Về quê</span>
+            <span className="hidden sm:inline">Về quê</span>
           </button>
           <button
             type="button"
             onClick={() => setWorldSceneOpen(true)}
-            className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 min-w-[44px] min-h-[44px] px-2.5 sm:px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white bg-white/10 hover:bg-white/15 border border-white/10 rounded-full backdrop-blur-sm transition-colors"
             aria-label="Thế giới của bạn"
           >
             <IconGlobe className="w-4 h-4" />
-            <span>Thế giới</span>
+            <span className="hidden sm:inline">Thế giới</span>
           </button>
         </div>
       )}
@@ -755,7 +784,7 @@ export default function App() {
         trip={itinerary}
         onClose={() => setNotebookOpen(false)}
       />
-      <PersonalWorldScene open={worldSceneOpen} onClose={() => setWorldSceneOpen(false)} />
+      <PersonalWorldScene open={worldSceneOpen} onClose={() => setWorldSceneOpen(false)} localTrips={savedItineraries} />
       <AntiItineraryView
         open={antiItineraryForm !== null}
         form={antiItineraryForm}
@@ -774,6 +803,8 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            role="status"
+            aria-live="polite"
             className="fixed bottom-6 left-6 glass-dark px-6 py-3 rounded-xl shadow-2xl z-40 text-white font-medium border border-teal-500/20"
           >
             {toastMessage}

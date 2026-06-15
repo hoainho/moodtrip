@@ -1,27 +1,22 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { IconChevronLeft, IconHeart, IconGlobe, IconSparkles, IconCopyright, IconUsers } from './icons';
+import { IconHeart, IconGlobe, IconSparkles, IconCopyright, IconUsers } from './icons';
+import { PageNavActions } from './PageNavActions';
 
 interface AboutPageProps {
   onGoHome: () => void;
+  onOpenQue?: () => void;
+  onOpenWorld?: () => void;
 }
 
 
-export const AboutPage: React.FC<AboutPageProps> = ({ onGoHome }) => {
+export const AboutPage: React.FC<AboutPageProps> = ({ onGoHome, onOpenQue, onOpenWorld }) => {
   return (
     <div className="min-h-screen pb-10">
       <header className="sticky top-0 z-30 glass-dark border-b border-white/5">
-        <div className="max-w-5xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+        <div className="max-w-5xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-3">
           <div className="text-2xl font-bold text-gradient-nature">MoodTrip</div>
-          <motion.button
-            onClick={onGoHome}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-4 py-2 text-sm font-medium text-teal-400 hover:text-teal-300 flex items-center rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <IconChevronLeft className="w-5 h-5 mr-1" />
-            Quay lại trang chủ
-          </motion.button>
+          <PageNavActions onGoHome={onGoHome} onOpenQue={onOpenQue} onOpenWorld={onOpenWorld} />
         </div>
       </header>
 

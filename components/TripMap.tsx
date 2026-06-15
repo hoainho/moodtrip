@@ -326,7 +326,7 @@ export function TripMap({ itinerary }: TripMapProps) {
                 href={selected.mapsLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 min-h-[36px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-teal-300 transition-colors"
+                className="inline-flex items-center gap-1 min-h-[44px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-teal-300 transition-colors"
               >
                 <IconMapPin className="w-3.5 h-3.5" />
                 Google Maps
@@ -337,7 +337,7 @@ export function TripMap({ itinerary }: TripMapProps) {
                 href={`https://www.openstreetmap.org/directions?from=&to=${selected.lat}%2C${selected.lng}#map=14/${selected.lat}/${selected.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 min-h-[36px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-cyan-300 transition-colors"
+                className="inline-flex items-center gap-1 min-h-[44px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-cyan-300 transition-colors"
               >
                 <IconRoute className="w-3.5 h-3.5" />
                 Chỉ đường
@@ -348,7 +348,7 @@ export function TripMap({ itinerary }: TripMapProps) {
                 href={selected.tiktokQuery}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 min-h-[36px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-pink-300 transition-colors"
+                className="inline-flex items-center gap-1 min-h-[44px] px-2.5 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 text-pink-300 transition-colors"
               >
                 TikTok
               </a>
@@ -356,7 +356,7 @@ export function TripMap({ itinerary }: TripMapProps) {
             <button
               type="button"
               onClick={() => setSelected(null)}
-              className="ml-auto min-h-[36px] px-3 text-slate-400 text-xs hover:text-white transition-colors"
+              className="ml-auto min-h-[44px] px-3 text-slate-400 text-xs hover:text-white transition-colors"
             >
               Đóng
             </button>

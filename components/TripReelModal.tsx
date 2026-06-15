@@ -238,6 +238,77 @@ function renderTspans(lines: string[], x: number, lineHeight: number, firstLineD
     .join('');
 }
 
+/** Schedule times are ranges like "14:00 - 17:00"; show only the start so the highlight cards stay compact. */
+function formatReelTime(t: string): string {
+  const m = t.match(/\d{1,2}[:h]\d{2}/);
+  if (m) return m[0].replace('h', ':');
+  return t.split(/[-–—]/)[0].trim();
+}
+
+/**
+ * Renders a stat value centered inside a fixed box, auto-shrinking and wrapping to <=2 lines so a long
+ * value (e.g. a budget RANGE "450.000 - 660.000 VNĐ") never overflows the box or the frame.
+ */
+/** Greedy word-wrap WITHOUT truncation. Returns null if any single word can't fit maxWidth at this size. */
+function wrapNoTruncate(text: string, maxWidth: number, fontSize: number, maxLines: number, font: FontId): string[] | null {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if (!widthFits(word, fontSize, maxWidth, font)) return null;
+    const candidate = current ? `${current} ${word}` : word;
+    if (widthFits(candidate, fontSize, maxWidth, font)) {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = word;
+      if (lines.length >= maxLines) return null;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length <= maxLines ? lines : null;
+}
+
+function statValueSvg(
+  value: string,
+  centerX: number,
+  labelBaselineY: number,
+  boxH: number,
+  maxWidth: number,
+  baseFs: number,
+  minFs: number,
+): string {
+  const areaTop = labelBaselineY + 14;
+  const areaBottom = boxH - 16;
+  const areaH = areaBottom - areaTop;
+
+  // Prefer shrinking the font to show the FULL value untruncated (budget ranges are long); only fall
+  // back to ellipsis-truncation if even the smallest size can't fit.
+  let fontSize = minFs;
+  let lines: string[] = [];
+  for (let fs = baseFs; fs >= minFs; fs -= 2) {
+    const wrapped = wrapNoTruncate(value, maxWidth, fs, 2, 'inter');
+    if (wrapped && wrapped.length * fs * 1.12 <= areaH) {
+      fontSize = fs;
+      lines = wrapped;
+      break;
+    }
+  }
+  if (lines.length === 0) {
+    const fit = fitTextToBox(value, maxWidth, areaH, minFs, minFs, 1.12, 2, 'inter');
+    fontSize = fit.fontSize;
+    lines = fit.lines;
+  }
+
+  const lh = fontSize * 1.12;
+  const blockH = lines.length * lh;
+  const firstBaseline = areaTop + (areaH - blockH) / 2 + fontSize * 0.82;
+  const tspans = lines
+    .map((ln, i) => `<tspan x="${centerX}" dy="${i === 0 ? 0 : lh}">${escapeXml(ln)}</tspan>`)
+    .join('');
+  return `<text x="${centerX}" y="${firstBaseline}" font-family="${FONT_FAMILY.inter}" font-size="${fontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${tspans}</text>`;
+}
+
 function buildSparkles(w: number, h: number, seed: number, count: number): string {
   const rand = seededRandom(seed);
   const out: string[] = [];
@@ -265,8 +336,8 @@ function buildSparkles(w: number, h: number, seed: number, count: number): strin
 function layoutStory(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
   const PAD_LEFT = 80;
   const CONTENT_WIDTH = 920;
-  const HIGHLIGHTS_TOP = 1170;
-  const HIGHLIGHTS_BOTTOM_LIMIT = 1760;
+  const HIGHLIGHTS_TOP = 1240;
+  const HIGHLIGHTS_BOTTOM_LIMIT = 1770;
   const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
   const DEST_TOP_LIMIT = 430;
@@ -278,7 +349,6 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
   const destFirstBaselineY = DEST_TOP_LIMIT + (DEST_AVAILABLE_H - destBlockH) / 2 + destFit.fontSize * 0.82;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
-  const costFontSize = cost.length > 14 ? 30 : cost.length > 10 ? 36 : 40;
   const HIGHLIGHT_TIME_X = 32;
   const HIGHLIGHT_TIME_FS = 26;
   const HIGHLIGHT_TIME_WIDTH = estimateTextWidth('22:00', HIGHLIGHT_TIME_FS, 'inter');
@@ -343,8 +413,8 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
 
     renderedHighlights.push(`
     <g transform="translate(${PAD_LEFT},${cursorY})">
-      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(c.h.time)}</text>
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="22" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="1.5"/>
+      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(formatReelTime(c.h.time))}</text>
       <text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
       ${venueRender}
     </g>`);
@@ -362,20 +432,21 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
   <text font-family="${FONT_FAMILY.georgia}" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destFirstBaselineY}">${destTspans}</text>
 
   <g transform="translate(${PAD_LEFT},920)">
-    <rect x="0" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="0" y="0" width="280" height="220" rx="32" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="140" y="84" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">NGÀY</text>
     <text x="140" y="174" font-family="Inter,system-ui,sans-serif" font-size="110" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
 
-    <rect x="320" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="320" y="0" width="280" height="220" rx="32" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="460" y="84" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">HOẠT ĐỘNG</text>
     <text x="460" y="174" font-family="Inter,system-ui,sans-serif" font-size="110" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
 
-    <rect x="640" y="0" width="280" height="220" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="640" y="0" width="280" height="220" rx="32" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="780" y="84" font-family="Inter,system-ui,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">CHI PHÍ</text>
-    <text x="780" y="170" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+    ${statValueSvg(cost, 780, 84, 220, 248, 44, 22)}
   </g>
 
-  <text x="${PAD_LEFT}" y="1120" font-family="${FONT_FAMILY.inter}" font-size="28" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  <g transform="translate(${PAD_LEFT + 10},1195)"><path d="M0,-10 L1.8,-1.8 L10,0 L1.8,1.8 L0,10 L-1.8,1.8 L-10,0 L-1.8,-1.8 Z" fill="${palette.accent}"/></g>
+  <text x="${PAD_LEFT + 28}" y="1206" font-family="${FONT_FAMILY.inter}" font-size="28" font-weight="700" fill="${palette.accent}" letter-spacing="4">ĐIỂM NHẤN</text>
   ${renderedHighlights.join('')}
 
   <g transform="translate(${PAD_LEFT},1800)">
@@ -387,8 +458,8 @@ function layoutStory(palette: Palette, dest: string, days: number, activities: n
 function layoutPortrait(palette: Palette, dest: string, days: number, activities: number, cost: string, highlights: Highlight[]): string {
   const PAD_LEFT = 60;
   const CONTENT_WIDTH = 960;
-  const HIGHLIGHTS_TOP = 760;
-  const HIGHLIGHTS_BOTTOM_LIMIT = 1220;
+  const HIGHLIGHTS_TOP = 812;
+  const HIGHLIGHTS_BOTTOM_LIMIT = 1225;
   const HIGHLIGHTS_BUDGET = HIGHLIGHTS_BOTTOM_LIMIT - HIGHLIGHTS_TOP;
 
   const DEST_TOP_LIMIT = 300;
@@ -400,7 +471,6 @@ function layoutPortrait(palette: Palette, dest: string, days: number, activities
   const destFirstBaselineY = DEST_TOP_LIMIT + (DEST_AVAILABLE_H - destBlockH) / 2 + destFit.fontSize * 0.82;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
-  const costFontSize = cost.length > 14 ? 26 : cost.length > 10 ? 30 : 36;
 
   const HIGHLIGHT_TIME_X = 32;
   const HIGHLIGHT_TIME_FS = 24;
@@ -456,8 +526,8 @@ function layoutPortrait(palette: Palette, dest: string, days: number, activities
 
     renderedHighlights.push(`
     <g transform="translate(${PAD_LEFT},${cursorY})">
-      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="22" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(c.h.time)}</text>
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="22" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="1.5"/>
+      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(formatReelTime(c.h.time))}</text>
       <text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
       ${venueRender}
     </g>`);
@@ -475,20 +545,21 @@ function layoutPortrait(palette: Palette, dest: string, days: number, activities
   <text font-family="${FONT_FAMILY.georgia}" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destFirstBaselineY}">${destTspans}</text>
 
   <g transform="translate(${PAD_LEFT},540)">
-    <rect x="0" y="0" width="300" height="180" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="0" y="0" width="300" height="180" rx="28" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="150" y="68" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">NGÀY</text>
     <text x="150" y="148" font-family="Inter,system-ui,sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
 
-    <rect x="330" y="0" width="300" height="180" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="330" y="0" width="300" height="180" rx="28" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="480" y="68" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">HOẠT ĐỘNG</text>
     <text x="480" y="148" font-family="Inter,system-ui,sans-serif" font-size="86" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
 
-    <rect x="660" y="0" width="300" height="180" rx="28" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="660" y="0" width="300" height="180" rx="28" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="810" y="68" font-family="Inter,system-ui,sans-serif" font-size="22" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="3">CHI PHÍ</text>
-    <text x="810" y="142" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+    ${statValueSvg(cost, 810, 68, 180, 268, 36, 20)}
   </g>
 
-  <text x="${PAD_LEFT}" y="720" font-family="${FONT_FAMILY.inter}" font-size="24" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  <g transform="translate(${PAD_LEFT + 9},772)"><path d="M0,-9 L1.6,-1.6 L9,0 L1.6,1.6 L0,9 L-1.6,1.6 L-9,0 L-1.6,-1.6 Z" fill="${palette.accent}"/></g>
+  <text x="${PAD_LEFT + 25}" y="783" font-family="${FONT_FAMILY.inter}" font-size="24" font-weight="700" fill="${palette.accent}" letter-spacing="4">ĐIỂM NHẤN</text>
   ${renderedHighlights.join('')}
 
   <g transform="translate(${PAD_LEFT},1240)">
@@ -513,7 +584,6 @@ function layoutSquare(palette: Palette, dest: string, days: number, activities: 
   const destFirstBaselineY = DEST_TOP_LIMIT + (DEST_AVAILABLE_H - destBlockH) / 2 + destFit.fontSize * 0.82;
   const destTspans = renderTspans(destFit.lines, PAD_LEFT, destLineHeight);
 
-  const costFontSize = cost.length > 14 ? 24 : cost.length > 10 ? 26 : 32;
 
   const HIGHLIGHT_TIME_X = 32;
   const HIGHLIGHT_TIME_FS = 22;
@@ -569,8 +639,8 @@ function layoutSquare(palette: Palette, dest: string, days: number, activities: 
 
     renderedHighlights.push(`
     <g transform="translate(${PAD_LEFT},${cursorY})">
-      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="20" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)" stroke-width="1.5"/>
-      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(c.h.time)}</text>
+      <rect x="0" y="0" width="${CONTENT_WIDTH}" height="${c.cardH}" rx="20" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="1.5"/>
+      <text x="${HIGHLIGHT_TIME_X}" y="${timeY}" font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TIME_FS}" font-weight="700" fill="${palette.accent}">${escapeXml(formatReelTime(c.h.time))}</text>
       <text font-family="${FONT_FAMILY.inter}" font-size="${HIGHLIGHT_TITLE_FS}" font-weight="600" fill="#ffffff" y="${titleYStart}">${titleTspans}</text>
       ${venueRender}
     </g>`);
@@ -588,20 +658,21 @@ function layoutSquare(palette: Palette, dest: string, days: number, activities: 
   <text font-family="${FONT_FAMILY.georgia}" font-size="${destFit.fontSize}" font-weight="700" fill="#ffffff" filter="url(#textGlow)" y="${destFirstBaselineY}">${destTspans}</text>
 
   <g transform="translate(${PAD_LEFT},460)">
-    <rect x="0" y="0" width="300" height="170" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="0" y="0" width="300" height="170" rx="26" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="150" y="62" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">NGÀY</text>
     <text x="150" y="138" font-family="Inter,system-ui,sans-serif" font-size="82" font-weight="800" fill="#ffffff" text-anchor="middle">${days}</text>
 
-    <rect x="330" y="0" width="300" height="170" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="330" y="0" width="300" height="170" rx="26" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="480" y="62" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">HOẠT ĐỘNG</text>
     <text x="480" y="138" font-family="Inter,system-ui,sans-serif" font-size="82" font-weight="800" fill="#ffffff" text-anchor="middle">${activities}</text>
 
-    <rect x="660" y="0" width="300" height="170" rx="26" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+    <rect x="660" y="0" width="300" height="170" rx="26" fill="rgba(10,14,26,0.44)" stroke="rgba(255,255,255,0.30)" stroke-width="2"/>
     <text x="810" y="62" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="rgba(255,255,255,0.75)" text-anchor="middle" letter-spacing="2">CHI PHÍ</text>
-    <text x="810" y="132" font-family="Inter,system-ui,sans-serif" font-size="${costFontSize}" font-weight="800" fill="#ffffff" text-anchor="middle">${escapeXml(cost)}</text>
+    ${statValueSvg(cost, 810, 62, 170, 268, 32, 18)}
   </g>
 
-  <text x="${PAD_LEFT}" y="680" font-family="${FONT_FAMILY.inter}" font-size="20" font-weight="700" fill="${palette.accent}" letter-spacing="4">✦ ĐIỂM NHẤN</text>
+  <g transform="translate(${PAD_LEFT + 8},671)"><path d="M0,-8 L1.4,-1.4 L8,0 L1.4,1.4 L0,8 L-1.4,1.4 L-8,0 L-1.4,-1.4 Z" fill="${palette.accent}"/></g>
+  <text x="${PAD_LEFT + 22}" y="680" font-family="${FONT_FAMILY.inter}" font-size="20" font-weight="700" fill="${palette.accent}" letter-spacing="4">ĐIỂM NHẤN</text>
   ${renderedHighlights.join('')}
 
   <g transform="translate(${PAD_LEFT},980)">
@@ -777,10 +848,10 @@ export const TripReelModal: React.FC<TripReelModalProps> = ({ itinerary, open, o
               ref={closeBtnRef}
               type="button"
               onClick={onClose}
-              className="absolute -top-3 -right-3 z-10 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md flex items-center justify-center text-white border border-white/30 transition-colors"
+              className="absolute -top-2 -right-2 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md flex items-center justify-center text-white border border-white/25 transition-colors"
               aria-label="Đóng"
             >
-              <IconX className="w-5 h-5" />
+              <IconX className="w-4 h-4" />
             </button>
 
             <div role="tablist" aria-label="Định dạng" className="flex items-center gap-1 p-1 rounded-full bg-white/[0.06] border border-white/10">

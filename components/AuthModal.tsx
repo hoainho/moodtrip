@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { IconX } from './icons';
+import { IconX, IconMail } from './icons';
 import { isSupabaseConfigured } from '../services/supabaseClient';
 import { signInWithMagicLink, signInWithOAuth } from '../services/authSession';
 
@@ -73,7 +73,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
           {status === 'sent' ? (
             <div className="text-center py-6">
-              <p className="text-teal-300 mb-2">📬 Đã gửi liên kết đăng nhập</p>
+              <p className="text-teal-300 mb-2 inline-flex items-center gap-2"><IconMail className="w-5 h-5" aria-hidden="true" /> Đã gửi liên kết đăng nhập</p>
               <p className="text-slate-400 text-sm">
                 Mở email <span className="text-white font-medium">{email}</span> và nhấn vào liên kết để hoàn tất.
               </p>

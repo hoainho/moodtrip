@@ -7,6 +7,7 @@ import {
   migrationAlreadyDone,
   readLocalTrips,
 } from '../services/localTripMigration';
+import { IconCheck } from './icons';
 
 type State = 'idle' | 'prompting' | 'migrating' | 'success' | 'failed';
 
@@ -96,7 +97,7 @@ export function MigrationBanner() {
 
         {state === 'success' && (
           <>
-            <p className="text-teal-300 font-medium mb-2">✓ Đã đồng bộ thành công</p>
+            <p className="text-teal-300 font-medium mb-2 inline-flex items-center gap-1.5"><IconCheck className="w-4 h-4" aria-hidden="true" /> Đã đồng bộ thành công</p>
             <button onClick={() => setState('idle')} className="text-slate-400 hover:text-white text-sm">
               Đóng
             </button>

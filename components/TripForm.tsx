@@ -11,6 +11,7 @@ interface TripFormProps {
   onGoHome: () => void;
   error?: string | null;
   initialData?: Partial<FormData> | null;
+  isSubmitting?: boolean;
 }
 
 const fadeUp = (delay: number) => ({
@@ -54,7 +55,7 @@ const NumberStepper: React.FC<{
   </div>
 );
 
-export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, initialData, onGoHome }) => {
+export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, initialData, onGoHome, isSubmitting = false }) => {
   const [startLocation, setStartLocation] = useState('');
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -66,6 +67,8 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
   const [startTime, setStartTime] = useState('14:00');
   const [endTime, setEndTime] = useState('22:00');
   const [shortMoods, setShortMoods] = useState<ShortTripMood[]>([]);
+  const [moodError, setMoodError] = useState<string | null>(null);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
 
   const handleTripModeChange = (mode: TripMode) => {
     setTripMode(mode);
@@ -111,6 +114,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
     const numericValue = typeof value === 'string' ? parseInt(value.replace(/\D/g, ''), 10) : value;
     if (!isNaN(numericValue)) {
       setBudget(Math.max(0, numericValue));
+      if (numericValue > 0) setBudgetError(null);
     } else if (value === '') {
       setBudget(0);
     }
@@ -118,6 +122,28 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    let hasError = false;
+
+    if (tripMode === 'long' && moods.length < 1) {
+      setMoodError('Hãy chọn ít nhất một tâm trạng');
+      hasError = true;
+    } else if (tripMode === 'short' && shortMoods.length < 1) {
+      setMoodError('Hãy chọn ít nhất một phong cách');
+      hasError = true;
+    } else {
+      setMoodError(null);
+    }
+
+    if (budget <= 0) {
+      setBudgetError('Ngân sách phải lớn hơn 0');
+      hasError = true;
+    } else {
+      setBudgetError(null);
+    }
+
+    if (hasError) return;
+
     onSubmit({
       tripMode,
       startLocation: tripMode === 'short' ? '' : startLocation,
@@ -403,6 +429,12 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 font-medium text-xs uppercase tracking-wider">VND</span>
             </div>
+
+            {budgetError && (
+              <p role="alert" aria-live="polite" className="text-red-400 text-xs font-medium">
+                {budgetError}
+              </p>
+            )}
           </motion.div>
 
           {/* Mood Section */}
@@ -412,6 +444,12 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               <h3 className="text-sm font-semibold text-white uppercase tracking-wider">{tripMode === 'short' ? 'Phong cách' : 'Tâm trạng của bạn'}</h3>
             </div>
             <p className="text-xs text-slate-500">Chọn một hoặc nhiều tâm trạng phù hợp</p>
+
+            {moodError && (
+              <p role="alert" aria-live="polite" className="text-red-400 text-xs font-medium -mt-2">
+                {moodError}
+              </p>
+            )}
 
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
               {(tripMode === 'short' ? SHORT_TRIP_MOOD_OPTIONS : MOOD_OPTIONS).map((opt) => {
@@ -424,17 +462,21 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                     key={opt.id}
                     onClick={() => {
                       if (tripMode === 'short') {
-                        setShortMoods((prev) =>
-                          prev.includes(opt.id as ShortTripMood)
+                        setShortMoods((prev) => {
+                          const next = prev.includes(opt.id as ShortTripMood)
                             ? prev.filter((m) => m !== opt.id)
-                            : [...prev, opt.id as ShortTripMood]
-                        );
+                            : [...prev, opt.id as ShortTripMood];
+                          if (next.length > 0) setMoodError(null);
+                          return next;
+                        });
                       } else {
-                        setMoods((prev) =>
-                          prev.includes(opt.id as Mood)
+                        setMoods((prev) => {
+                          const next = prev.includes(opt.id as Mood)
                             ? prev.filter((m) => m !== opt.id)
-                            : [...prev, opt.id as Mood]
-                        );
+                            : [...prev, opt.id as Mood];
+                          if (next.length > 0) setMoodError(null);
+                          return next;
+                        });
                       }
                     }}
                     whileHover={{ scale: 1.04 }}
@@ -485,12 +527,13 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
           <motion.div {...fadeUp(0.5)} className="flex flex-col gap-3 pt-2">
             <motion.button
               type="submit"
-              whileHover={{ scale: 1.01, boxShadow: '0 0 40px rgba(13, 148, 136, 0.2)' }}
-              whileTap={{ scale: 0.99 }}
-              className="w-full py-4 gradient-nature text-white font-bold text-lg rounded-2xl shadow-lg shadow-teal-500/20 transition-all duration-300 flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              whileHover={isSubmitting ? {} : { scale: 1.01, boxShadow: '0 0 40px rgba(13, 148, 136, 0.2)' }}
+              whileTap={isSubmitting ? {} : { scale: 0.99 }}
+              className={`w-full py-4 gradient-nature text-white font-bold text-lg rounded-2xl shadow-lg shadow-teal-500/20 transition-all duration-300 flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               <IconSparkles className="w-5 h-5" />
-              {tripMode === 'short' ? 'Khám phá ngay' : 'Tạo hành trình'}
+              {isSubmitting ? 'Đang xử lý...' : (tripMode === 'short' ? 'Khám phá ngay' : 'Tạo hành trình')}
             </motion.button>
 
             <motion.button

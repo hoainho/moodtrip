@@ -11,6 +11,43 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
   const [isExiting, setIsExiting] = useState(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  // Ref guard so skip can never fire onComplete twice
+  const hasExitedRef = useRef(false);
+
+  // Reduced-motion: skip the animation and complete near-immediately
+  useEffect(() => {
+    const mq =
+      typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null;
+    if (mq?.matches) {
+      const t = setTimeout(() => {
+        if (!hasExitedRef.current) {
+          hasExitedRef.current = true;
+          onCompleteRef.current();
+        }
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  // Skip handler — shared by button and keyboard listener
+  const skip = () => {
+    if (hasExitedRef.current) return;
+    hasExitedRef.current = true;
+    setIsExiting(true);
+  };
+
+  // Keyboard listener: Escape or Enter skips
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        skip();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -31,7 +68,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
   useEffect(() => {
     if (progress < 100) return;
     if (isExiting) return;
-    
+
     setIsExiting(true);
   }, [progress, isExiting]);
 
@@ -39,11 +76,14 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
   // This fires when isExiting becomes true and stays true
   useEffect(() => {
     if (!isExiting) return;
-    
+
     const timer = setTimeout(() => {
+      if (!hasExitedRef.current) {
+        hasExitedRef.current = true;
+      }
       onCompleteRef.current();
     }, 800);
-    
+
     return () => clearTimeout(timer);
   }, [isExiting]);
 
@@ -132,6 +172,15 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
           {progress >= 90 && 'Sẵn sàng!'}
         </motion.p>
       </motion.div>
+
+      {/* Skip button — bottom-center, unobtrusive */}
+      <button
+        onClick={skip}
+        aria-label="Bỏ qua màn hình giới thiệu"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 min-h-[44px] px-4 text-slate-500 text-sm hover:text-slate-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-500 rounded"
+      >
+        Bỏ qua
+      </button>
     </motion.div>
   );
 };

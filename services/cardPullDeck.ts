@@ -10,31 +10,38 @@ export interface CardPullResult {
   companion: CompanionCard;
 }
 
-export const ELEMENT_CARDS: { id: ElementCard; label: string; emoji: string; vibe: string }[] = [
-  { id: 'núi', label: 'Núi', emoji: '⛰️', vibe: 'Cao, lạnh, mây mù' },
-  { id: 'biển', label: 'Biển', emoji: '🌊', vibe: 'Sóng, muối, tự do' },
-  { id: 'sông', label: 'Sông', emoji: '🛶', vibe: 'Chậm rãi, miền Tây' },
-  { id: 'phố', label: 'Phố', emoji: '🏙️', vibe: 'Đèn, người, nhịp' },
-  { id: 'rừng', label: 'Rừng', emoji: '🌲', vibe: 'Ẩm, xanh, im lặng' },
-  { id: 'cao_nguyên', label: 'Cao nguyên', emoji: '🌾', vibe: 'Gió, hoa, mặt trời' },
+export interface DeckCard<TId extends string> {
+  id: TId;
+  label: string;
+  icon: string;
+  vibe: string;
+}
+
+export const ELEMENT_CARDS: DeckCard<ElementCard>[] = [
+  { id: 'núi', label: 'Núi', icon: 'mountain', vibe: 'Cao, lạnh, mây mù' },
+  { id: 'biển', label: 'Biển', icon: 'wave', vibe: 'Sóng, muối, tự do' },
+  { id: 'sông', label: 'Sông', icon: 'boat', vibe: 'Chậm rãi, miền Tây' },
+  { id: 'phố', label: 'Phố', icon: 'building', vibe: 'Đèn, người, nhịp' },
+  { id: 'rừng', label: 'Rừng', icon: 'tree', vibe: 'Ẩm, xanh, im lặng' },
+  { id: 'cao_nguyên', label: 'Cao nguyên', icon: 'wheat', vibe: 'Gió, hoa, mặt trời' },
 ];
 
-export const TEMPO_CARDS: { id: TempoCard; label: string; emoji: string; vibe: string }[] = [
-  { id: 'chill', label: 'Chill', emoji: '☕', vibe: 'Cà phê và nghe gió' },
-  { id: 'wild', label: 'Hoang dã', emoji: '🔥', vibe: 'Leo, lội, phá' },
-  { id: 'quiet', label: 'Yên tĩnh', emoji: '📔', vibe: 'Một mình một góc' },
-  { id: 'romantic', label: 'Lãng mạn', emoji: '💗', vibe: 'Hoàng hôn, tay nắm tay' },
-  { id: 'curious', label: 'Tò mò', emoji: '🔭', vibe: 'Hỏi và khám phá' },
-  { id: 'festive', label: 'Náo nhiệt', emoji: '🎉', vibe: 'Lễ hội, đám đông' },
+export const TEMPO_CARDS: DeckCard<TempoCard>[] = [
+  { id: 'chill', label: 'Chill', icon: 'coffee', vibe: 'Cà phê và nghe gió' },
+  { id: 'wild', label: 'Hoang dã', icon: 'flame', vibe: 'Leo, lội, phá' },
+  { id: 'quiet', label: 'Yên tĩnh', icon: 'book', vibe: 'Một mình một góc' },
+  { id: 'romantic', label: 'Lãng mạn', icon: 'heart', vibe: 'Hoàng hôn, tay nắm tay' },
+  { id: 'curious', label: 'Tò mò', icon: 'telescope', vibe: 'Hỏi và khám phá' },
+  { id: 'festive', label: 'Náo nhiệt', icon: 'sparkles', vibe: 'Lễ hội, đám đông' },
 ];
 
-export const COMPANION_CARDS: { id: CompanionCard; label: string; emoji: string; vibe: string }[] = [
-  { id: 'solo', label: 'Một mình', emoji: '🧍', vibe: 'Solo journey' },
-  { id: 'couple', label: 'Cặp đôi', emoji: '👫', vibe: 'Hai người' },
-  { id: 'family', label: 'Gia đình', emoji: '👨‍👩‍👧', vibe: 'Có người lớn nhỏ' },
-  { id: 'friends', label: 'Bạn bè', emoji: '🥂', vibe: 'Nhóm rảnh rỗi' },
-  { id: 'work', label: 'Công tác', emoji: '💼', vibe: 'Tranh thủ một góc' },
-  { id: 'pet', label: 'Thú cưng', emoji: '🐾', vibe: 'Pet-friendly' },
+export const COMPANION_CARDS: DeckCard<CompanionCard>[] = [
+  { id: 'solo', label: 'Một mình', icon: 'user', vibe: 'Solo journey' },
+  { id: 'couple', label: 'Cặp đôi', icon: 'userHeart', vibe: 'Hai người' },
+  { id: 'family', label: 'Gia đình', icon: 'users', vibe: 'Có người lớn nhỏ' },
+  { id: 'friends', label: 'Bạn bè', icon: 'glassCheers', vibe: 'Nhóm rảnh rỗi' },
+  { id: 'work', label: 'Công tác', icon: 'briefcase', vibe: 'Tranh thủ một góc' },
+  { id: 'pet', label: 'Thú cưng', icon: 'paw', vibe: 'Pet-friendly' },
 ];
 
 export function shuffleAndPull(seed?: () => number): CardPullResult {
@@ -112,5 +119,5 @@ export function buildPullNarrative(pull: CardPullResult): string {
   const el = ELEMENT_CARDS.find((c) => c.id === pull.element);
   const tp = TEMPO_CARDS.find((c) => c.id === pull.tempo);
   const co = COMPANION_CARDS.find((c) => c.id === pull.companion);
-  return `${el?.emoji ?? ''} ${el?.label ?? pull.element} · ${tp?.emoji ?? ''} ${tp?.label ?? pull.tempo} · ${co?.emoji ?? ''} ${co?.label ?? pull.companion}`;
+  return `${el?.label ?? pull.element} · ${tp?.label ?? pull.tempo} · ${co?.label ?? pull.companion}`;
 }

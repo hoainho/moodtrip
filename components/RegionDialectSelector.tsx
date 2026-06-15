@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../services/useAuth';
 import { loadPreferences, setRegionDialect } from '../services/preferencesApi';
-import { IconLanguages } from './icons';
+import { IconLanguages, IconCheck } from './icons';
 
 const OPTIONS: Array<{ id: string; label: string; sample: string }> = [
   { id: 'auto', label: 'Tự động theo điểm đến', sample: 'Mơ chọn giọng phù hợp với mỗi chuyến' },
@@ -61,7 +61,7 @@ export function RegionDialectSelector() {
           </button>
         ))}
       </div>
-      {savedAt && <p className="text-teal-300 text-xs mt-2">✓ Đã lưu</p>}
+      {savedAt && <p className="text-teal-300 text-xs mt-2 inline-flex items-center gap-1"><IconCheck className="w-4 h-4" aria-hidden="true" /> Đã lưu</p>}
     </div>
   );
 }
