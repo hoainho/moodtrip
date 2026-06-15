@@ -16,14 +16,14 @@ compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "REPLACE_WITH_KV_ID_FROM_WRANGLER_OUTPUT"
+id = "33da0a06fcae40709d4caae6bdee7266"
 
 [[kv_namespaces]]
 binding = "SPEND_TRACKER"
-id = "REPLACE_WITH_KV_ID_FROM_WRANGLER_OUTPUT"
+id = "f65f1c406af24dc49a4765bdeb2a07dc"
 
 [vars]
-ALLOWED_ORIGINS = "https://moodtrip.app,https://moodtripv2.vercel.app,http://localhost:5173"
+ALLOWED_ORIGINS = "https://moodtrip.hoainho.info,https://moodtrip.app,https://moodtripv2.vercel.app,http://localhost:5173"
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_MODEL_LITE = "gemini-2.5-flash-lite"
 SUPABASE_URL = "https://your-project.supabase.co"
@@ -48,7 +48,7 @@ GEMINI_FLASH_LITE_OUTPUT_USD_PER_MTOK = "0.40"
 # routes = [{ pattern = "api.moodtrip.app/*", custom_domain = true }]
 
 [env.production.vars]
-ALLOWED_ORIGINS = "https://moodtrip.app,https://moodtripv2.vercel.app"
+ALLOWED_ORIGINS = "https://moodtrip.hoainho.info,https://moodtrip.app,https://moodtripv2.vercel.app"
 DAILY_SPEND_LIMIT_USD = "80"
 
 [observability]

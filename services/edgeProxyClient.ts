@@ -2,8 +2,12 @@ import { getSupabaseAccessToken } from './authSession';
 
 const VITE_ENV = (typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string | boolean> }).env : undefined) || {};
 const IS_DEV = Boolean(VITE_ENV.DEV);
-const CONFIGURED_PROXY_URL = typeof VITE_ENV.VITE_EDGE_PROXY_URL === 'string' ? (VITE_ENV.VITE_EDGE_PROXY_URL as string) : '';
-const EDGE_PROXY_URL = CONFIGURED_PROXY_URL || (IS_DEV ? '' : 'https://api.moodtrip.app');
+const CONFIGURED_PROXY_URL = typeof VITE_ENV.VITE_EDGE_PROXY_URL === 'string' ? (VITE_ENV.VITE_EDGE_PROXY_URL as string).trim() : '';
+// In dev, an empty base means same-origin (the Vite devEdgeProxy middleware serves /v1/*).
+// In production there is no such middleware, so the backend MUST be configured via
+// VITE_EDGE_PROXY_URL at build time. We deliberately do NOT fall back to a hard-coded domain —
+// a stale/placeholder domain produced a cryptic ERR_NAME_NOT_RESOLVED. See assertProxyConfigured().
+const EDGE_PROXY_URL = CONFIGURED_PROXY_URL || '';
 
 const ANON_TOKEN_LS_KEY = 'moodtrip_anon_token_v1';
 const ANON_TOKEN_EXPIRY_LS_KEY = 'moodtrip_anon_token_expiry_v1';
@@ -23,6 +27,18 @@ export class EdgeProxyError extends Error {
   ) {
     super(message);
     this.name = 'EdgeProxyError';
+  }
+}
+
+// Fail fast with an actionable message when the backend isn't wired up in a hosted build,
+// instead of letting fetch() surface a raw DNS/network error.
+function assertProxyConfigured(): void {
+  if (!IS_DEV && !EDGE_PROXY_URL) {
+    throw new EdgeProxyError(
+      'Backend chưa được cấu hình: thiếu VITE_EDGE_PROXY_URL (URL của edge-proxy Worker) trong môi trường build của host.',
+      'PROXY_NOT_CONFIGURED',
+      0,
+    );
   }
 }
 
@@ -52,6 +68,7 @@ function storeToken(token: string, expiresInSeconds: number): void {
 }
 
 async function fetchAnonToken(): Promise<string> {
+  assertProxyConfigured();
   const res = await fetch(`${EDGE_PROXY_URL}/v1/anon-token`, {
     method: 'POST',
     credentials: 'omit',
@@ -107,6 +124,7 @@ export async function generate(
   contents: GeminiContent[],
   opts: GenerateOptions = {},
 ): Promise<GeminiGenerateResponse> {
+  assertProxyConfigured();
   let token = await getAuthToken(opts.supabaseToken);
 
   const doFetch = async (bearer: string): Promise<Response> => {
