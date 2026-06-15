@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTiktokQuery, computeBounds, resolveVenues } from '../venueResolver';
+import { buildTiktokQuery, computeBounds, resolveVenues, dayLocality } from '../venueResolver';
 import type { ItineraryPlan } from '../../types';
 
 const sampleItinerary: ItineraryPlan = {
@@ -79,6 +79,26 @@ describe('computeBounds', () => {
     ]);
     expect(bounds?.center.lat).toBe(11);
     expect(bounds?.center.lng).toBe(101);
+  });
+});
+
+describe('dayLocality', () => {
+  it('extracts the locality before a tagline separator', () => {
+    expect(dayLocality('Hà Tiên - Chốn non nước hữu tình')).toBe('Hà Tiên');
+    expect(dayLocality('Quần đảo Nam Du – Biển xanh gọi mời')).toBe('Quần đảo Nam Du');
+    expect(dayLocality('Rạch Giá: về lại đất liền')).toBe('Rạch Giá');
+  });
+  it('strips a leading "Ngày N" prefix', () => {
+    expect(dayLocality('Ngày 1: Đà Lạt mộng mơ')).toBe('Đà Lạt mộng mơ');
+    expect(dayLocality('Ngày 2 - Hội An')).toBe('Hội An');
+  });
+  it('returns the whole title when there is no separator', () => {
+    expect(dayLocality('Hà Nội')).toBe('Hà Nội');
+  });
+  it('returns null for empty/missing titles', () => {
+    expect(dayLocality(undefined)).toBeNull();
+    expect(dayLocality('')).toBeNull();
+    expect(dayLocality('  ')).toBeNull();
   });
 });
 

@@ -51,6 +51,22 @@ export function resolveVenues(itinerary: ItineraryPlan): ResolvedVenue[] {
   return venues;
 }
 
+// A day title is usually "Locality – tagline" (e.g. "Hà Tiên - Chốn non nước hữu tình",
+// "Quần đảo Nam Du – Biển xanh gọi mời", "Rạch Giá: về lại đất liền"), sometimes prefixed with
+// "Ngày N". We extract the day's place name and geocode it as a per-day anchor so each venue is
+// biased to its own town rather than one trip-wide centre.
+const DAY_PREFIX_RE = /^(ngày|day)\s*\d+\s*[:.\-–—]?\s*/i;
+// Split off a trailing tagline: " : tagline" (colon may have no leading space) or " - tagline".
+const TAGLINE_SEP_RE = /\s*:\s+|\s+[-–—]\s+/;
+
+export function dayLocality(title: string | undefined): string | null {
+  if (!title) return null;
+  const base = title.replace(DAY_PREFIX_RE, '').trim() || title.trim();
+  const head = base.split(TAGLINE_SEP_RE)[0]?.trim();
+  const locality = head || base;
+  return locality.length >= 2 ? locality : null;
+}
+
 export function buildTiktokQuery(venueName: string, destination: string): string {
   const cleaned = venueName.replace(/["']/g, '').trim();
   const query = `${cleaned} ${destination}`.trim();

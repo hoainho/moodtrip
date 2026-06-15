@@ -1,27 +1,64 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ItineraryPlan } from '../types';
-import { computeBounds, resolveVenues, type ResolvedVenue } from '../services/venueResolver';
-import { geocodeBatch, geocodeDestination, jitterAround } from '../services/geocoder';
+import { computeBounds, resolveVenues, dayLocality, type ResolvedVenue } from '../services/venueResolver';
+import { geocode, geocodeBatch, geocodeDestination, jitterAround, inVietnamBbox, haversineKm } from '../services/geocoder';
+import { fetchRoadRoute } from '../services/routing';
 import { IconMapPin, IconRoute, IconInfo } from './icons';
 
 interface TripMapProps {
   itinerary: ItineraryPlan;
 }
 
-const OSM_STYLE = {
+// Reliable RASTER basemap (Carto Voyager). Carto's tile CDN loads in environments where the
+// OpenFreeMap vector tiles did not (the map was rendering blank). Voyager labels Vietnamese places
+// with their local (Vietnamese) name and contains NO "nine-dash line". Any China-imposed island
+// label baked into the tiles is hidden by an opaque sea-coloured mask over the disputed zone
+// (added on map load), and our own Vietnamese sovereignty labels are drawn on top.
+const BASE_STYLE = {
   version: 8,
   sources: {
-    osm: {
+    base: {
       type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tiles: [
+        'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+        'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+        'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+        'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+      ],
       tileSize: 256,
-      attribution: '© OpenStreetMap contributors',
+      attribution: '© OpenStreetMap contributors © CARTO',
     },
   },
-  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+  layers: [{ id: 'base', type: 'raster', source: 'base' }],
+};
+
+// Carto Voyager ocean colour — used to mask the disputed zone so it stays seamless sea.
+const SEA_MASK_COLOR = '#cfe1ea';
+
+// East Sea disputed zone (offshore, between Vietnam's coast and the Philippines/Borneo): covers
+// Hoàng Sa (Paracel), the Macclesfield bank, and Trường Sa (Spratly). OSM tags features here with
+// China-imposed administrative names ("Tam Sa"/Sansha, "Quận Nam Sa"/Nansha, Qilianyu, Yongle…),
+// which live in name:vi too — so we HIDE every base label inside this polygon and rely solely on
+// our own Vietnamese sovereignty labels. The box stays offshore (no mainland/coastal city labels).
+const EAST_SEA_DISPUTED = {
+  type: 'Polygon' as const,
+  coordinates: [[
+    [111.0, 7.0],
+    [117.5, 7.0],
+    [117.5, 17.5],
+    [111.0, 17.5],
+    [111.0, 7.0],
+  ]],
 };
 
 const DAY_COLORS = ['#14b8a6', '#f97316', '#a855f7', '#3b82f6', '#ef4444', '#10b981', '#f59e0b'];
+
+// Max distance (km) a geocoded venue may sit from the trip's destination centre and still be
+// treated as a precise location. Wide enough for regional multi-city trips (HCM↔Kiên Giang ≈ 260 km,
+// including a real travel-leg departure point) yet far below the ~1200 km mis-geocodes that
+// previously drew lines from the south up to Hà Nội. Per-day anchoring (below) does the fine
+// accuracy work via bias; this radius is just the safety net against gross cross-country errors.
+const MAX_TRIP_RADIUS_KM = 450;
 
 export function TripMap({ itinerary }: TripMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,25 +81,41 @@ export function TripMap({ itinerary }: TripMapProps) {
       setGeocoding(true);
       setGeocodeProgress({ done: 0, total: missing.length });
 
-      const [destResult, batchResults] = await Promise.all([
-        geocodeDestination(itinerary.destination),
-        geocodeBatch(
-          missing.map((v) => ({ venue: v.name, destination: itinerary.destination })),
-          (done, total) => {
-            if (!cancelled) setGeocodeProgress({ done, total });
-          },
-        ),
-      ]);
+      // Geocode the trip destination FIRST as an overall fallback bias/centre.
+      const destResult = await geocodeDestination(itinerary.destination);
+      if (cancelled) return;
+      const destCenter = destResult ? { lat: destResult.lat, lng: destResult.lng } : undefined;
+
+      // Then geocode EACH day's own locality (from its title, e.g. "Hà Tiên", "Quần đảo Nam Du") to
+      // get a per-day anchor. Anchoring a venue to its own town — instead of one trip-wide centre —
+      // makes the bias far stronger and lets us reject venues that mis-geocode out of the day's area.
+      const dayAnchors = new Map<number, { lat: number; lng: number }>();
+      const dayNums = Array.from(new Set(missing.map((v) => v.day)));
+      await Promise.all(
+        dayNums.map(async (dayNum) => {
+          const locality = dayLocality(itinerary.timeline[dayNum - 1]?.title);
+          if (!locality) return;
+          const r = await geocode(locality, itinerary.destination, destCenter);
+          if (cancelled || !r || !inVietnamBbox(r)) return;
+          // Reject a day anchor that itself mis-geocoded far from the trip centre.
+          if (destCenter && haversineKm(r, destCenter) > MAX_TRIP_RADIUS_KM) return;
+          dayAnchors.set(dayNum, { lat: r.lat, lng: r.lng });
+        }),
+      );
       if (cancelled) return;
 
-      const MAX_VENUE_DISTANCE_KM = 60;
-      const KM_PER_DEG_LAT = 111.32;
-      const haversineKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-        const dLat = (a.lat - b.lat) * KM_PER_DEG_LAT;
-        const meanLat = ((a.lat + b.lat) / 2) * (Math.PI / 180);
-        const dLng = (a.lng - b.lng) * KM_PER_DEG_LAT * Math.cos(meanLat);
-        return Math.sqrt(dLat * dLat + dLng * dLng);
-      };
+      const batchResults = await geocodeBatch(
+        missing.map((v) => ({
+          venue: v.name,
+          destination: itinerary.destination,
+          bias: dayAnchors.get(v.day) ?? destCenter,
+        })),
+        (done, total) => {
+          if (!cancelled) setGeocodeProgress({ done, total });
+        },
+        destCenter,
+      );
+      if (cancelled) return;
 
       let fallbackIndex = 0;
       const enriched = initial.map((v) => {
@@ -70,19 +123,21 @@ export function TripMap({ itinerary }: TripMapProps) {
         const key = `${v.name.toLowerCase().trim()}|${itinerary.destination.toLowerCase().trim()}`;
         const hit = batchResults.get(key);
 
-        if (hit && destResult) {
-          const dist = haversineKm({ lat: hit.lat, lng: hit.lng }, { lat: destResult.lat, lng: destResult.lng });
-          if (dist > MAX_VENUE_DISTANCE_KM) {
-            const j = jitterAround({ lat: destResult.lat, lng: destResult.lng }, fallbackIndex++);
-            return { ...v, lat: j.lat, lng: j.lng, approximate: true };
-          }
+        // The per-day anchor already biased this lookup to the right town, so most hits are accurate.
+        // Accept a hit if it is inside Vietnam and within the trip radius of the destination centre.
+        // We clamp to the TRIP centre (not the tight day centre) so a genuine travel-leg point — e.g.
+        // the HCM departure "Bến xe Miền Tây", 225 km from the Hà Tiên day — stays precise. Only gross
+        // cross-country mis-geocodes (e.g. → Hà Nội, 1260 km) are rejected here.
+        const near = !destCenter || (hit != null && haversineKm(hit, destCenter) <= MAX_TRIP_RADIUS_KM);
+        if (hit && inVietnamBbox(hit) && near) {
           return { ...v, lat: hit.lat, lng: hit.lng };
         }
 
-        if (hit) return { ...v, lat: hit.lat, lng: hit.lng };
-
-        if (destResult) {
-          const j = jitterAround({ lat: destResult.lat, lng: destResult.lng }, fallbackIndex++);
+        // No usable hit → estimate around the day's own anchor (better than the trip centre: a
+        // failed Hà Tiên stop lands near Hà Tiên, not at the trip's geographic midpoint).
+        const anchor = dayAnchors.get(v.day) ?? destCenter;
+        if (anchor) {
+          const j = jitterAround(anchor, fallbackIndex++);
           return { ...v, lat: j.lat, lng: j.lng, approximate: true };
         }
         return v;
@@ -116,6 +171,9 @@ export function TripMap({ itinerary }: TripMapProps) {
         addSource: (id: string, src: unknown) => void;
         addLayer: (layer: unknown) => void;
         getSource: (id: string) => unknown;
+        getStyle: () => { layers?: Array<{ id: string; type: string; layout?: Record<string, unknown>; filter?: unknown }> } | undefined;
+        setLayoutProperty: (layerId: string, name: string, value: unknown) => void;
+        setFilter: (layerId: string, filter: unknown) => void;
       };
       const mod = (await import('maplibre-gl')) as unknown as {
         default: {
@@ -132,7 +190,7 @@ export function TripMap({ itinerary }: TripMapProps) {
 
       const map = new mod.default.Map({
         container: containerRef.current,
-        style: OSM_STYLE,
+        style: BASE_STYLE,
         center: [center.lng, center.lat],
         zoom: bounds ? 10 : 5,
         attributionControl: true,
@@ -145,23 +203,59 @@ export function TripMap({ itinerary }: TripMapProps) {
       map.on('load', () => {
         if (cancelled) return;
 
+        // Mask the East-Sea disputed zone with the ocean colour so any China-imposed island label
+        // baked into the raster tiles (e.g. "Tam Sa", "Quận Nam Sa") is covered. The box is entirely
+        // offshore, so the mask reads as seamless sea; our Vietnamese sovereignty labels sit on top.
+        try {
+          map.addSource('disputed-mask', {
+            type: 'geojson',
+            data: { type: 'Feature', properties: {}, geometry: EAST_SEA_DISPUTED },
+          });
+          map.addLayer({
+            id: 'disputed-mask',
+            type: 'fill',
+            source: 'disputed-mask',
+            paint: { 'fill-color': SEA_MASK_COLOR, 'fill-opacity': 1 },
+          });
+        } catch (err) {
+          console.warn('[TripMap] could not add disputed-zone mask', err);
+        }
+
         const byDay = new Map<number, ResolvedVenue[]>();
         for (const v of located) {
           if (!byDay.has(v.day)) byDay.set(v.day, []);
           byDay.get(v.day)!.push(v);
         }
 
-        const features: object[] = [];
+        type RouteFeature = {
+          type: 'Feature';
+          properties: { day: number; color: string; kind: 'road' | 'estimate' };
+          geometry: { type: 'LineString'; coordinates: [number, number][] };
+        };
+        const features: RouteFeature[] = [];
+        const roadDays: Array<{ day: number; points: { lat: number; lng: number }[] }> = [];
+
         for (const [day, dayVenues] of byDay) {
           if (dayVenues.length < 2) continue;
-          features.push({
-            type: 'Feature',
-            properties: { day, color: DAY_COLORS[(day - 1) % DAY_COLORS.length] },
-            geometry: {
-              type: 'LineString',
-              coordinates: dayVenues.map((v) => [v.lng as number, v.lat as number]),
-            },
-          });
+          const color = DAY_COLORS[(day - 1) % DAY_COLORS.length];
+          // Snap to real roads through the PRECISELY-located stops (skip jittered "approximate"
+          // ones). Only when a day has fewer than 2 precise stops do we fall back to a dashed
+          // straight line. This still draws a real car route even if a few stops couldn't geocode.
+          const precise = dayVenues.filter((v) => !v.approximate && v.lat != null && v.lng != null);
+          if (precise.length >= 2) {
+            features.push({
+              type: 'Feature',
+              properties: { day, color, kind: 'road' },
+              geometry: { type: 'LineString', coordinates: precise.map((v) => [v.lng as number, v.lat as number] as [number, number]) },
+            });
+            roadDays.push({ day, points: precise.map((v) => ({ lat: v.lat as number, lng: v.lng as number })) });
+          } else {
+            features.push({
+              type: 'Feature',
+              properties: { day, color, kind: 'estimate' },
+              geometry: { type: 'LineString', coordinates: dayVenues.map((v) => [v.lng as number, v.lat as number] as [number, number]) },
+            });
+          }
         }
 
         if (features.length > 0) {
@@ -169,17 +263,55 @@ export function TripMap({ itinerary }: TripMapProps) {
             type: 'geojson',
             data: { type: 'FeatureCollection', features },
           });
+          // Estimated days (some stops only approximately located): dashed straight line.
           map.addLayer({
-            id: 'routes-line',
+            id: 'routes-estimate',
             type: 'line',
             source: 'routes',
+            filter: ['==', ['get', 'kind'], 'estimate'],
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
             paint: {
               'line-color': ['get', 'color'],
               'line-width': 3,
-              'line-opacity': 0.75,
-              'line-dasharray': [2, 1.5],
+              'line-opacity': 0.6,
+              'line-dasharray': [2, 1.6],
             },
           });
+          // Precise days: solid line, upgraded from straight to the real road geometry once OSRM responds.
+          map.addLayer({
+            id: 'routes-road',
+            type: 'line',
+            source: 'routes',
+            filter: ['==', ['get', 'kind'], 'road'],
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+              'line-color': ['get', 'color'],
+              'line-width': 4,
+              'line-opacity': 0.85,
+            },
+          });
+
+          // Progressive enhancement: snap each precise day's line to the actual road network.
+          if (roadDays.length > 0) {
+            void (async () => {
+              let changed = false;
+              for (const rd of roadDays) {
+                const road = await fetchRoadRoute(rd.points);
+                if (cancelled) return;
+                if (road && road.length >= 2) {
+                  const f = features.find((ft) => ft.properties.day === rd.day);
+                  if (f) {
+                    f.geometry.coordinates = road;
+                    changed = true;
+                  }
+                }
+              }
+              if (changed && !cancelled) {
+                const src = map.getSource('routes') as { setData?: (d: unknown) => void } | undefined;
+                src?.setData?.({ type: 'FeatureCollection', features });
+              }
+            })();
+          }
         }
 
         for (let i = 0; i < located.length; i++) {
@@ -210,6 +342,30 @@ export function TripMap({ itinerary }: TripMapProps) {
           el.onclick = () => setSelected(v);
           const marker = new mod.default.Marker({ element: el }).setLngLat([v.lng, v.lat]).addTo(map);
           markers.push(marker);
+        }
+
+        // Chủ quyền Việt Nam: luôn hiển thị Hoàng Sa & Trường Sa trên bản đồ.
+        // Tile nền (OSM) gán nhãn tiếng Anh/trung lập, nên ta phủ nhãn tiếng Việt cố định
+        // tại đúng toạ độ để bản đồ luôn thể hiện hai quần đảo thuộc Việt Nam.
+        const SOVEREIGNTY: { name: string; lngLat: [number, number] }[] = [
+          { name: 'Quần đảo Hoàng Sa (Việt Nam)', lngLat: [112.0, 16.5] },
+          { name: 'Quần đảo Trường Sa (Việt Nam)', lngLat: [113.8, 9.6] },
+        ];
+        for (const s of SOVEREIGNTY) {
+          const wrap = document.createElement('div');
+          wrap.className = 'flex flex-col items-center select-none';
+          wrap.style.pointerEvents = 'none';
+          const dot = document.createElement('div');
+          dot.style.cssText =
+            'width:9px;height:9px;border-radius:50%;background:#ef4444;border:2px solid #ffffff;box-shadow:0 0 6px rgba(0,0,0,.55);';
+          const label = document.createElement('div');
+          label.textContent = s.name;
+          label.style.cssText =
+            'margin-top:3px;font-size:10px;font-weight:700;color:#ffffff;background:rgba(220,38,38,.88);padding:1px 6px;border-radius:6px;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.6);';
+          wrap.appendChild(dot);
+          wrap.appendChild(label);
+          const sMarker = new mod.default.Marker({ element: wrap }).setLngLat(s.lngLat).addTo(map);
+          markers.push(sMarker);
         }
 
         if (bounds && located.length > 1) {

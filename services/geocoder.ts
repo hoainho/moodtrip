@@ -59,6 +59,13 @@ function cacheKey(query: string, destination: string): string {
   return `${query.toLowerCase().trim()}|${destination.toLowerCase().trim()}`;
 }
 
+function cacheResult(key: string, result: GeocodeResult): GeocodeResult {
+  const fresh = readCache();
+  fresh[key] = { ...result, ts: Date.now() };
+  writeCache(fresh);
+  return result;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -127,9 +134,12 @@ function buildQueryCandidates(venue: string, destination: string): string[] {
   return Array.from(new Set(candidates.filter(Boolean)));
 }
 
-async function tryPhoton(query: string, osmTag?: string): Promise<GeocodeResult | null> {
+async function tryPhoton(query: string, osmTag?: string, bias?: { lat: number; lng: number }): Promise<GeocodeResult | null> {
   const tagParam = osmTag ? `&osm_tag=${encodeURIComponent(osmTag)}` : '';
-  const url = `${PHOTON_BASE}?q=${encodeURIComponent(query)}&limit=1&lang=vi${tagParam}`;
+  // Photon only supports lang = default|de|en|fr (lang=vi → HTTP 400 broke every lookup). The optional
+  // lat/lon bias (the trip's destination centre) disambiguates same-named places (e.g. "Nam Du").
+  const biasParam = bias ? `&lat=${bias.lat}&lon=${bias.lng}` : '';
+  const url = `${PHOTON_BASE}?q=${encodeURIComponent(query)}&limit=1&lang=en${tagParam}${biasParam}`;
   try {
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
     if (!res.ok) return null;
@@ -183,7 +193,28 @@ function osmTagForVenue(venue: string): string | undefined {
   return undefined;
 }
 
-export async function geocode(venue: string, destination: string): Promise<GeocodeResult | null> {
+/** Vietnam bounding box (incl. offshore islands) — used to reject foreign/wrong geocode matches. */
+export function inVietnamBbox(p: { lat: number; lng: number }): boolean {
+  return p.lat >= 8 && p.lat <= 24 && p.lng >= 102 && p.lng <= 118;
+}
+
+/** Great-circle distance in km between two lat/lng points. */
+export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(s));
+}
+
+export async function geocode(
+  venue: string,
+  destination: string,
+  bias?: { lat: number; lng: number },
+): Promise<GeocodeResult | null> {
   const trimmed = venue.trim();
   if (!trimmed) return null;
 
@@ -204,34 +235,19 @@ export async function geocode(venue: string, destination: string): Promise<Geoco
 
   if (osmTag) {
     for (const q of queries.slice(0, 3)) {
-      const result = await tryPhoton(q, osmTag);
-      if (result) {
-        const fresh = readCache();
-        fresh[key] = { ...result, ts: Date.now() };
-        writeCache(fresh);
-        return result;
-      }
+      const result = await tryPhoton(q, osmTag, bias);
+      if (result) return cacheResult(key, result);
     }
   }
 
   for (const q of queries) {
-    const result = await tryPhoton(q);
-    if (result) {
-      const fresh = readCache();
-      fresh[key] = { ...result, ts: Date.now() };
-      writeCache(fresh);
-      return result;
-    }
+    const result = await tryPhoton(q, undefined, bias);
+    if (result) return cacheResult(key, result);
   }
 
   for (const q of queries) {
     const result = await tryNominatim(q);
-    if (result) {
-      const fresh = readCache();
-      fresh[key] = { ...result, ts: Date.now() };
-      writeCache(fresh);
-      return result;
-    }
+    if (result) return cacheResult(key, result);
   }
 
   return null;
@@ -249,21 +265,17 @@ export async function geocodeDestination(destination: string): Promise<GeocodeRe
   }
 
   const result = (await tryPhoton(cleaned)) ?? (await tryNominatim(cleaned));
-  if (result) {
-    const fresh = readCache();
-    fresh[key] = { ...result, ts: Date.now() };
-    writeCache(fresh);
-  }
-  return result;
+  return result ? cacheResult(key, result) : null;
 }
 
 export async function geocodeBatch(
-  items: Array<{ venue: string; destination: string }>,
+  items: Array<{ venue: string; destination: string; bias?: { lat: number; lng: number } }>,
   onProgress?: (done: number, total: number) => void,
+  fallbackBias?: { lat: number; lng: number },
 ): Promise<Map<string, GeocodeResult | null>> {
   const results = new Map<string, GeocodeResult | null>();
   let done = 0;
-  const unique: Array<{ venue: string; destination: string; key: string }> = [];
+  const unique: Array<{ venue: string; destination: string; bias?: { lat: number; lng: number }; key: string }> = [];
   const seen = new Set<string>();
   for (const item of items) {
     const k = cacheKey(item.venue, item.destination);
@@ -278,7 +290,7 @@ export async function geocodeBatch(
     while (cursor < unique.length) {
       const idx = cursor++;
       const item = unique[idx];
-      const r = await geocode(item.venue, item.destination);
+      const r = await geocode(item.venue, item.destination, item.bias ?? fallbackBias);
       results.set(item.key, r);
       done++;
       onProgress?.(done, unique.length);
@@ -292,10 +304,12 @@ export async function geocodeBatch(
 export function jitterAround(
   center: { lat: number; lng: number },
   index: number,
-  radius = 0.005,
+  radius = 0.006,
 ): { lat: number; lng: number } {
-  const angle = (index * 137.5 * Math.PI) / 180;
-  const r = radius * (1 + (index % 3) * 0.3);
+  // Sequential outward spiral: consecutive fallback points (in schedule order) sit next to each
+  // other, so the connecting line reads as a clean ordered path instead of a crossing "sunflower".
+  const angle = index * 0.6; // ~34° step
+  const r = radius * (1 + index * 0.16);
   return {
     lat: center.lat + Math.sin(angle) * r,
     lng: center.lng + Math.cos(angle) * r,
