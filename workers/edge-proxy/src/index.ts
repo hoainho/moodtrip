@@ -6,6 +6,7 @@ import { mintAnonToken, verifyToken } from './jwt';
 import { consumeQuota } from './rateLimit';
 import { addSpend, estimateCostUsd, readSpend } from './spendTracker';
 import { callGemini } from './gemini';
+import { callLlmProxy } from './llmProxy';
 import { fetchPublicTripBySlug } from './supabaseRest';
 import { buildRecapCardJsx } from './recapCard';
 
@@ -72,7 +73,10 @@ app.post('/v1/generate', async (c) => {
     return c.json({ error: 'Invalid JSON body', code: 'BAD_REQUEST' }, 400);
   }
 
-  const result = await callGemini(c.env, reqJson as Parameters<typeof callGemini>[1]);
+  const useProxy = (c.env.LLM_PROVIDER ?? 'gemini') === 'proxy';
+  const result = useProxy
+    ? await callLlmProxy(c.env, reqJson as Parameters<typeof callLlmProxy>[1])
+    : await callGemini(c.env, reqJson as Parameters<typeof callGemini>[1]);
 
   if (result.status >= 200 && result.status < 300) {
     const cost = estimateCostUsd(c.env, result.model, result.promptTokens, result.outputTokens);

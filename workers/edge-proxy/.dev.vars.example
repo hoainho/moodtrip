@@ -2,3 +2,5 @@ GEMINI_API_KEY=your-new-gemini-key-here
 JWT_SIGNING_SECRET=generate-with-openssl-rand-base64-32
 SUPABASE_JWT_SECRET=from-supabase-dashboard-after-phase-0b
 INTERNAL_MONITOR_TOKEN=generate-with-openssl-rand-base64-32
+# Bearer token for proxy.hoainho.info (only needed when LLM_PROVIDER="proxy")
+LLM_PROXY_KEY=your-proxy-bearer-token-here
