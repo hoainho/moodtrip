@@ -29,10 +29,29 @@ npm install                 # already installed
 npx playwright install      # one-time: download chromium for your platform
 ```
 
+## Projects & tags (multi-project harness)
+
+`playwright.config.ts` defines 3 projects:
+
+| Script | Projects | Runs |
+|---|---|---|
+| `npm run test:e2e` | `chromium-desktop` + `chromium-mobile` | every non-`@visual` spec on desktop; `@mobile`-tagged on a Pixel 7 viewport |
+| `npm run test:e2e:visual` | `chromium-visual` (software GL `--use-gl=swiftshader`) | `@visual`-tagged specs only |
+| `npm run test:e2e:update` | `chromium-visual` | (re)generate `@visual` screenshot baselines |
+
+**Tags** go in the test title:
+- `@mobile` — runs on the mobile viewport (mobile AC: layout, tap targets). Untagged specs run desktop-only.
+- `@visual` — captures `toHaveScreenshot` baselines; runs ONLY on `chromium-visual`. Call `freezeScene(page)`
+  (from `_helpers.ts`) **before** `page.goto`, then wait for the scene to mount + settle before capturing.
+  Baselines MUST be generated in the CI container (not a dev Mac); the aesthetic sign-off approves the
+  **swiftshader** render. `@visual` CI stays non-blocking until baselines prove stable across ≥3 runs.
+
 ## Run
 
 ```bash
-npm run test:e2e            # headless, all specs
+npm run test:e2e            # functional (desktop) + mobile, headless
+npm run test:e2e:visual     # visual-regression (swiftshader)
+npm run test:e2e:update     # (re)seed visual baselines — after human aesthetic sign-off
 npm run test:e2e:ui         # interactive UI mode for debugging
 ```
 

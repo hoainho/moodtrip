@@ -8,6 +8,32 @@ export async function acceptConsentIfPresent(page: Page): Promise<void> {
   }
 }
 
+/**
+ * Make 3D scenes deterministic for `@visual` screenshots / render assertions.
+ * Call this BEFORE `page.goto` (it registers an init script + media emulation that must precede page
+ * scripts). After navigation, the caller waits for the scene to mount and settle before capturing.
+ *
+ * Steps:
+ *  1. `prefers-reduced-motion: reduce` — stops idle 3D animation AND `OrbitControls autoRotate`
+ *     (autoRotate is gated on `reduce` in PersonalWorldCanvas), so the frame is static.
+ *  2. Seed `Math.random` with a fixed mulberry32 PRNG so particle/firefly layouts are stable.
+ *
+ * CAVEAT: drei `<Stars>`/`<Sparkles>` use their own internal RNG (not always `Math.random`), so this may
+ * not fully determinize them — keep `@visual` CI jobs non-blocking until baselines prove stable.
+ */
+export async function freezeScene(page: Page): Promise<void> {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    let s = 0x9e3779b9;
+    Math.random = () => {
+      s = (s + 0x6d2b79f5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  });
+}
+
 export async function preacceptConsent(page: Page): Promise<void> {
   await page.addInitScript(() => {
     try {
