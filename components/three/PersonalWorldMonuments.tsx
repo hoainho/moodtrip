@@ -1,4 +1,4 @@
-import { Float, Html } from '@react-three/drei';
+import { Float, Html, Instances, Instance } from '@react-three/drei';
 import { AdditiveBlending, DoubleSide } from 'three';
 import type { Monument } from '../../services/personalWorldScene';
 
@@ -22,6 +22,32 @@ const ACCENT_BY_KIND: Record<string, string> = {
 export function PersonalWorldMonuments({ monuments, reduceMotion }: PersonalWorldMonumentsProps) {
   return (
     <group>
+      {/* Shared-geometry instancing for the repeated mound + glow ring (1 draw call each). */}
+      <Instances limit={Math.max(monuments.length, 1)} range={monuments.length}>
+        <sphereGeometry args={[0.58, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#16433a" flatShading roughness={0.95} />
+        {monuments.map((m) => (
+          <Instance
+            key={m.id}
+            position={[m.position[0], m.position[1] + 0.04, m.position[2]]}
+            scale={[m.scale, 0.45 * m.scale, m.scale]}
+          />
+        ))}
+      </Instances>
+      <Instances limit={Math.max(monuments.length, 1)} range={monuments.length}>
+        <ringGeometry args={[0.58, 0.66, 40]} />
+        <meshBasicMaterial transparent opacity={0.55} blending={AdditiveBlending} depthWrite={false} />
+        {monuments.map((m) => (
+          <Instance
+            key={m.id}
+            color={ACCENT_BY_KIND[m.kind] ?? '#94a3b8'}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[m.position[0], m.position[1] + 0.03, m.position[2]]}
+            scale={m.scale}
+          />
+        ))}
+      </Instances>
+
       {monuments.map((m) => (
         <MonumentNode key={m.id} monument={m} reduceMotion={reduceMotion} />
       ))}
@@ -35,17 +61,7 @@ function MonumentNode({ monument, reduceMotion }: { monument: Monument; reduceMo
 
   return (
     <group position={monument.position}>
-      {/* grassy mound the model sits on */}
-      <mesh position={[0, 0.04, 0]} scale={[monument.scale, 0.45 * monument.scale, monument.scale]}>
-        <sphereGeometry args={[0.58, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#16433a" flatShading roughness={0.95} />
-      </mesh>
-      {/* glowing base ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
-        <ringGeometry args={[0.58 * monument.scale, 0.66 * monument.scale, 40]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.55} blending={AdditiveBlending} depthWrite={false} />
-      </mesh>
-
+      {/* mound + glow ring rendered via the shared <Instances> above */}
       <Float speed={reduceMotion ? 0 : 1.2} rotationIntensity={0} floatIntensity={reduceMotion ? 0 : 0.4} floatingRange={[0, 0.14]}>
         <group rotation={[0, monument.rotation, 0]} scale={monument.scale} position={[0, 0.08, 0]}>
           <MonumentModel kind={monument.kind} accent={accent} />
@@ -141,7 +157,7 @@ function MonumentModel({ kind, accent }: { kind: string; accent: string }) {
         <group>
           <mesh position={[0, 0.18, 0]}>
             <boxGeometry args={[0.62, 0.36, 0.62]} />
-            <meshStandardMaterial color="#9a3412" flatShading roughness={0.7} />
+            <meshStandardMaterial color="#9a3412" roughness={0.55} metalness={0.1} />
           </mesh>
           {[
             { y: 0.42, r: 0.62, h: 0.26 },
@@ -152,12 +168,12 @@ function MonumentModel({ kind, accent }: { kind: string; accent: string }) {
               {i > 0 && (
                 <mesh position={[0, t.y - 0.06, 0]}>
                   <boxGeometry args={[t.r * 0.62, 0.14, t.r * 0.62]} />
-                  <meshStandardMaterial color="#7c2d12" flatShading />
+                  <meshStandardMaterial color="#7c2d12" roughness={0.55} metalness={0.1} />
                 </mesh>
               )}
               <mesh position={[0, t.y + 0.06, 0]}>
                 <coneGeometry args={[t.r, t.h, 4]} />
-                <meshStandardMaterial color={accent} flatShading roughness={0.6} />
+                <meshStandardMaterial color={accent} roughness={0.55} metalness={0.1} />
               </mesh>
             </group>
           ))}
@@ -174,14 +190,14 @@ function MonumentModel({ kind, accent }: { kind: string; accent: string }) {
           {/* string */}
           <mesh position={[0, 1.1, 0]}><cylinderGeometry args={[0.012, 0.012, 0.5, 4]} /><meshStandardMaterial color="#475569" /></mesh>
           {/* caps */}
-          <mesh position={[0, 0.92, 0]}><cylinderGeometry args={[0.12, 0.08, 0.08, 10]} /><meshStandardMaterial color="#b91c1c" flatShading /></mesh>
+          <mesh position={[0, 0.92, 0]}><cylinderGeometry args={[0.12, 0.08, 0.08, 10]} /><meshStandardMaterial color="#b91c1c" roughness={0.55} metalness={0.1} /></mesh>
           {/* body — elongated glowing silk */}
           <mesh position={[0, 0.62, 0]} scale={[1, 1.35, 1]}>
             <sphereGeometry args={[0.27, 14, 12]} />
-            <meshStandardMaterial color="#f87171" emissive="#f59e0b" emissiveIntensity={1.2} roughness={0.35} flatShading />
+            <meshStandardMaterial color="#f87171" emissive="#f59e0b" emissiveIntensity={1.2} roughness={0.35} metalness={0.1} />
           </mesh>
           {/* bottom cap + tassel */}
-          <mesh position={[0, 0.3, 0]}><cylinderGeometry args={[0.08, 0.11, 0.07, 10]} /><meshStandardMaterial color="#b91c1c" flatShading /></mesh>
+          <mesh position={[0, 0.3, 0]}><cylinderGeometry args={[0.08, 0.11, 0.07, 10]} /><meshStandardMaterial color="#b91c1c" roughness={0.55} metalness={0.1} /></mesh>
           <mesh position={[0, 0.2, 0]}><coneGeometry args={[0.05, 0.14, 6]} /><meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} /></mesh>
           <pointLight position={[0, 0.62, 0]} color="#f59e0b" intensity={0.6} distance={2.6} />
         </group>
@@ -207,17 +223,17 @@ function MonumentModel({ kind, accent }: { kind: string; accent: string }) {
       return (
         <group>
           {/* parasol */}
-          <mesh position={[0, 0.78, 0]}><coneGeometry args={[0.42, 0.3, 10]} /><meshStandardMaterial color="#f97316" flatShading roughness={0.6} /></mesh>
+          <mesh position={[0, 0.78, 0]}><coneGeometry args={[0.42, 0.3, 10]} /><meshStandardMaterial color="#f97316" roughness={0.55} metalness={0.1} /></mesh>
           <mesh position={[0, 0.5, 0]}><cylinderGeometry args={[0.02, 0.02, 0.7, 6]} /><meshStandardMaterial color="#e2e8f0" /></mesh>
           {/* table */}
-          <mesh position={[0, 0.42, 0]}><cylinderGeometry args={[0.3, 0.3, 0.05, 18]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.15} flatShading metalness={0.2} roughness={0.4} /></mesh>
-          <mesh position={[0, 0.22, 0]}><cylinderGeometry args={[0.035, 0.05, 0.4, 8]} /><meshStandardMaterial color="#334155" flatShading /></mesh>
+          <mesh position={[0, 0.42, 0]}><cylinderGeometry args={[0.3, 0.3, 0.05, 18]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.15} metalness={0.1} roughness={0.55} /></mesh>
+          <mesh position={[0, 0.22, 0]}><cylinderGeometry args={[0.035, 0.05, 0.4, 8]} /><meshStandardMaterial color="#334155" roughness={0.55} metalness={0.1} /></mesh>
           {/* two stools */}
           {[-0.34, 0.34].map((x, i) => (
-            <mesh key={i} position={[x, 0.2, 0.05]}><cylinderGeometry args={[0.1, 0.1, 0.18, 12]} /><meshStandardMaterial color="#0e7490" flatShading /></mesh>
+            <mesh key={i} position={[x, 0.2, 0.05]}><cylinderGeometry args={[0.1, 0.1, 0.18, 12]} /><meshStandardMaterial color="#0e7490" roughness={0.55} metalness={0.1} /></mesh>
           ))}
           {/* cup */}
-          <mesh position={[0.1, 0.47, 0.05]}><cylinderGeometry args={[0.04, 0.035, 0.06, 10]} /><meshStandardMaterial color="#f8fafc" flatShading /></mesh>
+          <mesh position={[0.1, 0.47, 0.05]}><cylinderGeometry args={[0.04, 0.035, 0.06, 10]} /><meshStandardMaterial color="#f8fafc" roughness={0.55} metalness={0.1} /></mesh>
         </group>
       );
 
@@ -225,14 +241,14 @@ function MonumentModel({ kind, accent }: { kind: string; accent: string }) {
       return (
         <group position={[0, 0.06, 0]}>
           {/* hull */}
-          <mesh position={[0, 0.12, 0]}><boxGeometry args={[1.05, 0.18, 0.4]} /><meshStandardMaterial color="#a16207" flatShading roughness={0.75} /></mesh>
+          <mesh position={[0, 0.12, 0]}><boxGeometry args={[1.05, 0.18, 0.4]} /><meshStandardMaterial color="#a16207" roughness={0.55} metalness={0.1} /></mesh>
           {/* upturned bow & stern */}
-          <mesh position={[0.56, 0.2, 0]} rotation={[0, 0, 0.5]}><coneGeometry args={[0.2, 0.34, 4]} /><meshStandardMaterial color="#854d0e" flatShading /></mesh>
-          <mesh position={[-0.56, 0.2, 0]} rotation={[0, 0, -0.5]}><coneGeometry args={[0.2, 0.34, 4]} /><meshStandardMaterial color="#854d0e" flatShading /></mesh>
+          <mesh position={[0.56, 0.2, 0]} rotation={[0, 0, 0.5]}><coneGeometry args={[0.2, 0.34, 4]} /><meshStandardMaterial color="#854d0e" roughness={0.55} metalness={0.1} /></mesh>
+          <mesh position={[-0.56, 0.2, 0]} rotation={[0, 0, -0.5]}><coneGeometry args={[0.2, 0.34, 4]} /><meshStandardMaterial color="#854d0e" roughness={0.55} metalness={0.1} /></mesh>
           {/* arched roof */}
           <mesh position={[0, 0.32, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.22, 0.22, 0.55, 12, 1, true, 0, Math.PI]} />
-            <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.15} flatShading side={DoubleSide} roughness={0.6} />
+            <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.15} side={DoubleSide} roughness={0.55} metalness={0.1} />
           </mesh>
         </group>
       );
@@ -246,15 +262,15 @@ function MonumentModel({ kind, accent }: { kind: string; accent: string }) {
             { y: 0.5, r0: 0.22, r1: 0.18, c: '#dc2626' },
             { y: 0.78, r0: 0.18, r1: 0.15, c: '#f8fafc' },
           ].map((s, i) => (
-            <mesh key={i} position={[0, s.y, 0]}><cylinderGeometry args={[s.r1, s.r0, 0.3, 14]} /><meshStandardMaterial color={s.c} flatShading roughness={0.6} /></mesh>
+            <mesh key={i} position={[0, s.y, 0]}><cylinderGeometry args={[s.r1, s.r0, 0.3, 14]} /><meshStandardMaterial color={s.c} roughness={0.55} metalness={0.1} /></mesh>
           ))}
           {/* gallery ring */}
-          <mesh position={[0, 0.95, 0]}><torusGeometry args={[0.18, 0.025, 8, 16]} /><meshStandardMaterial color="#334155" flatShading /></mesh>
+          <mesh position={[0, 0.95, 0]}><torusGeometry args={[0.18, 0.025, 8, 16]} /><meshStandardMaterial color="#334155" roughness={0.55} metalness={0.1} /></mesh>
           {/* lamp room */}
-          <mesh position={[0, 1.05, 0]}><cylinderGeometry args={[0.13, 0.13, 0.16, 12]} /><meshStandardMaterial color="#0f172a" flatShading /></mesh>
+          <mesh position={[0, 1.05, 0]}><cylinderGeometry args={[0.13, 0.13, 0.16, 12]} /><meshStandardMaterial color="#0f172a" roughness={0.55} metalness={0.1} /></mesh>
           <mesh position={[0, 1.05, 0]}><sphereGeometry args={[0.1, 12, 12]} /><meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={1.6} /></mesh>
           {/* roof */}
-          <mesh position={[0, 1.2, 0]}><coneGeometry args={[0.16, 0.18, 12]} /><meshStandardMaterial color="#dc2626" flatShading /></mesh>
+          <mesh position={[0, 1.2, 0]}><coneGeometry args={[0.16, 0.18, 12]} /><meshStandardMaterial color="#dc2626" roughness={0.55} metalness={0.1} /></mesh>
           {/* light beam */}
           <mesh position={[0.55, 1.05, 0]} rotation={[0, 0, -Math.PI / 2]}>
             <coneGeometry args={[0.32, 1.1, 16, 1, true]} />

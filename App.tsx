@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useRef, Component, Suspense, lazy } from 'react';
-import type { ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { generateItinerary } from './services/geminiService';
 import { mapGenerationError } from './services/errorCopy';
 import { ItineraryErrorBoundary } from './components/ItineraryErrorBoundary';
@@ -43,28 +42,9 @@ import { hapticSuccess, spawnConfetti } from './services/haptics';
 // Lazy load Three.js scene to prevent blocking initial render
 const NatureScene = lazy(() => import('./components/three/NatureScene'));
 
-// Error boundary to catch Three.js crashes without killing the whole app
-class SceneErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error) {
-    console.warn('[MoodTrip] 3D scene error (non-fatal):', error.message);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return null; // Silently fail — app works without 3D background
-    }
-    return this.props.children;
-  }
-}
+// Error boundary to catch Three.js crashes without killing the whole app.
+// Shared with the PersonalWorld modal — see components/three/sceneHelpers.tsx.
+import { SceneErrorBoundary } from './components/three/sceneHelpers';
 
 // Define types for html2pdf.js since it's loaded from a script
 interface Html2PdfOptions {

@@ -1,8 +1,12 @@
 import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { ColorManagement } from 'three';
 import App from './App';
 import { initSentry } from './services/sentry';
+
+// Correct sRGB↔linear handling for the 3D scenes (lerps build THREE.Color from sRGB hex).
+ColorManagement.enabled = true;
 
 initSentry();
 

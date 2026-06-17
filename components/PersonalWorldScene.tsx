@@ -11,10 +11,23 @@ import {
   MOOD_LABELS,
 } from '../services/personalWorld';
 import { buildSceneState } from '../services/personalWorldScene';
+import { SceneErrorBoundary, isWebGLAvailable } from './three/sceneHelpers';
 import { IconSprout } from './icons';
 import type { ItineraryPlan } from '../types';
 
 const LazySceneCanvas = lazy(() => import('./three/PersonalWorldCanvas'));
+
+function SceneFallback() {
+  return (
+    <div className="w-full h-full flex items-center justify-center text-center text-slate-400 px-6">
+      <div>
+        <IconSprout className="w-10 h-10 mx-auto mb-2 text-emerald-300" />
+        <p className="text-white text-base font-semibold mb-1">Không thể hiển thị 3D</p>
+        <p className="text-sm">Thiết bị của bạn chưa hỗ trợ WebGL, nhưng dữ liệu chuyến đi vẫn ở bên trái.</p>
+      </div>
+    </div>
+  );
+}
 
 interface PersonalWorldSceneProps {
   open: boolean;
@@ -26,6 +39,12 @@ export function PersonalWorldScene({ open, onClose, localTrips }: PersonalWorldS
   const { user } = useAuth();
   const [remoteTrips, setRemoteTrips] = useState<TripRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [webglOk] = useState(isWebGLAvailable);
+  const [contextLost, setContextLost] = useState(false);
+
+  useEffect(() => {
+    if (!open) setContextLost(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -114,7 +133,7 @@ export function PersonalWorldScene({ open, onClose, localTrips }: PersonalWorldS
                   {topMoods.map((m) => (
                     <span
                       key={m}
-                      className="px-2 py-0.5 rounded-full text-xs bg-purple-900/60 text-purple-200 border border-purple-700/40"
+                      className="px-2 py-0.5 rounded-full text-xs bg-amber-900/60 text-amber-200 border border-amber-700/40"
                     >
                       {MOOD_LABELS[m] ?? m}
                     </span>
@@ -169,10 +188,19 @@ export function PersonalWorldScene({ open, onClose, localTrips }: PersonalWorldS
                 </p>
               </div>
             </div>
+          ) : !webglOk || contextLost ? (
+            <SceneFallback />
           ) : (
-            <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-slate-400">Đang tải 3D…</div>}>
-              <LazySceneCanvas monuments={scene.monuments} ringRadius={scene.ringRadius} tripCount={stats.tripCount} />
-            </Suspense>
+            <SceneErrorBoundary fallback={<SceneFallback />}>
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-slate-400">Đang tải 3D…</div>}>
+                <LazySceneCanvas
+                  monuments={scene.monuments}
+                  ringRadius={scene.ringRadius}
+                  tripCount={stats.tripCount}
+                  onContextLost={() => setContextLost(true)}
+                />
+              </Suspense>
+            </SceneErrorBoundary>
           )}
         </div>
       </motion.div>

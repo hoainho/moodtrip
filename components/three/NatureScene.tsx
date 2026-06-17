@@ -2,6 +2,8 @@ import { useRef, useMemo, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stars, MeshReflectorMaterial, AdaptiveDpr } from '@react-three/drei';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { useReducedMotion, PauseOnHidden, RenderCountProbe } from './sceneHelpers';
 
 // ─── Inline simplex noise (2D) ───────────────────────────────────────────────
 const GRAD3 = [
@@ -216,10 +218,12 @@ function getSkyColors(): SkyColors {
   return blendSky(SKY_DUSK, SKY_NIGHT, (hour - 20.5) / 1.5);
 }
 
-function lerpColor(a: string, b: string, t: number): THREE.Color {
-  const ca = new THREE.Color(a);
-  const cb = new THREE.Color(b);
-  return ca.lerp(cb, t);
+// In-place colour lerp: writes a→b interpolation into `out` (no per-call alloc).
+// `scratch` holds the `b` colour so callers can pass module-level scratch refs.
+function lerpColorInto(out: THREE.Color, scratch: THREE.Color, a: string, b: string, t: number): void {
+  out.set(a);
+  scratch.set(b);
+  out.lerp(scratch, t);
 }
 
 // ─── Gradient Sky Sphere (5-point) ──────────────────────────────────────────
@@ -283,15 +287,17 @@ function GradientSkySphere({ zenith, midSky, horizon, lowHorizon, nadir }: {
     uNadir:      { value: new THREE.Color(nadir) },
   }), []);
 
-  // Smooth interpolation every frame for gentle transitions
+  // Smooth interpolation every frame for gentle transitions.
+  // Scratch colour reused for all five targets — zero allocation per frame.
+  const scratch = useMemo(() => new THREE.Color(), []);
   useFrame(() => {
     if (!matRef.current) return;
     const u = matRef.current.uniforms;
-    u.uZenith.value.lerp(new THREE.Color(zenith), 0.015);
-    u.uMidSky.value.lerp(new THREE.Color(midSky), 0.015);
-    u.uHorizon.value.lerp(new THREE.Color(horizon), 0.015);
-    u.uLowHorizon.value.lerp(new THREE.Color(lowHorizon), 0.015);
-    u.uNadir.value.lerp(new THREE.Color(nadir), 0.015);
+    u.uZenith.value.lerp(scratch.set(zenith), 0.015);
+    u.uMidSky.value.lerp(scratch.set(midSky), 0.015);
+    u.uHorizon.value.lerp(scratch.set(horizon), 0.015);
+    u.uLowHorizon.value.lerp(scratch.set(lowHorizon), 0.015);
+    u.uNadir.value.lerp(scratch.set(nadir), 0.015);
   });
 
   return (
@@ -309,34 +315,39 @@ function GradientSkySphere({ zenith, midSky, horizon, lowHorizon, nadir }: {
   );
 }
 // ─── Camera Rig: slow orbit + mouse parallax ────────────────────────────────
-function CameraRig() {
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+function CameraRig({ reduce }: { reduce: boolean }) {
   const { camera } = useThree();
   const mouse = useRef({ x: 0, y: 0 });
   const angle = useRef(0);
 
   useEffect(() => {
+    if (reduce) return;
     const onMove = (e: MouseEvent) => {
       mouse.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
       mouse.current.y = (e.clientY / window.innerHeight - 0.5) * 2;
     };
     window.addEventListener('mousemove', onMove);
     return () => window.removeEventListener('mousemove', onMove);
-  }, []);
+  }, [reduce]);
 
   useFrame((_, delta) => {
-    angle.current += delta * 0.03;
-    const radius = 22;
+    // Lower, tighter rig so the horizon sits in the lower third of the frame.
+    if (!reduce) angle.current += delta * 0.03;
+    const radius = 18;
     const baseX = Math.sin(angle.current) * radius;
     const baseZ = Math.cos(angle.current) * radius;
-    const baseY = 7;
+    const baseY = 4.2;
 
-    const parallaxX = mouse.current.x * 3;
-    const parallaxY = -mouse.current.y * 1.5;
+    // Clamp parallax so the camera never swings past the framing.
+    const parallaxX = reduce ? 0 : clamp(mouse.current.x, -1, 1) * 2.2;
+    const parallaxY = reduce ? 0 : clamp(-mouse.current.y, -1, 1) * 1.1;
 
     camera.position.x += (baseX + parallaxX - camera.position.x) * 0.02;
     camera.position.y += (baseY + parallaxY - camera.position.y) * 0.02;
     camera.position.z += (baseZ - camera.position.z) * 0.02;
-    camera.lookAt(0, 1, 0);
+    camera.lookAt(0, 2.4, 0);
   });
 
   return null;
@@ -431,8 +442,9 @@ function WaterPlane() {
 }
 
 // ─── Firefly Particles ───────────────────────────────────────────────────────
-function Fireflies({ brightness }: { brightness: number }) {
+function Fireflies({ brightness, daylight, reduce }: { brightness: number; daylight: number; reduce: boolean }) {
   const pointsRef = useRef<THREE.Points>(null);
+  const frame = useRef(0);
 
   const positions = useMemo(() => {
     const count = 200;
@@ -447,6 +459,11 @@ function Fireflies({ brightness }: { brightness: number }) {
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
+    // Static under reduced motion; skip the costly buffer update when daylight is
+    // bright (fireflies are near-invisible) and throttle to every 2nd frame.
+    if (reduce || daylight > 0.7) return;
+    frame.current++;
+    if (frame.current % 2 !== 0) return;
     const pos = pointsRef.current.geometry.attributes.position;
     const time = clock.elapsedTime;
     for (let i = 0; i < pos.count; i++) {
@@ -483,29 +500,33 @@ function DynamicLighting({ daylight }: { daylight: number }) {
   const fillRef = useRef<THREE.DirectionalLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
 
+  // Scratch colours — one persistent pair reused for every in-place lerp.
+  const out = useMemo(() => new THREE.Color(), []);
+  const tmp = useMemo(() => new THREE.Color(), []);
+
   useFrame(() => {
     // Ambient: bright white during day, dim blue at night
     if (ambientRef.current) {
       ambientRef.current.intensity = 0.15 + daylight * 0.5;
-      ambientRef.current.color.copy(lerpColor('#1a2040', '#ffffff', daylight));
+      lerpColorInto(ambientRef.current.color, tmp, '#1a2040', '#ffffff', daylight);
     }
     // Sun / Moon directional
     if (sunRef.current) {
       sunRef.current.intensity = 0.3 + daylight * 1.2;
-      sunRef.current.color.copy(lerpColor('#4466aa', '#fff5e6', daylight));
+      lerpColorInto(sunRef.current.color, tmp, '#4466aa', '#fff5e6', daylight);
       // Sun high during day, low at night
       sunRef.current.position.set(50, 10 + daylight * 60, 30);
     }
     // Fill light
     if (fillRef.current) {
       fillRef.current.intensity = 0.15 + daylight * 0.35;
-      fillRef.current.color.copy(lerpColor('#223355', '#cce0ff', daylight));
+      lerpColorInto(fillRef.current.color, tmp, '#223355', '#cce0ff', daylight);
     }
     // Hemisphere: sky + ground
     if (hemiRef.current) {
       hemiRef.current.intensity = 0.2 + daylight * 0.5;
-      hemiRef.current.color.copy(lerpColor('#0a1628', '#87ceeb', daylight));
-      hemiRef.current.groundColor.copy(lerpColor('#0a1210', '#4a9e3f', daylight));
+      lerpColorInto(hemiRef.current.color, tmp, '#0a1628', '#87ceeb', daylight);
+      lerpColorInto(hemiRef.current.groundColor, out, '#0a1210', '#4a9e3f', daylight);
     }
   });
 
@@ -522,18 +543,21 @@ function DynamicLighting({ daylight }: { daylight: number }) {
 // ─── Dynamic Fog ─────────────────────────────────────────────────────────────
 function DynamicFog({ fogColor }: { fogColor: string }) {
   const fogRef = useRef<THREE.Fog>(null);
+  const scratch = useMemo(() => new THREE.Color(), []);
 
   useFrame(() => {
     if (fogRef.current) {
-      fogRef.current.color.lerp(new THREE.Color(fogColor), 0.02);
+      fogRef.current.color.lerp(scratch.set(fogColor), 0.02);
     }
   });
 
-  return <fog ref={fogRef} attach="fog" args={['#b0d4f1', 30, 80]} />;
+  // Near plane pulled in (≈12) so distant terrain recedes into the daylight haze.
+  return <fog ref={fogRef} attach="fog" args={['#b0d4f1', 12, 80]} />;
 }
 
 // ─── Scene Content ─────────────────────────────────────────────────────────────
 function SceneContent() {
+  const reduce = useReducedMotion();
   const [sky, setSky] = useState<SkyColors>(getSkyColors);
 
   // Recalculate every 30 seconds for smooth time transitions
@@ -546,7 +570,9 @@ function SceneContent() {
 
   return (
     <>
-      <CameraRig />
+      <PauseOnHidden />
+      <RenderCountProbe />
+      <CameraRig reduce={reduce} />
 
       <DynamicFog fogColor={fogColor} />
       <DynamicLighting daylight={daylight} />
@@ -562,13 +588,18 @@ function SceneContent() {
         factor={5}
         saturation={0.3}
         fade
-        speed={0.3}
+        speed={reduce ? 0 : 0.3}
       />
 
       {/* Landscape */}
       <TerrainMesh />
       <WaterPlane />
-      <Fireflies brightness={0.3 + (1 - daylight) * 0.6} />
+      <Fireflies brightness={0.3 + (1 - daylight) * 0.6} daylight={daylight} reduce={reduce} />
+
+      {/* Bloom lifts emissive highlights (water sheen, firefly glow) into real light. */}
+      <EffectComposer>
+        <Bloom mipmapBlur luminanceThreshold={0.55} luminanceSmoothing={0.4} intensity={1.1} />
+      </EffectComposer>
     </>
   );
 }
@@ -588,7 +619,12 @@ export function NatureScene() {
         zIndex: 0,
         pointerEvents: 'none',
       }}
-      gl={{ antialias: false, alpha: false }}
+      gl={{
+        antialias: false,
+        alpha: false,
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 1.1,
+      }}
     >
       <AdaptiveDpr pixelated />
       <SceneContent />

@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars, Sparkles, Float, GradientTexture, Line } from '@react-three/drei';
-import { BackSide, AdditiveBlending } from 'three';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { BackSide, AdditiveBlending, ACESFilmicToneMapping } from 'three';
 import { PersonalWorldMonuments } from './PersonalWorldMonuments';
+import { useReducedMotion, PauseOnHidden, RenderCountProbe } from './sceneHelpers';
 import type { Monument } from '../../services/personalWorldScene';
 
 interface PersonalWorldCanvasProps {
@@ -11,34 +13,43 @@ interface PersonalWorldCanvasProps {
   tripCount: number;
 }
 
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-export default function PersonalWorldCanvas({ monuments, ringRadius, tripCount }: PersonalWorldCanvasProps) {
-  const [reduce] = useState(prefersReducedMotion);
+export default function PersonalWorldCanvas({ monuments, ringRadius, tripCount, onContextLost }: PersonalWorldCanvasProps & { onContextLost?: () => void }) {
+  const reduce = useReducedMotion();
   const camDist = ringRadius * 1.85 + 2;
 
   return (
     <Canvas
       camera={{ position: [camDist, camDist * 0.62, camDist], fov: 48 }}
-      gl={{ antialias: true, alpha: false }}
+      gl={{ antialias: true, alpha: false, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.1 }}
       dpr={[1, 1.8]}
       style={{ background: '#04060c' }}
+      onCreated={({ gl }) => {
+        gl.domElement.addEventListener(
+          'webglcontextlost',
+          (e) => {
+            e.preventDefault();
+            onContextLost?.();
+          },
+          { once: true },
+        );
+      }}
     >
+      <PauseOnHidden />
+      <RenderCountProbe />
       {/* Gradient sky dome */}
       <mesh scale={260}>
-        <sphereGeometry args={[1, 32, 32]} />
+        <sphereGeometry args={[1, 16, 16]} />
         <meshBasicMaterial side={BackSide}>
           <GradientTexture stops={[0, 0.5, 1]} colors={['#10243f', '#0a1626', '#02040a']} size={1024} />
         </meshBasicMaterial>
       </mesh>
       <fog attach="fog" args={['#0a1626', 16, 52]} />
 
-      <ambientLight intensity={0.42} />
+      <ambientLight intensity={0.32} color="#1e3a5f" />
       <directionalLight position={[12, 18, 8]} intensity={1.05} color="#ffe9c7" />
-      <directionalLight position={[-9, 5, -7]} intensity={0.45} color="#38bdf8" />
+      {/* warm hearth from the island centre (replaces the old saturated-cyan fill) */}
+      <pointLight position={[0, 0.6, 0]} color="#f59e0b" intensity={0.5} distance={ringRadius * 1.8 + 4} />
+      <directionalLight position={[-9, 5, -7]} intensity={0.22} color="#1e3a5f" />
 
       <Stars radius={150} depth={75} count={3500} factor={3.4} fade speed={reduce ? 0 : 0.4} />
       <Sparkles
@@ -51,7 +62,7 @@ export default function PersonalWorldCanvas({ monuments, ringRadius, tripCount }
         opacity={0.7}
       />
 
-      <Float speed={reduce ? 0 : 0.7} rotationIntensity={0} floatIntensity={reduce ? 0 : 0.55} floatingRange={[0, 0.3]}>
+      <Float speed={reduce ? 0 : 0.7} rotationIntensity={0} floatIntensity={reduce ? 0 : 0.55} floatingRange={[-0.15, 0.15]}>
         <Island radius={ringRadius} />
         <JourneyArcs monuments={monuments} />
         <LifeTree tripCount={tripCount} reduce={reduce} />
@@ -68,6 +79,11 @@ export default function PersonalWorldCanvas({ monuments, ringRadius, tripCount }
         autoRotateSpeed={0.5}
         enableDamping
       />
+
+      {/* Bloom turns the emissive lantern/tree/rim into real light halos (vs flat chalk). */}
+      <EffectComposer>
+        <Bloom mipmapBlur luminanceThreshold={0.55} luminanceSmoothing={0.4} intensity={1.1} />
+      </EffectComposer>
     </Canvas>
   );
 }
@@ -113,7 +129,7 @@ function JourneyArcs({ monuments }: { monuments: Monument[] }) {
   return (
     <group>
       {arcs.map((a) => (
-        <Line key={a.id} points={a.points} color="#22d3ee" lineWidth={1} transparent opacity={0.22} />
+        <Line key={a.id} points={a.points} color="#22d3ee" lineWidth={1.6} transparent opacity={0.5} />
       ))}
     </group>
   );
