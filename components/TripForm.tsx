@@ -227,8 +227,8 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="w-full max-w-3xl"
       >
-        {/* Header */}
-        <motion.div {...fadeUp(0)} className="text-center mb-8">
+        {/* Header — scrim layer (index.css) keeps the title/subtitle readable over the 3D scene. */}
+        <motion.div {...fadeUp(0)} className="text-scrim text-center mb-8">
           <Logo className="text-white inline-flex mb-5" onClick={onGoHome} />
           <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight text-shadow-md">
             {tripMode === 'short' ? 'Kế hoạch ngắn hạn' : 'Lên kế hoạch cho chuyến đi'}
@@ -263,9 +263,9 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
             <div className={`grid gap-4 ${tripMode === 'short' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
               {tripMode === 'long' && (
                 <div>
-                  <label htmlFor="startLocation" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Nơi khởi hành</label>
+                  <label htmlFor="startLocation" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Nơi khởi hành</label>
                   <div className="relative group">
-                    <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 group-focus-within:text-teal-400 transition-colors" />
                     <input
                       type="text"
                       id="startLocation"
@@ -278,11 +278,11 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                 </div>
               )}
               <div>
-                <label htmlFor="destination" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">
+                <label htmlFor="destination" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
                   {tripMode === 'short' ? 'Thành phố' : 'Điểm đến'}
                 </label>
                 <div className="relative group">
-                  <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                  <IconMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 group-focus-within:text-teal-400 transition-colors" />
                   <input
                     type="text"
                     id="destination"
@@ -334,9 +334,9 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
             {tripMode === 'long' ? (
               <>
                 <div>
-                  <label htmlFor="startDate" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Ngày khởi hành (tùy chọn)</label>
+                  <label htmlFor="startDate" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Ngày khởi hành (tùy chọn)</label>
                   <div className="relative group">
-                    <IconCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <IconCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 group-focus-within:text-teal-400 transition-colors" />
                     <input
                       type="date"
                       id="startDate"
@@ -356,9 +356,9 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
             ) : (
               <div className="grid grid-cols-2 gap-2 md:gap-4">
                 <div className="min-w-0">
-                  <label htmlFor="startTime" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Giờ bắt đầu</label>
+                  <label htmlFor="startTime" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Giờ bắt đầu</label>
                   <div className="relative group">
-                    <IconClock className="absolute left-2.5 md:left-3.5 top-1/2 -translate-y-1/2 w-4 md:w-4.5 h-4 md:h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <IconClock className="absolute left-2.5 md:left-3.5 top-1/2 -translate-y-1/2 w-4 md:w-4.5 h-4 md:h-4.5 text-slate-400 group-focus-within:text-teal-400 transition-colors" />
                     <input
                       type="time"
                       id="startTime"
@@ -370,9 +370,9 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <label htmlFor="endTime" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Giờ kết thúc</label>
+                  <label htmlFor="endTime" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Giờ kết thúc</label>
                   <div className="relative group">
-                    <IconClock className="absolute left-2.5 md:left-3.5 top-1/2 -translate-y-1/2 w-4 md:w-4.5 h-4 md:h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+                    <IconClock className="absolute left-2.5 md:left-3.5 top-1/2 -translate-y-1/2 w-4 md:w-4.5 h-4 md:h-4.5 text-slate-400 group-focus-within:text-teal-400 transition-colors" />
                     <input
                       type="time"
                       id="endTime"
@@ -398,7 +398,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               <span className="text-4xl md:text-5xl font-bold text-white tabular-nums tracking-tight">
                 {budget > 0 ? budget.toLocaleString('vi-VN') : '0'}
               </span>
-              <span className="text-lg text-slate-500 ml-2 font-medium">VND</span>
+              <span className="text-lg text-slate-400 ml-2 font-medium">VND</span>
             </div>
 
             <div className="px-1">
@@ -413,13 +413,13 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                 className="w-full cursor-pointer custom-range"
               />
               <div className="flex justify-between mt-2">
-                <span className="text-xs text-slate-600">{tripMode === 'short' ? '100K' : '500K'}</span>
-                <span className="text-xs text-slate-600">{tripMode === 'short' ? '5M' : '20M'}</span>
+                <span className="text-xs text-slate-400">{tripMode === 'short' ? '100K' : '500K'}</span>
+                <span className="text-xs text-slate-400">{tripMode === 'short' ? '5M' : '20M'}</span>
               </div>
             </div>
 
             <div className="relative group">
-              <IconWallet className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-teal-400 transition-colors" />
+              <IconWallet className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 group-focus-within:text-teal-400 transition-colors" />
               <input
                 type="text"
                 value={budget > 0 ? budget.toLocaleString('vi-VN') : ''}
@@ -427,7 +427,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                 placeholder="Nhập số tiền"
                 className="w-full pl-10 pr-16 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all font-semibold outline-none text-sm"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 font-medium text-xs uppercase tracking-wider">VND</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-xs uppercase tracking-wider">VND</span>
             </div>
 
             {budgetError && (
@@ -443,7 +443,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               <IconSparkles className="w-5 h-5 text-teal-400" />
               <h3 className="text-sm font-semibold text-white uppercase tracking-wider">{tripMode === 'short' ? 'Phong cách' : 'Tâm trạng của bạn'}</h3>
             </div>
-            <p className="text-xs text-slate-500">Chọn một hoặc nhiều tâm trạng phù hợp</p>
+            <p className="text-xs text-slate-400">Chọn một hoặc nhiều tâm trạng phù hợp</p>
 
             {moodError && (
               <p role="alert" aria-live="polite" className="text-red-400 text-xs font-medium -mt-2">
@@ -497,7 +497,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                     <div className={`flex justify-center items-center h-10 md:h-12 relative z-10 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`}>
                       {opt.icon}
                     </div>
-                    <p className={`font-medium mt-1.5 text-xs relative z-10 ${isSelected ? 'text-teal-300' : 'text-slate-500'}`}>
+                    <p className={`font-medium mt-1.5 text-xs relative z-10 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`}>
                       {opt.label}
                     </p>
                   </motion.button>
@@ -507,7 +507,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
 
             {/* Personal Note */}
             <div className="pt-2">
-              <label htmlFor="personalNote" className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">
+              <label htmlFor="personalNote" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
                 Ý kiến cá nhân (tùy chọn)
               </label>
               <textarea
@@ -519,7 +519,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
                 maxLength={500}
                 className="w-full px-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm resize-none"
               />
-              <p className="text-right text-[10px] text-slate-600 mt-1">{personalNote.length}/500</p>
+              <p className="text-right text-[10px] text-slate-400 mt-1">{personalNote.length}/500</p>
             </div>
           </motion.div>
 
@@ -541,7 +541,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
               onClick={onBack}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
-              className="w-full py-3 text-slate-500 font-medium rounded-xl hover:bg-white/[0.03] hover:text-slate-400 transition-all flex items-center justify-center gap-1.5"
+              className="w-full py-3 text-slate-400 font-medium rounded-xl hover:bg-white/[0.03] hover:text-slate-400 transition-all flex items-center justify-center gap-1.5"
             >
               <IconChevronLeft className="w-4 h-4" />
               Quay lại

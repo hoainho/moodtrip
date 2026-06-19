@@ -70,6 +70,28 @@ body {
   pointer-events: none;
 }
 
+/* Text-over-3D scrim — a subtle dark gradient layer placed BEHIND text rendered over the
+   NatureScene backdrop so body/headline copy reaches WCAG ≥4.5:1 without killing the 3D mood.
+   Apply to a positioned wrapper around the text column. `.scrim-overlay` is the pseudo-style
+   layer; use the helper class on a wrapper that already has `position: relative`. */
+.text-scrim {
+  position: relative;
+}
+.text-scrim > * {
+  position: relative;
+  z-index: 1;
+}
+.text-scrim::before {
+  content: "";
+  position: absolute;
+  inset: -1.5rem -1rem;
+  z-index: 0;
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(ellipse at center, rgba(10, 14, 26, 0.62) 0%, rgba(10, 14, 26, 0.42) 55%, transparent 100%);
+  pointer-events: none;
+}
+
 /* Text readability helpers */
 .text-shadow-sm {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);

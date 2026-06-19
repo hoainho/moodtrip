@@ -253,7 +253,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                        {dayIndex + 1}
                      </div>
                      <div className="min-w-0">
-                       <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{day.day}</p>
+                       <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">{day.day}</p>
                        <h3 className="text-sm font-bold text-white truncate">{day.title}</h3>
                      </div>
                    </div>
@@ -264,7 +264,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                          <div className="flex-1 min-w-0">
                            <p className="text-slate-200 leading-snug">{item.activity}</p>
                            {item.venue && (
-                             <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                             <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                                <IconMapPin className="w-3 h-3" />
                                {item.google_maps_link ? (
                                  <a href={item.google_maps_link} target="_blank" rel="noopener noreferrer" className="hover:text-teal-400 truncate">{item.venue}</a>
@@ -381,7 +381,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                                           {countdown}
                                         </span>
                                       )}
-                                      <button onClick={() => handleEditClick(dayIndex, itemIndex, item.time)} className="text-slate-600 hover:text-teal-400 transition">
+                                      <button onClick={() => handleEditClick(dayIndex, itemIndex, item.time)} aria-label={`Sửa giờ: ${item.activity}`} title="Sửa giờ" className="text-slate-400 hover:text-teal-400 transition">
                                         <IconEdit className="w-4 h-4" />
                                       </button>
                                     </>
@@ -467,7 +467,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
               <ul className="space-y-3">
                 {itinerary.accommodation.map((item, index) => (
                   <li key={index} className="p-3 bg-white/5 rounded-xl border border-white/5">
-                    <p className="font-bold text-white">{item.name} <span className="text-sm font-normal text-slate-500">({item.type})</span></p>
+                    <p className="font-bold text-white">{item.name} <span className="text-sm font-normal text-slate-400">({item.type})</span></p>
                     <p className="text-sm text-slate-400">{item.reason}</p>
                   </li>
                 ))}
@@ -577,7 +577,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                           <tr key={index} className="border-b border-white/5">
                             <td className="py-2.5 px-3 text-slate-300">{item.category}</td>
                             <td className="py-2.5 px-3 text-white font-medium text-right">{item.amount}</td>
-                            <td className="py-2.5 px-3 text-slate-500 text-xs hidden sm:table-cell">{item.note}</td>
+                            <td className="py-2.5 px-3 text-slate-400 text-xs hidden sm:table-cell">{item.note}</td>
                           </tr>
                         ))}
                       </tbody>

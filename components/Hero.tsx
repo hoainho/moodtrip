@@ -148,40 +148,10 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
         )}
       </AnimatePresence>
 
-      {/* Feature badges */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, duration: 0.6 }}
-        className="absolute top-28 left-8 hidden lg:block"
-      >
-        <div className="glass px-4 py-2 rounded-full text-sm text-white/70 animate-float flex items-center gap-2" style={{ animationDelay: '0s' }}>
-          <IconSparkles className="w-4 h-4 text-teal-400" /> AI-Powered
-        </div>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.6 }}
-        className="absolute top-40 right-12 hidden lg:block"
-      >
-        <div className="glass px-4 py-2 rounded-full text-sm text-white/70 animate-float flex items-center gap-2" style={{ animationDelay: '2s' }}>
-          <IconGlobe className="w-4 h-4 text-cyan-400" /> 3D Experience
-        </div>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1, duration: 0.6 }}
-        className="absolute bottom-36 left-12 hidden lg:block"
-      >
-        <div className="glass px-4 py-2 rounded-full text-sm text-white/70 animate-float flex items-center gap-2" style={{ animationDelay: '4s' }}>
-          <IconCompass className="w-4 h-4 text-green-400" /> 100+ Điểm đến
-        </div>
-      </motion.div>
-
-      {/* Main content */}
-      <div className="relative z-10 text-center px-4 sm:px-8 max-w-3xl bg-black/10 backdrop-blur-[2px] rounded-3xl py-8 sm:py-12 mb-10 sm:mb-0">
+      {/* Main content — intentional centered column over the 3D scene. A `text-scrim` layer
+          (subtle radial darken, see index.css) sits behind the text so headline/body copy keeps
+          ≥4.5:1 contrast over the moving backdrop without flattening the 3D mood. */}
+      <div className="text-scrim relative z-10 text-center px-4 sm:px-8 max-w-3xl rounded-3xl py-8 sm:py-12 mb-10 sm:mb-0">
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -240,11 +210,30 @@ export const Hero: React.FC<HeroProps> = ({ onStart, savedItineraries, onLoadIti
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1 }}
-              className="text-slate-500 text-sm cursor-pointer hover:text-teal-400 transition-colors"
+              className="text-slate-400 text-sm cursor-pointer hover:text-teal-400 transition-colors"
             >
               hoặc xem lịch sử chuyến đi ↓
             </motion.p>
           )}
+        </motion.div>
+
+        {/* Value chips — consolidated into a single coherent strip beneath the CTA (was three
+            chips scattered around the viewport corners). Reads as one row of credentials. */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9, duration: 0.6 }}
+          className="mt-8 flex flex-wrap items-center justify-center gap-2 sm:gap-3"
+        >
+          <div className="glass px-4 py-2 rounded-full text-sm text-white/80 flex items-center gap-2">
+            <IconSparkles className="w-4 h-4 text-teal-400" /> AI-Powered
+          </div>
+          <div className="glass px-4 py-2 rounded-full text-sm text-white/80 flex items-center gap-2">
+            <IconGlobe className="w-4 h-4 text-cyan-400" /> 3D Experience
+          </div>
+          <div className="glass px-4 py-2 rounded-full text-sm text-white/80 flex items-center gap-2">
+            <IconCompass className="w-4 h-4 text-green-400" /> 100+ Điểm đến
+          </div>
         </motion.div>
       </div>
       

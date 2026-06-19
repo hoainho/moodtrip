@@ -170,7 +170,11 @@ export const TripHeroBanner: React.FC<TripHeroBannerProps> = ({ itinerary, formD
               <div className="flex items-center gap-1.5 text-white/70 text-[10px] uppercase tracking-wider font-semibold mb-1">
                 <IconFire className="w-3 h-3" /> Trending
               </div>
-              <div className="text-2xl font-bold tabular-nums">{vitals.trending}</div>
+              {vitals.trending > 0 ? (
+                <div className="text-2xl font-bold tabular-nums">{vitals.trending}</div>
+              ) : (
+                <div className="text-sm font-semibold leading-tight text-white/80">Chưa có điểm trending</div>
+              )}
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/15">
               <div className="flex items-center gap-1.5 text-white/70 text-[10px] uppercase tracking-wider font-semibold mb-1">

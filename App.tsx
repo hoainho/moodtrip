@@ -531,48 +531,57 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <ItineraryErrorBoundary onRecover={handleReset}>
-              <ItineraryDisplay
-                itinerary={itinerary}
-                onReset={handleReset}
-                onExportPDF={handleExportPDF}
-                onSaveToList={handleSaveItineraryToList}
-                onItineraryChange={handleItineraryChange}
-                onGoHome={handleGoHome}
-                isSaved={isSaved || isSharedView}
-                isExportingPDF={isExportingPDF}
-                formData={lastFormData}
-                onOpenQue={() => setQueModalOpen(true)}
-                onOpenWorld={() => setWorldSceneOpen(true)}
-              />
-            </ItineraryErrorBoundary>
-            <div className="max-w-3xl mx-auto px-4 mt-6 space-y-6 mb-10">
-              <PersonalWorldBadge />
-
-              <div>
-                <h3 className="text-lg font-bold text-white mb-3">Bản đồ hành trình</h3>
-                <TripMap itinerary={itinerary} />
+            {/* Result layout: single column on mobile/tablet (map + actions stack BELOW the
+                itinerary, as before). At ≥lg it becomes a 2-column flex — the itinerary scrolls
+                on the LEFT while a STICKY sidebar on the RIGHT keeps the map + action cluster in
+                view. The map's own ResizeObserver re-fits tiles when the column width changes. */}
+            <div className="lg:flex lg:items-start lg:gap-6 lg:max-w-[1600px] lg:mx-auto lg:px-4">
+              <div className="lg:flex-1 lg:min-w-0">
+                <ItineraryErrorBoundary onRecover={handleReset}>
+                  <ItineraryDisplay
+                    itinerary={itinerary}
+                    onReset={handleReset}
+                    onExportPDF={handleExportPDF}
+                    onSaveToList={handleSaveItineraryToList}
+                    onItineraryChange={handleItineraryChange}
+                    onGoHome={handleGoHome}
+                    isSaved={isSaved || isSharedView}
+                    isExportingPDF={isExportingPDF}
+                    formData={lastFormData}
+                    onOpenQue={() => setQueModalOpen(true)}
+                    onOpenWorld={() => setWorldSceneOpen(true)}
+                  />
+                </ItineraryErrorBoundary>
               </div>
 
-              <div className="flex flex-wrap items-start gap-3">
-                <PublicShareButton itinerary={itinerary} />
-                <button
-                  onClick={() => setNotebookOpen(true)}
-                  className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-200 to-amber-300 text-amber-900 text-sm font-semibold hover:from-amber-300 hover:to-amber-400 transition-colors"
-                >
-                  <IconFeather className="w-4 h-4" />
-                  Mơ viết thư cho bạn
-                </button>
-                {lastFormData && (
+              <aside className="max-w-3xl mx-auto px-4 mt-6 space-y-6 mb-10 lg:max-w-none lg:px-0 lg:mt-[5.5rem] lg:w-[380px] lg:flex-shrink-0 lg:sticky lg:top-4 lg:self-start">
+                <PersonalWorldBadge />
+
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-3">Bản đồ hành trình</h3>
+                  <TripMap itinerary={itinerary} />
+                </div>
+
+                <div className="flex flex-wrap items-start gap-3">
+                  <PublicShareButton itinerary={itinerary} />
                   <button
-                    onClick={() => setAntiItineraryForm(lastFormData)}
-                    className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:from-purple-600 hover:to-pink-600 transition-colors"
+                    onClick={() => setNotebookOpen(true)}
+                    className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-amber-300 text-amber-900 text-sm font-semibold hover:bg-amber-400 transition-colors"
                   >
-                    <IconMoon className="w-4 h-4" />
-                    Thử Anti-Itinerary
+                    <IconFeather className="w-4 h-4" />
+                    Mơ viết thư cho bạn
                   </button>
-                )}
-              </div>
+                  {lastFormData && (
+                    <button
+                      onClick={() => setAntiItineraryForm(lastFormData)}
+                      className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-white/10 border border-purple-400/40 text-purple-200 hover:text-white hover:bg-white/15 text-sm font-semibold transition-colors"
+                    >
+                      <IconMoon className="w-4 h-4" />
+                      Thử Anti-Itinerary
+                    </button>
+                  )}
+                </div>
+              </aside>
             </div>
           </motion.div>
         );

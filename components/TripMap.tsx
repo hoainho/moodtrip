@@ -388,6 +388,21 @@ export function TripMap({ itinerary }: TripMapProps) {
     };
   }, [venues]);
 
+  // Keep maplibre's canvas in sync with its container. When the map is lifted into the result
+  // 2-column layout, the right column's width changes at the lg breakpoint (and the sticky panel
+  // may resize), which otherwise leaves clipped/blank tiles until the next interaction. A
+  // ResizeObserver on the container calls map.resize() so tiles always fill the panel.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const m = mapRef.current as { resize?: () => void } | null;
+      m?.resize?.();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapReady]);
+
   const located = venues.filter((v) => v.lat != null && v.lng != null);
   const approximate = located.filter((v) => v.approximate);
   const exact = located.filter((v) => !v.approximate);
