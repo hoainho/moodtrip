@@ -36,3 +36,8 @@ dist-ssr
 progress.txt
 .agent/
 .campaign/
+
+# Tooling / verification output (generated, not source)
+/deck/
+/ohmyperf-out/
+/renders/

@@ -164,7 +164,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
-          className="text-center text-slate-500 text-sm mt-3"
+          className="text-center text-slate-400 text-sm mt-3"
         >
           {progress < 30 && 'Đang khởi tạo...'}
           {progress >= 30 && progress < 60 && 'Đang tải hiệu ứng 3D...'}
@@ -177,7 +177,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
       <button
         onClick={skip}
         aria-label="Bỏ qua màn hình giới thiệu"
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 min-h-[44px] px-4 text-slate-500 text-sm hover:text-slate-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-500 rounded"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 min-h-[44px] px-4 text-slate-400 text-sm hover:text-slate-300 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-500 rounded"
       >
         Bỏ qua
       </button>

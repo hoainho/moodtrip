@@ -1,8 +1,13 @@
 import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { ColorManagement } from 'three';
 import App from './App';
+import { MoodThemeProvider } from './hooks/useMoodTheme';
 import { initSentry } from './services/sentry';
+
+// Correct sRGB↔linear handling for the 3D scenes (lerps build THREE.Color from sRGB hex).
+ColorManagement.enabled = true;
 
 initSentry();
 
@@ -14,6 +19,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <MoodThemeProvider>
+      <App />
+    </MoodThemeProvider>
   </React.StrictMode>
 );

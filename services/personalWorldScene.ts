@@ -109,3 +109,56 @@ export function buildSceneState(trips: TripRecord[], stats: PersonalWorldStats):
     ringRadius,
   };
 }
+
+/* ---- Life Tree growth ---------------------------------------------------------------------------
+   The central Life Tree grows with the traveller's trip count and reaches its full form at 10 trips.
+   Growth is auto-distributed across named stages so each early trip visibly levels the tree up. */
+export const TREE_MAX_TRIPS = 10;
+
+export interface TreeStage {
+  /** Minimum trip count to reach this stage. */
+  min: number;
+  label: string;
+}
+
+// Stages are front-loaded (more levels early) so the first few trips feel rewarding.
+export const TREE_STAGES: TreeStage[] = [
+  { min: 0, label: 'Hạt mầm' },
+  { min: 1, label: 'Mầm non' },
+  { min: 3, label: 'Cây non' },
+  { min: 5, label: 'Vươn cao' },
+  { min: 8, label: 'Sum suê' },
+  { min: TREE_MAX_TRIPS, label: 'Cổ thụ' },
+];
+
+export interface TreeGrowth {
+  level: number;        // 0..maxLevel (index into TREE_STAGES)
+  maxLevel: number;
+  label: string;        // current stage label
+  trips: number;        // actual (floored, clamped >=0) trip count
+  progress: number;     // 0..1 toward TREE_MAX_TRIPS
+  toMax: number;        // trips remaining to reach full growth (0 once reached)
+  atMax: boolean;
+  nextLabel: string | null;
+  nextAt: number | null; // trip count at which the next stage unlocks
+}
+
+export function treeGrowth(tripCount: number): TreeGrowth {
+  const trips = Math.max(0, Math.floor(tripCount || 0));
+  let level = 0;
+  for (let i = 0; i < TREE_STAGES.length; i++) {
+    if (trips >= TREE_STAGES[i]!.min) level = i;
+  }
+  const next = level < TREE_STAGES.length - 1 ? TREE_STAGES[level + 1]! : null;
+  return {
+    level,
+    maxLevel: TREE_STAGES.length - 1,
+    label: TREE_STAGES[level]!.label,
+    trips,
+    progress: Math.min(1, trips / TREE_MAX_TRIPS),
+    toMax: Math.max(0, TREE_MAX_TRIPS - trips),
+    atMax: trips >= TREE_MAX_TRIPS,
+    nextLabel: next ? next.label : null,
+    nextAt: next ? next.min : null,
+  };
+}

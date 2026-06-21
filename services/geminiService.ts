@@ -45,20 +45,70 @@ function buildDurationText(duration: Duration): string {
     return dayText + nightText;
 }
 
-function buildShortTripPrompt(data: FormData): string {
-  const shortMoodTextMap: Record<ShortTripMood, string> = {
-    'date': 'Hẹn hò lãng mạn, không gian đẹp và riêng tư cho cặp đôi.',
-    'cafe': 'Cà phê, quán xinh, không gian check-in đẹp, đồ uống ngon.',
-    'food_tour': 'Khám phá ẩm thực đường phố, quán ăn nổi tiếng, món trending.',
-    'nightlife': 'Vui chơi về đêm, bar, pub, rooftop, âm nhạc sống động.',
-    'fun': 'Vui chơi giải trí, hoạt động nhóm, trải nghiệm mới lạ và sôi nổi.',
-    'chill': 'Thư giãn nhẹ nhàng, dạo phố, ngắm cảnh, tận hưởng không khí thành phố.',
-  };
+/** Legacy enum→sentence maps — used as the FALLBACK when no flexible MoodInput is given. */
+const MOOD_TEXT_MAP: Record<string, string> = {
+  'relax': 'Thư giãn, nghỉ dưỡng, nhẹ nhàng.',
+  'explore': 'Năng động, khám phá văn hóa, lịch sử và các hoạt động sôi nổi.',
+  'nature': 'Hòa mình với thiên nhiên, đi bộ đường dài, ngắm cảnh đẹp hoang sơ.',
+  'romantic': 'Lãng mạn, dành cho cặp đôi, với các hoạt động và không gian riêng tư, ngọt ngào.',
+  'adventure': 'Mạo hiểm, phiêu lưu, thử thách bản thân với các hoạt động như leo núi, trekking, lặn biển.',
+  'cultural': 'Tìm hiểu sâu về văn hóa, lịch sử, nghệ thuật, tham quan bảo tàng, di tích và làng nghề truyền thống.',
+};
+const SHORT_MOOD_TEXT_MAP: Record<ShortTripMood, string> = {
+  'date': 'Hẹn hò lãng mạn, không gian đẹp và riêng tư cho cặp đôi.',
+  'cafe': 'Cà phê, quán xinh, không gian check-in đẹp, đồ uống ngon.',
+  'food_tour': 'Khám phá ẩm thực đường phố, quán ăn nổi tiếng, món trending.',
+  'nightlife': 'Vui chơi về đêm, bar, pub, rooftop, âm nhạc sống động.',
+  'fun': 'Vui chơi giải trí, hoạt động nhóm, trải nghiệm mới lạ và sôi nổi.',
+  'chill': 'Thư giãn nhẹ nhàng, dạo phố, ngắm cảnh, tận hưởng không khí thành phố.',
+};
 
-  const moodDescriptions = (data.shortMoods || []).map((m) => shortMoodTextMap[m]).filter(Boolean);
-  const moodText = moodDescriptions.length > 0
-    ? moodDescriptions.join(' Kết hợp với: ')
-    : 'Khám phá thành phố một cách thoải mái, đa dạng trải nghiệm.';
+function intensityDirective(intensity: number): string {
+  if (intensity >= 0.66) return 'RẤT ĐẬM (hãy để cảm xúc này chi phối mạnh toàn bộ lịch trình)';
+  if (intensity <= 0.33) return 'nhẹ (chỉ là một sắc thái phụ, đừng để lấn át)';
+  return 'vừa phải';
+}
+
+/**
+ * Build the mood block for the prompt. PRIMARY path: the flexible MoodInput
+ * (free-text emotional description — fenced as user data — + seed suggestions + intensity)
+ * so the model interprets nuance instead of receiving canned sentences.
+ * FALLBACK (no MoodInput): legacy derived enum descriptions, preserving old behavior.
+ */
+function buildMoodText(data: FormData, isShort: boolean): string {
+  const mood = data.mood;
+  const seeds = (mood?.seeds ?? []).filter(Boolean);
+  const free = mood?.text?.trim();
+  if (free || seeds.length) {
+    const parts: string[] = [];
+    // The mood may be NEGATIVE (buồn/chán/bực/căng thẳng/cô đơn). Guide the model to read it with
+    // empathy and design a trip that genuinely helps, instead of echoing a gloomy tone.
+    parts.push(
+      'Hãy đọc đúng cảm xúc thật của người dùng (kể cả khi tiêu cực: buồn, chán, căng thẳng, bực bội, cô đơn) ' +
+        'và thiết kế lịch trình giúp họ thấy tốt hơn — xoa dịu & chậm lại khi mệt/buồn, mới mẻ & đổi gió khi chán, ' +
+        'vận động giải toả hoặc về với thiên nhiên khi bực bội/áp lực. Giữ giọng ấm áp, tích cực; KHÔNG tạo lịch trình u ám.',
+    );
+    // `seeds` are labels from a closed enum (MOOD_SEEDS), never arbitrary user input → safe to inline.
+    // Only the free-text `mood.text` is user-controlled, so it is fenced exactly like `personalNote`.
+    if (seeds.length) parts.push(`Gợi ý cảm xúc người dùng chọn: ${seeds.join(', ')}.`);
+    if (free) parts.push(fenceUserText('CẢM XÚC NGƯỜI DÙNG', free));
+    parts.push(`Mức độ mong muốn cảm xúc này dẫn dắt lịch trình: ${intensityDirective(mood?.intensity ?? 0.5)}.`);
+    return parts.join('\n    ');
+  }
+  if (isShort) {
+    const descs = (data.shortMoods || []).map((m) => SHORT_MOOD_TEXT_MAP[m]).filter(Boolean);
+    return descs.length > 0
+      ? descs.join(' Kết hợp với: ')
+      : 'Khám phá thành phố một cách thoải mái, đa dạng trải nghiệm.';
+  }
+  const descs = data.moods.map((m) => MOOD_TEXT_MAP[m]).filter(Boolean);
+  return descs.length > 0
+    ? descs.join(' Kết hợp với: ')
+    : 'Không có tâm trạng cụ thể, hãy tạo lịch trình cân bằng và đa dạng.';
+}
+
+function buildShortTripPrompt(data: FormData): string {
+  const moodText = buildMoodText(data, true);
 
   const personalNoteText = data.personalNote?.trim()
     ? `\n    - Ý kiến cá nhân của người dùng (HÃY ĐẶC BIỆT CHÚ Ý và cá nhân hóa lịch trình phù hợp):\n    ${fenceUserText('GHI CHÚ NGƯỜI DÙNG', data.personalNote)}`
@@ -167,19 +217,7 @@ export function buildPrompt(data: FormData): string {
     return buildShortTripPrompt(data);
   }
 
-  const moodTextMap: Record<string, string> = {
-    'relax': 'Thư giãn, nghỉ dưỡng, nhẹ nhàng.',
-    'explore': 'Năng động, khám phá văn hóa, lịch sử và các hoạt động sôi nổi.',
-    'nature': 'Hòa mình với thiên nhiên, đi bộ đường dài, ngắm cảnh đẹp hoang sơ.',
-    'romantic': 'Lãng mạn, dành cho cặp đôi, với các hoạt động và không gian riêng tư, ngọt ngào.',
-    'adventure': 'Mạo hiểm, phiêu lưu, thử thách bản thân với các hoạt động như leo núi, trekking, lặn biển.',
-    'cultural': 'Tìm hiểu sâu về văn hóa, lịch sử, nghệ thuật, tham quan bảo tàng, di tích và làng nghề truyền thống.',
-  };
-
-  const moodDescriptions = data.moods.map((m) => moodTextMap[m]).filter(Boolean);
-  const moodText = moodDescriptions.length > 0
-    ? moodDescriptions.join(' Kết hợp với: ')
-    : 'Không có tâm trạng cụ thể, hãy tạo lịch trình cân bằng và đa dạng.';
+  const moodText = buildMoodText(data, false);
   const personalNoteText = data.personalNote?.trim()
     ? `\n    - Ý kiến cá nhân của người dùng (HÃY ĐẶC BIỆT CHÚ Ý và cá nhân hóa sao cho phù hợp nhất với mong muốn riêng của họ):\n    ${fenceUserText('GHI CHÚ NGƯỜI DÙNG', data.personalNote)}`
     : '';

@@ -23,6 +23,15 @@ export interface Env {
   GEMINI_FLASH_OUTPUT_USD_PER_MTOK: string;
   GEMINI_FLASH_LITE_INPUT_USD_PER_MTOK: string;
   GEMINI_FLASH_LITE_OUTPUT_USD_PER_MTOK: string;
+
+  // LLM backend selection + OpenAI-compatible proxy (proxy.hoainho.info). Optional: when
+  // LLM_PROVIDER !== "proxy" the Worker calls Google Gemini directly (default behaviour).
+  LLM_PROVIDER?: string; // "gemini" (default) | "proxy"
+  LLM_PROXY_URL?: string; // e.g. https://proxy.hoainho.info
+  LLM_PROXY_KEY?: string; // bearer token — set via `wrangler secret put`, never committed
+  LLM_PROXY_MODEL?: string; // model id mapped from "flash"
+  LLM_PROXY_MODEL_LITE?: string; // model id mapped from "flash-lite"
+  LLM_PROXY_JSON_MODE?: string; // "true" (default) | "false" — send response_format json_object
 }
 
 export type Tier = 'anonymous' | 'free' | 'paid';

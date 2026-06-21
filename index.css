@@ -1,6 +1,53 @@
 @import "tailwindcss";
 
-/* ===== Custom Nature Theme ===== */
+/* ============================================================
+   DESIGN SYSTEM v2 — semantic tokens (single source of truth)
+   Registered in @theme so Tailwind v4 generates utilities:
+   bg-surface, text-muted, border-line, ring-accent-warm, etc.
+   Palette: warm-tinted night (dreamy) + balanced cool/warm accents.
+   All text tokens verified >=4.5:1 on their intended surface.
+   ============================================================ */
+@theme {
+  /* Surfaces — warm-tinted navy, dreamy night */
+  --color-bg: #0a0e1a;
+  --color-surface: #141a2b;
+  --color-elevated: #1c2438;
+  --color-line: #2a3349;          /* borders/dividers */
+
+  /* Accents — balanced cool<->warm (warm matches 3D scene G002 #f59e0b) */
+  --color-accent-cool: #38bdf8;
+  --color-accent-warm: #f59e0b;
+  --color-accent-warm-2: #e8795a; /* terracotta secondary */
+
+  /* Text — verified contrast on --color-surface / --color-bg */
+  --color-ink: #f1f5f9;           /* primary text  (~14:1) */
+  --color-muted: #aab4c6;         /* secondary/labels (~8:1 on surface) */
+  --color-faint: #8b96aa;         /* non-essential only (~6.4:1 on bg) */
+
+  /* Status */
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+
+  /* Type scale */
+  --text-eyebrow: 0.8125rem;      /* 13px — uppercase labels, +tracking */
+  --text-body: 0.9375rem;         /* 15px — body floor (>=14px rule) */
+  --text-h3: 1.25rem;
+  --text-h2: 1.75rem;
+  --text-h1: 2.5rem;
+
+  /* Spacing rhythm + radius */
+  --spacing-section: 1.5rem;
+  --radius-card: 1rem;
+
+  /* Elevation / blur */
+  --blur-1: 8px;
+  --blur-2: 16px;
+  --blur-3: 28px;
+  --shadow-1: 0 2px 8px rgb(0 0 0 / 0.25);
+  --shadow-2: 0 8px 28px rgb(0 0 0 / 0.35);
+}
+
+/* ===== Custom Nature Theme (legacy vars — kept for back-compat) ===== */
 :root {
   --color-primary: #0d9488;
   --color-primary-light: #14b8a6;
@@ -13,6 +60,14 @@
   --color-nature-ocean: #0284c7;
   --color-glass-bg: rgba(255, 255, 255, 0.08);
   --color-glass-border: rgba(255, 255, 255, 0.15);
+
+  /* Mood-reactive runtime vars — defaults; MoodThemeProvider (S1) overrides
+     these at runtime so accent/ambient shift with the user's emotion.
+     warmth/energy are 0..1 scalars consumed by aurora + 3D scene. */
+  --mood-accent: #f59e0b;
+  --mood-accent-soft: rgba(245, 158, 11, 0.16);
+  --mood-warmth: 0.5;
+  --mood-energy: 0.5;
 }
 
 /* ===== Base Styles ===== */
@@ -68,6 +123,74 @@ body {
 .content-overlay {
   background: radial-gradient(ellipse at center, transparent 0%, rgba(10, 14, 26, 0.15) 65%, rgba(10, 14, 26, 0.4) 100%);
   pointer-events: none;
+}
+
+/* Text-over-3D scrim — a subtle dark gradient layer placed BEHIND text rendered over the
+   NatureScene backdrop so body/headline copy reaches WCAG ≥4.5:1 without killing the 3D mood.
+   Apply to a positioned wrapper around the text column. `.scrim-overlay` is the pseudo-style
+   layer; use the helper class on a wrapper that already has `position: relative`. */
+.text-scrim {
+  position: relative;
+}
+.text-scrim > * {
+  position: relative;
+  z-index: 1;
+}
+.text-scrim::before {
+  content: "";
+  position: absolute;
+  inset: -1.5rem -1rem;
+  z-index: 0;
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(ellipse at center, rgba(10, 14, 26, 0.62) 0%, rgba(10, 14, 26, 0.42) 55%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Leveled scrims — drop as an aria-hidden, absolutely-positioned overlay div
+   between a backdrop (aurora / 3D / image) and the text layer so copy reaches
+   WCAG >=4.5:1. Level scales darkness with how busy the backdrop is.
+   Usage: <div class="scrim-2" aria-hidden="true"></div> inside a relative parent,
+   with text given a higher z-index. */
+.scrim-1,
+.scrim-2,
+.scrim-3 {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.scrim-1 {
+  background: linear-gradient(180deg, rgba(10, 14, 26, 0.30) 0%, rgba(10, 14, 26, 0.45) 100%);
+}
+.scrim-2 {
+  background:
+    radial-gradient(ellipse at center, rgba(10, 14, 26, 0.55) 0%, rgba(10, 14, 26, 0.40) 60%, rgba(10, 14, 26, 0.30) 100%);
+}
+.scrim-3 {
+  background:
+    linear-gradient(180deg, rgba(8, 11, 20, 0.72) 0%, rgba(8, 11, 20, 0.58) 55%, rgba(8, 11, 20, 0.66) 100%);
+}
+
+/* Hero scrim — ONE full-bleed, edgeless vertical gradient across the whole landing hero (replaces
+   the boxed per-text `.text-scrim` that left a visible rounded-rect cut against the 3D scene). It
+   darkens uniformly where copy sits — top (nav + headline) and bottom (chips + saved-trip strip,
+   blending into the app's #0a0e1a base) — and eases back in the middle so the 3D scene still
+   breathes. Smooth multi-stop = no hard edges, one consistent readability layer for the whole screen.
+   Drop as an aria-hidden div between the ambient backdrop (z-0) and the content (z-10). */
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 14, 26, 0.52) 0%,
+    rgba(10, 14, 26, 0.38) 26%,
+    rgba(10, 14, 26, 0.27) 48%,
+    rgba(10, 14, 26, 0.40) 68%,
+    rgba(10, 14, 26, 0.64) 86%,
+    rgba(10, 14, 26, 0.82) 100%
+  );
 }
 
 /* Text readability helpers */
@@ -513,4 +636,65 @@ button, a, [role="button"] {
 }
 .scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+/* ===== Living ambient hero (S2) — breathing aurora + drifting fireflies =====
+   Decorative only (aria-hidden), sits BEHIND the hero text scrim so it never
+   reduces readability. GPU-only transforms; frozen under reduced-motion. */
+.ambient-hero {
+  position: absolute;
+  inset: -8%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  transform: translate3d(calc(var(--px, 0) * 14px), calc(var(--py, 0) * 14px), 0);
+  transition: transform 0.45s ease-out;
+}
+.ambient-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(72px);
+  opacity: 0.42;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+.ambient-blob--a { width: 46vw; height: 46vw; left: -6vw; top: -8vh; animation: aurora-a 18s ease-in-out infinite; }
+.ambient-blob--b {
+  width: 40vw; height: 40vw; right: -8vw; top: 4vh;
+  background: radial-gradient(circle at center, #38bdf8, transparent 70%);
+  animation: aurora-b 23s ease-in-out infinite;
+}
+.ambient-blob--c { width: 52vw; height: 52vw; left: 16vw; bottom: -20vh; animation: aurora-c 27s ease-in-out infinite; }
+
+@keyframes aurora-a { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6%, 4%) scale(1.12); } }
+@keyframes aurora-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-5%, 6%) scale(1.08); } }
+@keyframes aurora-c { 0%, 100% { transform: translate(0, 0) scale(1.05); } 50% { transform: translate(4%, -5%) scale(0.95); } }
+
+.ambient-fireflies { position: absolute; inset: 0; }
+.firefly {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 240, 205, 0.95), rgba(255, 220, 150, 0.25) 55%, transparent 70%);
+  box-shadow: 0 0 8px rgba(255, 225, 170, 0.7);
+  opacity: 0;
+  animation-name: firefly-float;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+@keyframes firefly-float {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.7); }
+  20%  { opacity: 0.9; }
+  50%  { opacity: 1; transform: translate(12px, -22px) scale(1.05); }
+  80%  { opacity: 0.7; }
+  100% { opacity: 0; transform: translate(-6px, -44px) scale(0.8); }
+}
+
+/* Reduced-motion: freeze the ambient layer to a tasteful static frame (keeps fireflies visible
+   as dots rather than stuck at the 0% keyframe's opacity:0). Also stabilizes @visual baselines. */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob,
+  .firefly { animation: none !important; }
+  .ambient-hero { transform: none !important; }
+  .firefly { opacity: 0.5; }
 }

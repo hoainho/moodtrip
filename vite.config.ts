@@ -195,5 +195,15 @@ export default defineConfig({
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
-    }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-three': ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing'],
+            'vendor-map': ['maplibre-gl'],
+          },
+        },
+      },
+    },
 });

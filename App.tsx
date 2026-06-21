@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useRef, Component, Suspense, lazy } from 'react';
-import type { ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { generateItinerary } from './services/geminiService';
 import { mapGenerationError } from './services/errorCopy';
 import { ItineraryErrorBoundary } from './components/ItineraryErrorBoundary';
@@ -24,6 +23,7 @@ import { MoNotebookModal } from './components/MoNotebookModal';
 import { PublicShareButton } from './components/PublicShareButton';
 import { PersonalWorldBadge } from './components/PersonalWorldBadge';
 import { PersonalWorldScene } from './components/PersonalWorldScene';
+import { useMoodTheme } from './hooks/useMoodTheme';
 import { AntiItineraryView } from './components/AntiItineraryView';
 
 import { generateAntiItinerary } from './services/antiItinerary';
@@ -43,28 +43,16 @@ import { hapticSuccess, spawnConfetti } from './services/haptics';
 // Lazy load Three.js scene to prevent blocking initial render
 const NatureScene = lazy(() => import('./components/three/NatureScene'));
 
-// Error boundary to catch Three.js crashes without killing the whole app
-class SceneErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error) {
-    console.warn('[MoodTrip] 3D scene error (non-fatal):', error.message);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return null; // Silently fail — app works without 3D background
-    }
-    return this.props.children;
-  }
+/** Bridges the mood theme into the (lazy) 3D backdrop. Isolated so theme updates (debounced as the
+ *  user types their mood) re-render only this wrapper + the scene's props — never the whole App. */
+function MoodReactiveScene() {
+  const moodTheme = useMoodTheme();
+  return <NatureScene moodTheme={moodTheme} />;
 }
+
+// Error boundary to catch Three.js crashes without killing the whole app.
+// Shared with the PersonalWorld modal — see components/three/sceneHelpers.tsx.
+import { SceneErrorBoundary } from './components/three/sceneHelpers';
 
 // Define types for html2pdf.js since it's loaded from a script
 interface Html2PdfOptions {
@@ -551,47 +539,53 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <ItineraryErrorBoundary onRecover={handleReset}>
-              <ItineraryDisplay
-                itinerary={itinerary}
-                onReset={handleReset}
-                onExportPDF={handleExportPDF}
-                onSaveToList={handleSaveItineraryToList}
-                onItineraryChange={handleItineraryChange}
-                onGoHome={handleGoHome}
-                isSaved={isSaved || isSharedView}
-                isExportingPDF={isExportingPDF}
-                formData={lastFormData}
-                onOpenQue={() => setQueModalOpen(true)}
-                onOpenWorld={() => setWorldSceneOpen(true)}
-              />
-            </ItineraryErrorBoundary>
-            <div className="max-w-3xl mx-auto px-4 mt-6 space-y-6 mb-10">
-              <PersonalWorldBadge />
+            {/* Result layout: single vertical column — the itinerary, then the map + action
+                cluster stacked BELOW it (centered). ItineraryDisplay self-centers its content via
+                its own `container` and keeps a full-width sticky header. */}
+            <div>
+              <ItineraryErrorBoundary onRecover={handleReset}>
+                <ItineraryDisplay
+                  itinerary={itinerary}
+                  onReset={handleReset}
+                  onExportPDF={handleExportPDF}
+                  onSaveToList={handleSaveItineraryToList}
+                  onItineraryChange={handleItineraryChange}
+                  onGoHome={handleGoHome}
+                  isSaved={isSaved || isSharedView}
+                  isExportingPDF={isExportingPDF}
+                  formData={lastFormData}
+                  onOpenQue={() => setQueModalOpen(true)}
+                  onOpenWorld={() => setWorldSceneOpen(true)}
+                />
+              </ItineraryErrorBoundary>
 
-              <div>
-                <h3 className="text-lg font-bold text-white mb-3">Bản đồ hành trình</h3>
-                <TripMap itinerary={itinerary} />
-              </div>
+              <div className="max-w-3xl mx-auto px-4 mt-3 space-y-6 mb-10">
+                <PersonalWorldBadge />
 
-              <div className="flex flex-wrap items-start gap-3">
-                <PublicShareButton itinerary={itinerary} />
-                <button
-                  onClick={() => setNotebookOpen(true)}
-                  className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-200 to-amber-300 text-amber-900 text-sm font-semibold hover:from-amber-300 hover:to-amber-400 transition-colors"
-                >
-                  <IconFeather className="w-4 h-4" />
-                  Mơ viết thư cho bạn
-                </button>
-                {lastFormData && (
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-3">Bản đồ hành trình</h3>
+                  <TripMap itinerary={itinerary} />
+                </div>
+
+                <div className="flex flex-wrap items-start gap-3">
+                  <PublicShareButton itinerary={itinerary} />
                   <button
-                    onClick={() => setAntiItineraryForm(lastFormData)}
-                    className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:from-purple-600 hover:to-pink-600 transition-colors"
+                    onClick={() => setNotebookOpen(true)}
+                    className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-amber-300 text-amber-900 text-sm font-semibold hover:bg-amber-400 transition-colors"
                   >
-                    <IconMoon className="w-4 h-4" />
-                    Thử Anti-Itinerary
+                    <IconFeather className="w-4 h-4" />
+                    Mơ viết thư cho bạn
                   </button>
-                )}
+                  {lastFormData && (
+                    <button
+                      onClick={() => setAntiItineraryForm(lastFormData)}
+                      className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-white/10 border border-purple-400/40 text-purple-200 hover:text-white hover:bg-white/15 text-sm font-semibold transition-colors"
+                    >
+                      <IconMoon className="w-4 h-4" />
+                      Thử Anti-Itinerary
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -695,7 +689,7 @@ export default function App() {
       {sceneReady && !prefersReducedMotion && (
         <SceneErrorBoundary>
           <Suspense fallback={null}>
-            <NatureScene />
+            <MoodReactiveScene />
           </Suspense>
         </SceneErrorBoundary>
       )}
@@ -784,7 +778,7 @@ export default function App() {
         trip={itinerary}
         onClose={() => setNotebookOpen(false)}
       />
-      <PersonalWorldScene open={worldSceneOpen} onClose={() => setWorldSceneOpen(false)} localTrips={savedItineraries} />
+      <PersonalWorldScene open={worldSceneOpen} onClose={() => setWorldSceneOpen(false)} localTrips={savedItineraries} onOpenTrip={handleLoadItinerary} />
       <AntiItineraryView
         open={antiItineraryForm !== null}
         form={antiItineraryForm}

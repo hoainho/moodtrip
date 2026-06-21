@@ -79,13 +79,13 @@ export const Footer: React.FC<FooterProps> = ({ onGoHome, onGoToRelease, onGoToT
           {/* Divider */}
           <div className="border-t border-white/5 pt-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-              <p className="text-slate-500 text-xs flex items-center gap-1.5">
+              <p className="text-slate-400 text-xs flex items-center gap-1.5">
                 <IconCopyright className="w-4 h-4" />
                 {currentYear} MoodTrip. Phát triển với
                 <IconHeart className="w-3.5 h-3.5 text-red-400 inline" />
                 bởi <a href="https://hoainho.info" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:text-teal-300 transition-colors font-medium">Hoài Nhớ</a>
               </p>
-              <p className="text-slate-600 text-xs">
+              <p className="text-slate-400 text-xs">
                 Mọi quyền được bảo lưu.
               </p>
             </div>

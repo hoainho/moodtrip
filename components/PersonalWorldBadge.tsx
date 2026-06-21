@@ -71,7 +71,7 @@ export function PersonalWorldBadge() {
               className="h-full bg-gradient-to-r from-teal-400 to-cyan-400"
             />
           </div>
-          <p className="text-slate-500 text-xs mt-1.5">
+          <p className="text-slate-400 text-xs mt-1.5">
             {next.threshold - stats.tripCount} chuyến nữa đến {next.label}
           </p>
         </>
@@ -84,7 +84,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg bg-white/5 py-2">
       <p className="text-white font-bold text-base">{value}</p>
-      <p className="text-slate-500 text-[10px] mt-0.5">{label}</p>
+      <p className="text-slate-400 text-[10px] mt-0.5">{label}</p>
     </div>
   );
 }

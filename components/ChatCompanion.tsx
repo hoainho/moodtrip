@@ -169,7 +169,7 @@ export const ChatCompanion: React.FC = () => {
                 onClick={() => setIsOpen(false)}
                 whileHover={{ scale: 1.1, rotate: 90 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
               >
                 <IconX className="w-5 h-5" />
               </motion.button>

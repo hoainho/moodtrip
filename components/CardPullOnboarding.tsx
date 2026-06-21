@@ -149,10 +149,10 @@ export function CardPullOnboarding({ onComplete, onUseTraditionalForm }: CardPul
     onComplete({ ...moods, narrative: buildPullNarrative(pull) });
   }
 
-  const slots: { label: string; card: DeckCardLike | null | undefined }[] = [
-    { label: 'Nguyên tố', card: pull ? ELEMENT_CARDS.find((c) => c.id === pull.element) : null },
-    { label: 'Nhịp', card: pull ? TEMPO_CARDS.find((c) => c.id === pull.tempo) : null },
-    { label: 'Bạn đi cùng', card: pull ? COMPANION_CARDS.find((c) => c.id === pull.companion) : null },
+  const slots: { label: string; hint: string; card: DeckCardLike | null | undefined }[] = [
+    { label: 'Nguyên tố', hint: 'Cảnh bạn hợp', card: pull ? ELEMENT_CARDS.find((c) => c.id === pull.element) : null },
+    { label: 'Nhịp', hint: 'Tốc độ chuyến đi', card: pull ? TEMPO_CARDS.find((c) => c.id === pull.tempo) : null },
+    { label: 'Bạn đi cùng', hint: 'Ai cùng bạn', card: pull ? COMPANION_CARDS.find((c) => c.id === pull.companion) : null },
   ];
 
   return (
@@ -163,7 +163,7 @@ export function CardPullOnboarding({ onComplete, onUseTraditionalForm }: CardPul
     >
       <AmbientBackground reduceMotion={!!reduceMotion} />
 
-      <header className="relative z-10 text-center mb-8 max-w-md">
+      <header className="text-scrim relative z-10 text-center mb-8 max-w-md">
         <motion.p
           initial={reduceMotion ? false : { opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -192,6 +192,7 @@ export function CardPullOnboarding({ onComplete, onUseTraditionalForm }: CardPul
           <OracleCard
             key={slot.label}
             label={slot.label}
+            hint={slot.hint}
             card={slot.card}
             revealed={!!pull && !shaking}
             shaking={shaking}
@@ -254,6 +255,7 @@ export function CardPullOnboarding({ onComplete, onUseTraditionalForm }: CardPul
 
 interface OracleCardProps {
   label: string;
+  hint: string;
   card: DeckCardLike | null | undefined;
   revealed: boolean;
   shaking: boolean;
@@ -261,7 +263,7 @@ interface OracleCardProps {
   reduceMotion: boolean;
 }
 
-function OracleCard({ label, card, revealed, shaking, delay, reduceMotion }: OracleCardProps) {
+function OracleCard({ label, hint, card, revealed, shaking, delay, reduceMotion }: OracleCardProps) {
   const Icon = card ? CARD_ICONS[card.icon] : undefined;
   const showFront = revealed && !!card;
 
@@ -269,7 +271,8 @@ function OracleCard({ label, card, revealed, shaking, delay, reduceMotion }: Ora
   if (reduceMotion) {
     return (
       <div className="flex flex-col items-center">
-        <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-2">{label}</p>
+        <p className="text-slate-300 text-[10px] uppercase tracking-wider mb-0.5">{label}</p>
+        <p className="text-slate-400 text-[10px] mb-2">{hint}</p>
         <div className="w-full aspect-[2/3] rounded-2xl border border-teal-500/25 glass-dark flex flex-col items-center justify-center p-2 text-center">
           {showFront && Icon ? (
             <>
@@ -287,7 +290,8 @@ function OracleCard({ label, card, revealed, shaking, delay, reduceMotion }: Ora
 
   return (
     <div className="flex flex-col items-center">
-      <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-2">{label}</p>
+      <p className="text-slate-300 text-[10px] uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-slate-400 text-[10px] mb-2">{hint}</p>
       <motion.div
         className="relative w-full aspect-[2/3]"
         animate={
@@ -443,23 +447,36 @@ function CardBackStatic() {
   return (
     <div className="flex flex-col items-center justify-center">
       <IconSparkles className="w-8 h-8 text-teal-400/70" aria-hidden="true" />
-      <span className="mt-2 text-slate-600 text-lg" aria-hidden="true">
+      <span className="mt-2 text-slate-400 text-lg" aria-hidden="true">
         ?
       </span>
     </div>
   );
 }
 
-/** Small radial particle burst emitted when a card reveals. */
+/** Small radial particle burst emitted when a card reveals. Angles, radii, sizes and colours are
+ *  jittered per particle so the burst reads as an organic spray rather than a symmetric ring. */
+const BURST_COLORS = [
+  { bg: 'rgb(103,232,249)', glow: 'rgba(6,182,212,0.9)' }, // cyan
+  { bg: 'rgb(94,234,212)', glow: 'rgba(13,148,136,0.9)' }, // teal
+  { bg: 'rgb(252,211,77)', glow: 'rgba(245,158,11,0.85)' }, // warm amber accent
+];
 function ParticleBurst({ delay }: { delay: number }) {
   const particles = useMemo(
     () =>
-      Array.from({ length: 10 }, (_, i) => {
-        const angle = (i / 10) * Math.PI * 2;
+      Array.from({ length: 11 }, (_, i) => {
+        // Deterministic pseudo-random jitter (no Math.random → stable across renders).
+        const seed = (i * 1297 + 7) % 360;
+        const jitter = ((i * 53) % 17) / 17 - 0.5; // -0.5..0.5
+        const angle = ((i / 11) * Math.PI * 2) + jitter * 0.9;
+        const radius = 28 + ((i * 37) % 26) + (i % 3) * 6;
+        const color = BURST_COLORS[i % BURST_COLORS.length];
         return {
-          x: Math.cos(angle) * (34 + (i % 3) * 8),
-          y: Math.sin(angle) * (34 + (i % 3) * 8),
-          s: 0.5 + (i % 3) * 0.25,
+          x: Math.cos(angle) * radius,
+          y: Math.sin(angle) * radius,
+          s: 0.45 + ((seed % 7) / 7) * 0.6,
+          dur: 0.7 + ((i * 31) % 9) / 20,
+          color,
         };
       }),
     []
@@ -469,11 +486,11 @@ function ParticleBurst({ delay }: { delay: number }) {
       {particles.map((p, i) => (
         <motion.span
           key={i}
-          className="absolute w-1.5 h-1.5 rounded-full bg-cyan-300"
+          className="absolute w-1.5 h-1.5 rounded-full"
           initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
           animate={{ opacity: [0, 1, 0], x: p.x, y: p.y, scale: [0, p.s, 0] }}
-          transition={{ duration: 0.85, delay, ease: 'easeOut' }}
-          style={{ boxShadow: '0 0 6px rgba(6,182,212,0.9)' }}
+          transition={{ duration: p.dur, delay, ease: 'easeOut' }}
+          style={{ backgroundColor: p.color.bg, boxShadow: `0 0 6px ${p.color.glow}` }}
         />
       ))}
     </div>
@@ -500,7 +517,7 @@ function AmbientBackground({ reduceMotion }: { reduceMotion: boolean }) {
           className="absolute inset-0 opacity-40"
           style={{
             background:
-              'radial-gradient(60% 50% at 25% 20%, rgba(13,148,136,0.25), transparent 60%), radial-gradient(55% 45% at 80% 80%, rgba(14,165,233,0.22), transparent 60%)',
+              'radial-gradient(60% 50% at 25% 20%, rgba(13,148,136,0.25), transparent 60%), radial-gradient(55% 45% at 80% 80%, rgba(14,165,233,0.22), transparent 60%), radial-gradient(45% 40% at 70% 30%, rgba(245,158,11,0.16), transparent 60%)',
           }}
         />
       </div>
@@ -526,6 +543,13 @@ function AmbientBackground({ reduceMotion }: { reduceMotion: boolean }) {
         style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.3), transparent 70%)' }}
         animate={{ x: [0, 25, -25, 0], y: [0, -25, 0, 0] }}
         transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      {/* Warm amber ambient blob — balances the cool teal/cyan palette with one warm anchor. */}
+      <motion.div
+        className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl"
+        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.22), transparent 70%)' }}
+        animate={{ x: [0, 30, -15, 0], y: [0, 18, -12, 0], scale: [1, 1.12, 1] }}
+        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
       />
       {dots.map((dot, i) => (
         <motion.span

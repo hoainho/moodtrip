@@ -1,7 +1,28 @@
-import React, { useMemo } from 'react';
-import { motion } from 'motion/react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import type { ItineraryPlan, FormData, Mood } from '../types';
 import { IconMapPin, IconClock, IconWallet, IconFire, IconSparkles, IconSmartphone } from './icons';
+
+/** S4 micro-interaction — count up to the value on mount (instant under reduced-motion). */
+const AnimatedNumber: React.FC<{ value: number; className?: string }> = ({ value, className }) => {
+  const reduce = useReducedMotion();
+  const [display, setDisplay] = useState(reduce ? value : 0);
+  useEffect(() => {
+    if (reduce) { setDisplay(value); return; }
+    let raf = 0;
+    const start = performance.now();
+    const dur = 900;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(value * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, reduce]);
+  return <span className={className}>{display}</span>;
+};
 
 interface TripHeroBannerProps {
   itinerary: ItineraryPlan;
@@ -117,7 +138,8 @@ export const TripHeroBanner: React.FC<TripHeroBannerProps> = ({ itinerary, formD
       >
         <div className="absolute inset-0 bg-gradient-to-br from-teal-600 via-cyan-700 to-indigo-900" />
         <div className="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_top_left,rgba(255,255,255,0.4),transparent_50%)]" />
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_bottom_right,rgba(255,200,100,0.5),transparent_55%)]" />
+        {/* Mood tone — the banner carries the emotion the user expressed (S4). */}
+        <div className="absolute inset-0 opacity-35" aria-hidden="true" style={{ background: 'radial-gradient(ellipse at bottom right, var(--mood-accent), transparent 58%)' }} />
 
         <div className="relative p-7 sm:p-10 text-white">
           <motion.div
@@ -158,19 +180,23 @@ export const TripHeroBanner: React.FC<TripHeroBannerProps> = ({ itinerary, formD
               <div className="flex items-center gap-1.5 text-white/70 text-[10px] uppercase tracking-wider font-semibold mb-1">
                 <IconClock className="w-3 h-3" /> Số ngày
               </div>
-              <div className="text-2xl font-bold tabular-nums">{vitals.days}</div>
+              <div className="text-2xl font-bold tabular-nums"><AnimatedNumber value={vitals.days} /></div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/15">
               <div className="flex items-center gap-1.5 text-white/70 text-[10px] uppercase tracking-wider font-semibold mb-1">
                 <IconMapPin className="w-3 h-3" /> Hoạt động
               </div>
-              <div className="text-2xl font-bold tabular-nums">{vitals.activities}</div>
+              <div className="text-2xl font-bold tabular-nums"><AnimatedNumber value={vitals.activities} /></div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/15">
               <div className="flex items-center gap-1.5 text-white/70 text-[10px] uppercase tracking-wider font-semibold mb-1">
                 <IconFire className="w-3 h-3" /> Trending
               </div>
-              <div className="text-2xl font-bold tabular-nums">{vitals.trending}</div>
+              {vitals.trending > 0 ? (
+                <div className="text-2xl font-bold tabular-nums"><AnimatedNumber value={vitals.trending} /></div>
+              ) : (
+                <div className="text-sm font-semibold leading-tight text-white/80">Chưa có điểm trending</div>
+              )}
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/15">
               <div className="flex items-center gap-1.5 text-white/70 text-[10px] uppercase tracking-wider font-semibold mb-1">
@@ -218,9 +244,9 @@ export const TripHeroBanner: React.FC<TripHeroBannerProps> = ({ itinerary, formD
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 + i * 0.1, duration: 0.45 }}
-            className="relative p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-teal-400/30 hover:bg-white/[0.06] transition-all"
+            className="relative p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] transition-all"
           >
-            <div className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 text-slate-950 text-xs font-bold flex items-center justify-center shadow-lg">
+            <div className="absolute -top-2 -left-2 w-7 h-7 rounded-full text-slate-950 text-xs font-bold flex items-center justify-center shadow-lg" style={{ background: 'var(--mood-accent)' }}>
               {i + 1}
             </div>
             <p className="text-sm text-slate-200 leading-relaxed pl-2">{reason}</p>

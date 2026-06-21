@@ -16,22 +16,22 @@ compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "REPLACE_WITH_KV_ID_FROM_WRANGLER_OUTPUT"
+id = "33da0a06fcae40709d4caae6bdee7266"
 
 [[kv_namespaces]]
 binding = "SPEND_TRACKER"
-id = "REPLACE_WITH_KV_ID_FROM_WRANGLER_OUTPUT"
+id = "f65f1c406af24dc49a4765bdeb2a07dc"
 
 [vars]
-ALLOWED_ORIGINS = "https://moodtrip.app,https://moodtripv2.vercel.app,http://localhost:5173"
+ALLOWED_ORIGINS = "https://moodtrip.hoainho.info,https://moodtrip.app,https://moodtripv2.vercel.app,http://localhost:5173"
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_MODEL_LITE = "gemini-2.5-flash-lite"
 SUPABASE_URL = "https://your-project.supabase.co"
 SUPABASE_ANON_KEY = "set-via-wrangler-secret-or-env"
 DAILY_SPEND_LIMIT_USD = "80"
-ANON_DAILY_LIMIT = "1"
-FREE_DAILY_LIMIT = "3"
-PAID_DAILY_LIMIT = "50"
+ANON_DAILY_LIMIT = "50"
+FREE_DAILY_LIMIT = "100"
+PAID_DAILY_LIMIT = "500"
 JWT_ISSUER = "moodtrip-edge-proxy"
 JWT_AUDIENCE = "moodtrip-app"
 
@@ -43,13 +43,42 @@ GEMINI_FLASH_OUTPUT_USD_PER_MTOK = "2.50"
 GEMINI_FLASH_LITE_INPUT_USD_PER_MTOK = "0.05"
 GEMINI_FLASH_LITE_OUTPUT_USD_PER_MTOK = "0.40"
 
+# LLM backend: "proxy" → forward generation to the OpenAI-compatible proxy.hoainho.info
+# (key held server-side as the LLM_PROXY_KEY secret); set "gemini" to fall back to direct Gemini.
+LLM_PROVIDER = "proxy"
+LLM_PROXY_URL = "https://proxy.hoainho.info"
+# Model ids verified live against proxy.hoainho.info/v1/models (2026-06-16).
+LLM_PROXY_MODEL = "gemini-2.5-flash"
+LLM_PROXY_MODEL_LITE = "gemini-2.5-flash-lite"
+LLM_PROXY_JSON_MODE = "true"
+
 [env.production]
 # 🔴 HUMAN ACTION REQUIRED: add custom domain route after DNS is configured
 # routes = [{ pattern = "api.moodtrip.app/*", custom_domain = true }]
 
 [env.production.vars]
-ALLOWED_ORIGINS = "https://moodtrip.app,https://moodtripv2.vercel.app"
+# NOTE: Cloudflare does NOT merge the top-level [vars] into a named env. Every var the
+# Worker reads at runtime must be repeated here, or `wrangler deploy --env production`
+# ships a Worker missing LLM_PROVIDER → it falls back to direct Gemini → geo-blocked in VN.
+ALLOWED_ORIGINS = "https://moodtrip.hoainho.info,https://moodtrip.app,https://moodtripv2.vercel.app"
 DAILY_SPEND_LIMIT_USD = "80"
+GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL_LITE = "gemini-2.5-flash-lite"
+JWT_ISSUER = "moodtrip-edge-proxy"
+JWT_AUDIENCE = "moodtrip-app"
+ANON_DAILY_LIMIT = "50"
+FREE_DAILY_LIMIT = "100"
+PAID_DAILY_LIMIT = "500"
+GEMINI_FLASH_INPUT_USD_PER_MTOK = "0.30"
+GEMINI_FLASH_OUTPUT_USD_PER_MTOK = "2.50"
+GEMINI_FLASH_LITE_INPUT_USD_PER_MTOK = "0.05"
+GEMINI_FLASH_LITE_OUTPUT_USD_PER_MTOK = "0.40"
+# LLM backend MUST stay "proxy" in production — direct Gemini is geo-blocked from Vietnam.
+LLM_PROVIDER = "proxy"
+LLM_PROXY_URL = "https://proxy.hoainho.info"
+LLM_PROXY_MODEL = "gemini-2.5-flash"
+LLM_PROXY_MODEL_LITE = "gemini-2.5-flash-lite"
+LLM_PROXY_JSON_MODE = "true"
 
 [observability]
 enabled = true

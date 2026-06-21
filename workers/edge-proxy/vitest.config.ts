@@ -12,6 +12,12 @@ export default defineWorkersConfig({
             JWT_SIGNING_SECRET: 'test-jwt-secret-must-be-at-least-32-bytes-long-xx',
             SUPABASE_JWT_SECRET: 'test-supa-secret-must-be-at-least-32-bytes-long-xx',
             INTERNAL_MONITOR_TOKEN: 'test-internal-token',
+            // Pin test-relevant config so tests stay deterministic regardless of production
+            // wrangler.toml scaling knobs (e.g. raised daily limits, LLM_PROVIDER=proxy).
+            ANON_DAILY_LIMIT: '1',
+            FREE_DAILY_LIMIT: '3',
+            PAID_DAILY_LIMIT: '50',
+            LLM_PROVIDER: 'gemini',
           },
         },
       },
