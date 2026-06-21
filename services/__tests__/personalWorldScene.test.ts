@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMonuments, buildSceneState } from '../personalWorldScene';
+import { buildMonuments, buildSceneState, treeGrowth, TREE_MAX_TRIPS } from '../personalWorldScene';
 import { buildWorldStats } from '../personalWorld';
 import type { TripRecord } from '../tripsApi';
 
@@ -56,6 +56,54 @@ describe('buildMonuments', () => {
     const a = buildMonuments(trips);
     const b = buildMonuments(trips);
     expect(a).toEqual(b);
+  });
+});
+
+describe('treeGrowth', () => {
+  it('starts as a seed at 0 trips and reaches full growth at TREE_MAX_TRIPS', () => {
+    const seed = treeGrowth(0);
+    expect(seed.level).toBe(0);
+    expect(seed.label).toBe('Hạt mầm');
+    expect(seed.progress).toBe(0);
+    expect(seed.toMax).toBe(TREE_MAX_TRIPS);
+    expect(seed.atMax).toBe(false);
+
+    const full = treeGrowth(TREE_MAX_TRIPS);
+    expect(full.label).toBe('Cổ thụ');
+    expect(full.level).toBe(full.maxLevel);
+    expect(full.progress).toBe(1);
+    expect(full.toMax).toBe(0);
+    expect(full.atMax).toBe(true);
+    expect(full.nextLabel).toBeNull();
+  });
+
+  it('clamps progress at 1 beyond the max', () => {
+    const beyond = treeGrowth(25);
+    expect(beyond.progress).toBe(1);
+    expect(beyond.atMax).toBe(true);
+    expect(beyond.toMax).toBe(0);
+  });
+
+  it('level is monotonically non-decreasing with trip count', () => {
+    let prev = -1;
+    for (let n = 0; n <= 12; n++) {
+      const lvl = treeGrowth(n).level;
+      expect(lvl).toBeGreaterThanOrEqual(prev);
+      prev = lvl;
+    }
+  });
+
+  it('reports the next stage while still growing', () => {
+    const t = treeGrowth(1);
+    expect(t.level).toBe(1);
+    expect(t.label).toBe('Mầm non');
+    expect(t.nextAt).toBeGreaterThan(1);
+    expect(t.nextLabel).not.toBeNull();
+  });
+
+  it('handles negative / NaN trip counts safely', () => {
+    expect(treeGrowth(-3).trips).toBe(0);
+    expect(treeGrowth(Number.NaN).level).toBe(0);
   });
 });
 

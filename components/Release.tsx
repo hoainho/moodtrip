@@ -12,8 +12,54 @@ interface ReleaseProps {
 
 const CHANGELOG_CONTENT = `# MoodTrip - Ghi Ch\u00fa Ph\u00e1t H\u00e0nh
 
-> **Phi\u00ean B\u1ea3n T\u00e0i Li\u1ec7u:** 4.3  
-> **C\u1eadp Nh\u1eadt L\u1ea7n Cu\u1ed1i:** 15/06/2026
+> **Phi\u00ean B\u1ea3n T\u00e0i Li\u1ec7u:** 4.4
+>
+> **C\u1eadp Nh\u1eadt L\u1ea7n Cu\u1ed1i:** 21/06/2026
+
+---
+
+## Phi\u00ean B\u1ea3n 4.4
+
+_21/06/2026_
+
+### \u0110i\u1ec3m N\u1ed5i B\u1eadt
+- \u0110\u1ea1i tu giao di\u1ec7n: h\u1ec7 m\u00e0u h\u00e0i h\u00f2a, l\u1edbp n\u1ec1n m\u1edd r\u00f5 ch\u1eef, chuy\u1ec3n \u0111\u1ed9ng tinh t\u1ebf v\u00e0 \u0111\u1ed3ng nh\u1ea5t h\u01a1n
+- Nh\u1eadp c\u1ea3m x\u00fac t\u1ef1 do \u2014 ch\u1ea1m v\u00e0i g\u1ee3i \u00fd l\u00e0 M\u01a1 hi\u1ec3u, kh\u00f4ng c\u1ea7n g\u00f5 nhi\u1ec1u
+- B\u1ed9 c\u1ea3m x\u00fac m\u1edf r\u1ed9ng c\u1ea3 chi\u1ec1u ti\u00eau c\u1ef1c (bu\u1ed3n, ch\u00e1n, b\u1ef1c b\u1ed9i, c\u0103ng th\u1eb3ng, c\u00f4 \u0111\u01a1n) \u2014 M\u01a1 ph\u1ea3n h\u1ed3i \u0111\u1ed3ng c\u1ea3m
+- G\u1ee3i \u00fd theo m\u00f9a t\u1ef1 xoay theo qu\u00fd (Xu\u00e2n / H\u00e8 / Thu / \u0110\u00f4ng)
+- Trang ch\u1ee7 "s\u1ed1ng": m\u00e0u giao di\u1ec7n \u0111\u1ed5i theo c\u1ea3m x\u00fac + n\u1ec1n aurora v\u00e0 \u0111om \u0111\u00f3m chuy\u1ec3n \u0111\u1ed9ng
+- B\u1ea3n \u0111\u1ed3 h\u00e0nh tr\u00ecnh v\u1ebd l\u1ea1i t\u1eeb \u0111\u1ea7u: \u0111\u00fang v\u00f9ng, \u0111\u00fang th\u1ee9 t\u1ef1, \u0111\u01b0\u1eddng n\u1ed1i r\u00f5 r\u00e0ng
+
+### T\u00ednh N\u0103ng M\u1edbi
+| T\u00ednh N\u0103ng | M\u00f4 T\u1ea3 |
+| --- | --- |
+| Nh\u1eadp c\u1ea3m x\u00fac linh ho\u1ea1t | M\u00f4 t\u1ea3 t\u00e2m tr\u1ea1ng b\u1eb1ng l\u1eddi, ho\u1eb7c ch\u1ea1m c\u00e1c "h\u1ea1t c\u1ea3m x\u00fac" gom theo nh\u00f3m: C\u1ea3m x\u00fac h\u00f4m nay, T\u00e2m tr\u1ea1ng, Kh\u00f4ng gian, Ki\u1ec3u \u0111i |
+| C\u1ea3m x\u00fac ti\u00eau c\u1ef1c | Bu\u1ed3n, ch\u00e1n, b\u1ef1c b\u1ed9i, c\u0103ng th\u1eb3ng, c\u00f4 \u0111\u01a1n\u2026 \u0111\u1ec1u ch\u1ecdn \u0111\u01b0\u1ee3c \u2014 M\u01a1 thi\u1ebft k\u1ebf l\u1ecbch tr\u00ecnh xoa d\u1ecbu, \u0111\u1ed5i gi\u00f3 ho\u1eb7c gi\u1ea3i t\u1ecfa cho ph\u00f9 h\u1ee3p |
+| G\u1ee3i \u00fd theo m\u00f9a | Nh\u00f3m "H\u1ee3p m\u00f9a \u2026 n\u00e0y" t\u1ef1 \u0111\u1ed5i theo qu\u00fd: Xu\u00e2n (3\u20135), H\u00e8 (6\u20138), Thu (9\u201311), \u0110\u00f4ng (12\u20132) |
+| Thanh "\u0110\u1eadm nh\u1ea1t c\u1ea3m x\u00fac" | M\u01a1 t\u1ef1 \u0111o\u00e1n m\u1ee9c \u0111\u1ed9 c\u1ea3m x\u00fac theo l\u1ef1a ch\u1ecdn, c\u00f3 ch\u00fa th\u00edch gi\u1ea3i th\u00edch, k\u00e9o \u0111\u1ec3 ch\u1ec9nh l\u1ea1i |
+| Trang ch\u1ee7 s\u1ed1ng \u0111\u1ed9ng | M\u00e0u ch\u1ee7 \u0111\u1ea1o \u0111\u1ed5i theo c\u1ea3m x\u00fac (mood-reactive) + n\u1ec1n aurora & \u0111om \u0111\u00f3m chuy\u1ec3n \u0111\u1ed9ng nh\u1eb9 |
+| 3 ch\u1ebf \u0111\u1ed9 xem l\u1ecbch tr\u00ecnh | L\u1ecbch tr\u00ecnh (theo gi\u1edd), Storyboard (ph\u00f3ng to), G\u1ecdn (cho \u0111i\u1ec7n tho\u1ea1i) |
+| B\u1ea3n \u0111\u1ed3 h\u00e0nh tr\u00ecnh m\u1edbi | \u0110i\u1ec3m 1 l\u00e0 n\u01a1i xu\u1ea5t ph\u00e1t, n\u1ed1i c\u00e1c \u0111i\u1ec3m theo \u0111\u00fang th\u1ee9 t\u1ef1 l\u1ecbch tr\u00ecnh; \u0111\u01b0\u1eddng m\u1ed9t m\u00e0u + m\u0169i t\u00ean ch\u1ec9 h\u01b0\u1edbng + s\u1ed1 th\u1ee9 t\u1ef1; ch\u00fa th\u00edch Xu\u1ea5t ph\u00e1t \u2192 \u0110i\u1ec3m cu\u1ed1i |
+| C\u00e2y th\u1ebf gi\u1edbi l\u1edbn d\u1ea7n | C\u00e2y trong "Th\u1ebf gi\u1edbi c\u1ee7a b\u1ea1n" l\u1edbn theo s\u1ed1 chuy\u1ebfn \u0111i (t\u1ed1i \u0111a 10); ch\u1ea1m \u0111\u1ec3 xem ti\u1ebfn \u0111\u1ed9 t\u0103ng tr\u01b0\u1edfng |
+| Tooltip \u0111\u1ecba \u0111i\u1ec3m 3D | Ch\u1ea1m m\u1ed9t \u0111\u1ecba \u0111i\u1ec3m trong "Th\u1ebf gi\u1edbi" \u0111\u1ec3 xem nhanh chi ti\u1ebft chuy\u1ebfn \u0111i v\u00e0 m\u1edf l\u1ea1i |
+
+### C\u1ea3i Ti\u1ebfn
+| C\u1ea3i Ti\u1ebfn | M\u00f4 T\u1ea3 |
+| --- | --- |
+| H\u1ec7 thi\u1ebft k\u1ebf \u0111\u1ed3ng b\u1ed9 | Design tokens (m\u00e0u / \u0111\u1ed9 m\u1edd / kho\u1ea3ng c\u00e1ch) \u00e1p d\u1ee5ng to\u00e0n b\u1ed9 m\u00e0n h\u00ecnh cho c\u1ea3m gi\u00e1c nh\u1ea5t qu\u00e1n |
+| \u0110\u1ecbnh v\u1ecb b\u1ea3n \u0111\u1ed3 theo v\u00f9ng | M\u1ed7i \u0111i\u1ec3m \u0111\u01b0\u1ee3c neo theo v\u00f9ng c\u1ee7a ng\u00e0y; \u0111\u1ecba \u0111i\u1ec3m kh\u00f4ng c\u00f2n "nh\u1ea3y" sang t\u1ec9nh kh\u00e1c |
+| T\u00e1ch ch\u1eb7ng di chuy\u1ec3n | Hi\u1ec3u "A \u2192 B" / "Di chuy\u1ec3n t\u1eeb A \u0111\u1ebfn B": l\u1ea5y n\u01a1i xu\u1ea5t ph\u00e1t cho \u0111i\u1ec3m \u0111\u1ea7u, n\u01a1i \u0111\u1ebfn cho c\u00e1c ch\u1eb7ng sau |
+| Trang k\u1ebft qu\u1ea3 m\u1ed9t c\u1ed9t | B\u1ed1 c\u1ee5c m\u1ed9t c\u1ed9t g\u1ecdn g\u00e0ng, b\u1ea3n \u0111\u1ed3 v\u00e0 thao t\u00e1c x\u1ebfp b\u00ean d\u01b0\u1edbi, d\u1ec5 \u0111\u1ecdc tr\u00ean m\u1ecdi m\u00e0n h\u00ecnh |
+| L\u1ecbch s\u1eed cu\u1ed9n ngang | L\u1ecbch s\u1eed chuy\u1ebfn \u0111i cu\u1ed9n ngang \u0111\u1ec3 trang ch\u1ee7 g\u1ecdn trong m\u1ed9t m\u00e0n h\u00ecnh |
+| L\u1edbp ph\u1ee7 m\u01b0\u1ee3t | N\u1ec1n trang ch\u1ee7 chuy\u1ec3n s\u1eafc li\u1ec1n m\u1ea1ch, kh\u00f4ng c\u00f2n m\u00e9p c\u1eaft, \u0111\u1ed3ng \u0111\u1ec1u tr\u00ean d\u01b0\u1edbi |
+
+### S\u1eeda L\u1ed7i
+| S\u1eeda L\u1ed7i | M\u00f4 T\u1ea3 |
+| --- | --- |
+| Tr\u00e0n ngang tr\u00ean mobile | Storyboard v\u00e0 G\u1ecdn kh\u00f4ng c\u00f2n tr\u00e0n ngang v\u1edbi t\u00ean / n\u1ed9i dung d\u00e0i; b\u1ed9 ch\u1ecdn ch\u1ebf \u0111\u1ed9 xem v\u1eeba khung |
+| N\u00fat x\u00f3a \u0111\u00e8 ch\u1eef | N\u00fat x\u00f3a tr\u00ean th\u1ebb l\u1ecbch s\u1eed kh\u00f4ng c\u00f2n \u0111\u00e8 l\u00ean t\u00ean \u0111\u1ecba \u0111i\u1ec3m |
+| Ti\u00eau \u0111\u1ec1 b\u1ecb c\u1eaft | Ti\u00eau \u0111\u1ec1 trang ch\u1ee7 kh\u00f4ng c\u00f2n d\u00ednh s\u00e1t / b\u1ecb c\u1eaft d\u01b0\u1edbi logo; c\u00f3 kho\u1ea3ng th\u1edf h\u1ee3p l\u00fd |
+| Kho\u1ea3ng c\u00e1ch b\u1ea3n \u0111\u1ed3 | Thu h\u1eb9p kho\u1ea3ng tr\u1ed1ng gi\u1eefa l\u1ecbch tr\u00ecnh v\u00e0 ph\u1ea7n "B\u1ea3n \u0111\u1ed3 h\u00e0nh tr\u00ecnh" |
 
 ---
 

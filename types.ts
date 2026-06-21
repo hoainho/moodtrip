@@ -4,6 +4,21 @@ export type ShortTripMood = 'date' | 'cafe' | 'food_tour' | 'nightlife' | 'fun' 
 
 export type Mood = 'relax' | 'explore' | 'nature' | 'romantic' | 'adventure' | 'cultural';
 
+/**
+ * Flexible, emotion-driven mood input — the PRIMARY way a user expresses mood.
+ * Replaces the rigid 6-button picker on the human-facing form.
+ *  - `text`: free-form emotional description ("mệt, cần chậm lại, gần biển…"). User data → fenced in the prompt.
+ *  - `seeds`: optional emotion-suggestion labels the user tapped (open set, not exclusive).
+ *  - `intensity`: 0..1, how strongly the mood should drive the plan (default 0.5).
+ * `Mood`/`ShortTripMood` remain a LIVE INTERNAL taxonomy derived from seeds (see constants.ts
+ * seedsToMoods) so the card-pull, preferences, 3D personal world and persona keep working.
+ */
+export interface MoodInput {
+  text: string;
+  seeds: string[];
+  intensity: number;
+}
+
 export interface Duration {
   days: number;
   nights: number;
@@ -18,6 +33,9 @@ export interface FormData {
   startTime?: string;
   endTime?: string;
   budget: number;
+  /** PRIMARY flexible mood input (free-text + seeds + intensity). */
+  mood?: MoodInput;
+  /** Derived internal taxonomy (from mood.seeds). Kept for card-pull / preferences / 3D world / persona. */
   moods: Mood[];
   shortMoods?: ShortTripMood[];
   personalNote: string;

@@ -170,7 +170,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
   };
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen pb-8">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-[rgba(10,14,26,0.85)] backdrop-blur-xl border-b border-white/[0.06]">
         <div className="container mx-auto px-4 py-2.5 flex items-center gap-3">
@@ -234,7 +234,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          <div ref={el => { sectionRefs.current['timeline'] = el; }} className="md:col-span-2 space-y-8 scroll-mt-20">
+          <div ref={el => { sectionRefs.current['timeline'] = el; }} className="md:col-span-2 min-w-0 space-y-8 scroll-mt-20">
              {viewMode === 'storyboard' ? (
                itinerary.timeline.map((day, dayIndex) => (
                  <TripDayStoryboard key={dayIndex} day={day} dayIndex={dayIndex} />
@@ -262,14 +262,14 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                        <li key={i} className="flex items-start gap-3 text-sm">
                          <span className="flex-shrink-0 w-12 text-teal-400 font-bold tabular-nums text-xs">{item.time}</span>
                          <div className="flex-1 min-w-0">
-                           <p className="text-slate-200 leading-snug">{item.activity}</p>
+                           <p className="text-slate-200 leading-snug break-words">{item.activity}</p>
                            {item.venue && (
-                             <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                               <IconMapPin className="w-3 h-3" />
+                             <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1 min-w-0">
+                               <IconMapPin className="w-3 h-3 flex-shrink-0" />
                                {item.google_maps_link ? (
-                                 <a href={item.google_maps_link} target="_blank" rel="noopener noreferrer" className="hover:text-teal-400 truncate">{item.venue}</a>
+                                 <a href={item.google_maps_link} target="_blank" rel="noopener noreferrer" className="hover:text-teal-400 truncate min-w-0">{item.venue}</a>
                                ) : (
-                                 <span className="truncate">{item.venue}</span>
+                                 <span className="truncate min-w-0">{item.venue}</span>
                                )}
                              </p>
                            )}
@@ -388,7 +388,7 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                                   )}
                                 </div>
 
-                                <p className="text-slate-300 mb-2">{item.activity}</p>
+                                <p className="text-slate-300 mb-2 break-words">{item.activity}</p>
                                 {item.is_trending && (
                                   <div className="flex items-center gap-2 mb-2">
                                     <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
@@ -402,27 +402,27 @@ export const ItineraryDisplay: React.FC<ItineraryDisplayProps> = ({ itinerary, o
                                 )}
                                 <div className="space-y-2 text-sm">
                                   {item.venue && (
-                                      <div className="flex items-center text-slate-400">
+                                      <div className="flex items-center text-slate-400 min-w-0">
                                           <IconMapPin className="w-4 h-4 mr-2 flex-shrink-0 text-teal-500" />
                                           {item.google_maps_link ? (
-                                              <a 
-                                                  href={item.google_maps_link} 
-                                                  target="_blank" 
-                                                  rel="noopener noreferrer" 
-                                                  className="hover:underline hover:text-teal-400 transition-colors font-medium"
+                                              <a
+                                                  href={item.google_maps_link}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="hover:underline hover:text-teal-400 transition-colors font-medium min-w-0 break-words"
                                                   title={`Mở vị trí của ${item.venue} trên Google Maps`}
                                               >
                                                   {item.venue}
                                               </a>
                                           ) : (
-                                              <span>{item.venue}</span>
+                                              <span className="min-w-0 break-words">{item.venue}</span>
                                           )}
                                       </div>
                                   )}
                                   {item.estimated_cost && (
-                                      <div className="flex items-center text-slate-400">
+                                      <div className="flex items-center text-slate-400 min-w-0">
                                           <IconWallet className="w-4 h-4 mr-2 flex-shrink-0 text-yellow-500" />
-                                          <span>Chi phi: {item.estimated_cost}</span>
+                                          <span className="min-w-0 break-words">Chi phi: {item.estimated_cost}</span>
                                       </div>
                                   )}
                                   {item.travel_tips && item.travel_tips.length > 0 && (

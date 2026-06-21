@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import type { FormData, Mood, Duration, TripMode, ShortTripMood } from '../types';
-import { MOOD_OPTIONS, SHORT_TRIP_MOOD_OPTIONS } from '../constants';
-import { IconMapPin, IconWallet, IconChevronLeft, IconChevronRight, IconCalendar, IconCompass, IconSparkles, IconClock } from './icons';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import type { FormData, Duration, TripMode } from '../types';
+import { MOOD_SEED_GROUPS, SHORT_MOOD_SEED_GROUPS, seasonalMoodGroup, seedsToMoods, seedsToShortMoods, moodInputFromMoods } from '../constants';
+import { useSetMoodSignal, estimateMoodIntensity } from '../hooks/useMoodTheme';
+import { IconMapPin, IconWallet, IconChevronLeft, IconChevronRight, IconCalendar, IconCompass, IconSparkles, IconClock, IconInfo } from './icons';
 import { Logo } from './Logo';
 import { motion } from 'motion/react';
 
@@ -61,14 +62,55 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
   const [startDate, setStartDate] = useState('');
   const [duration, setDuration] = useState<Duration>({ days: 2, nights: 1 });
   const [budget, setBudget] = useState(3000000);
-  const [moods, setMoods] = useState<Mood[]>(['explore']);
+  // Flexible, emotion-driven mood input (replaces the rigid 6-button picker).
+  const [moodText, setMoodText] = useState('');
+  const [moodSeeds, setMoodSeeds] = useState<string[]>([]);
+  const [moodIntensity, setMoodIntensity] = useState(0.5);
+  // Once the user drags the slider themselves, stop auto-tracking and respect their choice.
+  const [intensityTouched, setIntensityTouched] = useState(false);
+  const moodIntensityRef = useRef(moodIntensity);
+  moodIntensityRef.current = moodIntensity;
   const [personalNote, setPersonalNote] = useState('');
   const [tripMode, setTripMode] = useState<TripMode>('long');
   const [startTime, setStartTime] = useState('14:00');
   const [endTime, setEndTime] = useState('22:00');
-  const [shortMoods, setShortMoods] = useState<ShortTripMood[]>([]);
-  const [moodError, setMoodError] = useState<string | null>(null);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+
+  // Grouped, click-to-build seed suggestions. Long trips lead with a season-fitting group
+  // (derived from the current month) so ideas feel timely (weather/mùa/trend).
+  const seedGroups: { title: string; seeds: { label: string }[] }[] = useMemo(
+    () => (tripMode === 'short'
+      ? SHORT_MOOD_SEED_GROUPS
+      : [seasonalMoodGroup(new Date().getMonth()), ...MOOD_SEED_GROUPS]),
+    [tripMode],
+  );
+
+  // Publish the live emotion so the page atmosphere (accent, ambient, 3D light) reacts as the user types.
+  const setMoodSignal = useSetMoodSignal();
+  useEffect(() => {
+    setMoodSignal({ text: moodText, seeds: moodSeeds, intensity: moodIntensity });
+  }, [moodText, moodSeeds, moodIntensity, setMoodSignal]);
+
+  // Auto-track: the "đậm nhạt cảm xúc" slider glides to match how strongly the user is writing —
+  // until they grab it themselves. Eased rAF tween for smoothness (instant under reduced-motion).
+  useEffect(() => {
+    if (intensityTouched) return;
+    const target = estimateMoodIntensity(moodText, moodSeeds);
+    const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { setMoodIntensity(target); return; }
+    const from = moodIntensityRef.current;
+    if (Math.abs(target - from) < 0.01) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - start) / 450);
+      const eased = 1 - Math.pow(1 - k, 3);
+      setMoodIntensity(from + (target - from) * eased);
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [moodText, moodSeeds, intensityTouched]);
 
   const handleTripModeChange = (mode: TripMode) => {
     setTripMode(mode);
@@ -90,8 +132,12 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
       if (typeof initialData.budget === 'number' && !Number.isNaN(initialData.budget)) {
         setBudget(initialData.budget);
       }
-      setMoods(initialData.moods || []);
-      setShortMoods(initialData.shortMoods || []);
+      // Hydrate flexible mood: prefer the new MoodInput; else migrate legacy enum moods into seeds.
+      const seededMood = initialData.mood
+        ?? moodInputFromMoods(initialData.moods, initialData.shortMoods);
+      setMoodText(seededMood.text || '');
+      setMoodSeeds(seededMood.seeds || []);
+      setMoodIntensity(typeof seededMood.intensity === 'number' ? seededMood.intensity : 0.5);
       setPersonalNote(initialData.personalNote || '');
       setStartDate(initialData.startDate || '');
       if (initialData.startTime) setStartTime(initialData.startTime);
@@ -120,29 +166,25 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
     }
   };
 
+  // Toggle a seed suggestion: keep `moodSeeds` in sync and mirror the label into the free-text
+  // field (append on select, strip on deselect) — the textarea stays the source of truth the user edits.
+  // Pure click-to-select: tapping a chip just toggles it (no typing). The free-text box stays a
+  // separate, optional way to add nuance.
+  const toggleSeed = (label: string) => {
+    setMoodSeeds((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    let hasError = false;
-
-    if (tripMode === 'long' && moods.length < 1) {
-      setMoodError('Hãy chọn ít nhất một tâm trạng');
-      hasError = true;
-    } else if (tripMode === 'short' && shortMoods.length < 1) {
-      setMoodError('Hãy chọn ít nhất một phong cách');
-      hasError = true;
-    } else {
-      setMoodError(null);
-    }
-
+    // Mood is now optional — empty input is valid (the prompt builds a balanced fallback).
     if (budget <= 0) {
       setBudgetError('Ngân sách phải lớn hơn 0');
-      hasError = true;
-    } else {
-      setBudgetError(null);
+      return;
     }
+    setBudgetError(null);
 
-    if (hasError) return;
+    const mood = { text: moodText.trim(), seeds: moodSeeds, intensity: moodIntensity };
 
     onSubmit({
       tripMode,
@@ -153,71 +195,17 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
       startTime: tripMode === 'short' ? startTime : undefined,
       endTime: tripMode === 'short' ? endTime : undefined,
       budget,
-      moods: tripMode === 'short' ? [] : moods,
-      shortMoods: tripMode === 'short' ? shortMoods : undefined,
+      mood,
+      // Derive the internal taxonomy from seeds so card-pull / preferences / 3D world keep working.
+      moods: tripMode === 'short' ? [] : seedsToMoods(moodSeeds),
+      shortMoods: tripMode === 'short' ? seedsToShortMoods(moodSeeds) : undefined,
       personalNote,
     });
   };
 
-  const personalNotePlaceholder = useMemo(() => {
-    const hints: string[] = [];
-
-    if (tripMode === 'short') {
-      const shortMoodHints: Record<string, string[]> = {
-        date: ['muốn ăn tối lãng mạn', 'thích nơi yên tĩnh riêng tư', 'muốn xem hoàng hôn'],
-        cafe: ['thích quán có view đẹp', 'muốn chỗ yên tĩnh để nói chuyện', 'thích quán mới khai trương'],
-        food_tour: ['muốn thử bún chả Hà Nội', 'thích đồ ăn vặt', 'muốn ăn hải sản tươi'],
-        nightlife: ['thích rooftop bar', 'muốn nghe nhạc live', 'thích cocktail'],
-        fun: ['muốn chơi boardgame', 'thích karaoke', 'muốn thử escape room'],
-        chill: ['muốn đi dạo bờ sông', 'thích ngồi công viên', 'muốn ngắm thành phố về đêm'],
-      };
-      if (shortMoods.length > 0) {
-        for (const m of shortMoods) {
-          const arr = shortMoodHints[m];
-          if (arr) hints.push(arr[Math.floor(Math.random() * arr.length)]);
-        }
-      }
-      if (destination) {
-        hints.push(`khám phá ${destination}`);
-      }
-      if (hints.length === 0) {
-        return 'VD: Muốn ăn tối lãng mạn, thích quán cà phê view đẹp, muốn đi dạo...';
-      }
-      return `VD: ${hints.slice(0, 3).join(', ')}...`;
-    }
-
-    const moodHints: Record<string, string[]> = {
-      relax: ['muốn được massage thư giãn', 'thích ngâm hồ bơi', 'muốn ngủ nướng buổi sáng'],
-      explore: ['thích khám phá phố cổ', 'muốn thử đồ ăn đường phố', 'thích đi chợ đêm'],
-      nature: ['muốn leo núi buổi sáng', 'thích ngắm hoàng hôn', 'muốn cắm trại qua đêm'],
-      romantic: ['muốn ăn tối nến', 'thích đi dạo dưới ánh trăng', 'muốn chụp ảnh cặp đôi'],
-      adventure: ['muốn thử nhảy dù', 'thích lặn biển', 'muốn đi xe địa hình'],
-      cultural: ['muốn tham quan bảo tàng', 'thích xem biểu diễn truyền thống', 'muốn học nấu ăn địa phương'],
-    };
-
-    if (moods.length > 0) {
-      for (const m of moods) {
-        const arr = moodHints[m];
-        if (arr) hints.push(arr[Math.floor(Math.random() * arr.length)]);
-      }
-    }
-
-    if (destination) {
-      hints.push(`khám phá ẩm thực ${destination}`);
-    }
-
-    if (budget < 2000000) {
-      hints.push('ưu tiên địa điểm miễn phí');
-    } else if (budget >= 10000000) {
-      hints.push('trải nghiệm cao cấp');
-    }
-
-    if (hints.length === 0) {
-      return 'VD: Muốn sáng chạy bộ, tối ăn hải sản, thích check-in quán cà phê đẹp...';
-    }
-
-    return `VD: ${hints.slice(0, 3).join(', ')}...`;
-  }, [tripMode, moods, shortMoods, destination, budget]);
+  // Mood now carries the emotional intent; this note is for concrete constraints/preferences.
+  const personalNotePlaceholder =
+    'VD: đi cùng trẻ nhỏ, không ăn cay, tránh leo trèo nhiều, thích chỗ yên tĩnh, cần gần trung tâm...';
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 py-8 md:py-12">
@@ -437,87 +425,133 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, onBack, error, ini
             )}
           </motion.div>
 
-          {/* Mood Section */}
-          <motion.div {...fadeUp(0.4)} className="glass-dark p-6 md:p-8 space-y-5">
-            <div className="flex items-center gap-2 mb-1">
-              <IconSparkles className="w-5 h-5 text-teal-400" />
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">{tripMode === 'short' ? 'Phong cách' : 'Tâm trạng của bạn'}</h3>
-            </div>
-            <p className="text-xs text-slate-400">Chọn một hoặc nhiều tâm trạng phù hợp</p>
-
-            {moodError && (
-              <p role="alert" aria-live="polite" className="text-red-400 text-xs font-medium -mt-2">
-                {moodError}
+          {/* Mood Section — the emotional hero of the form (flexible, not a fixed taxonomy) */}
+          <motion.div {...fadeUp(0.4)} className="relative glass-dark p-6 md:p-8 space-y-5 overflow-hidden ring-1 ring-[color:var(--mood-accent)]/25">
+            {/* Soft warm glow — reacts to --mood-accent at runtime (S1) */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-20 -right-12 w-56 h-56 rounded-full blur-3xl opacity-25"
+              style={{ background: 'var(--mood-accent)' }}
+            />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <IconSparkles className="w-5 h-5" style={{ color: 'var(--mood-accent)' }} />
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Tâm trạng của bạn</h3>
+              </div>
+              <h2 className="text-xl md:text-2xl font-bold text-white">
+                {tripMode === 'short' ? 'Tối nay, lòng bạn muốn gì?' : 'Hôm nay, lòng bạn thế nào?'}
+              </h2>
+              <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">
+                Chạm vài gợi ý bên dưới là Mơ hiểu ngay — không cần gõ nhiều. Thích thì kể thêm bằng lời.
               </p>
-            )}
-
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-              {(tripMode === 'short' ? SHORT_TRIP_MOOD_OPTIONS : MOOD_OPTIONS).map((opt) => {
-                const isSelected = tripMode === 'short'
-                  ? shortMoods.includes(opt.id as ShortTripMood)
-                  : moods.includes(opt.id as Mood);
-                return (
-                  <motion.button
-                    type="button"
-                    key={opt.id}
-                    onClick={() => {
-                      if (tripMode === 'short') {
-                        setShortMoods((prev) => {
-                          const next = prev.includes(opt.id as ShortTripMood)
-                            ? prev.filter((m) => m !== opt.id)
-                            : [...prev, opt.id as ShortTripMood];
-                          if (next.length > 0) setMoodError(null);
-                          return next;
-                        });
-                      } else {
-                        setMoods((prev) => {
-                          const next = prev.includes(opt.id as Mood)
-                            ? prev.filter((m) => m !== opt.id)
-                            : [...prev, opt.id as Mood];
-                          if (next.length > 0) setMoodError(null);
-                          return next;
-                        });
-                      }
-                    }}
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                    className={`relative p-4 text-center rounded-2xl border transition-all duration-300 ${
-                      isSelected
-                        ? 'border-teal-400/60 bg-teal-400/10 shadow-lg shadow-teal-400/10'
-                        : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                    }`}
-                  >
-                    {isSelected && (
-                      <motion.div
-                        layoutId={`moodGlow-${opt.id}`}
-                        className="absolute inset-0 rounded-2xl bg-teal-400/5 border border-teal-400/30"
-                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                      />
-                    )}
-                    <div className={`flex justify-center items-center h-10 md:h-12 relative z-10 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`}>
-                      {opt.icon}
-                    </div>
-                    <p className={`font-medium mt-1.5 text-xs relative z-10 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`}>
-                      {opt.label}
-                    </p>
-                  </motion.button>
-                );
-              })}
             </div>
 
-            {/* Personal Note */}
-            <div className="pt-2">
-              <label htmlFor="personalNote" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
-                Ý kiến cá nhân (tùy chọn)
+            {/* Click-to-build mood chips — grouped by tâm trạng / không gian / kiểu đi, dẫn đầu là gợi ý
+                hợp mùa (theo thời tiết & trend). Tap để soạn chuyến đi mà không cần gõ. */}
+            <div className="space-y-3.5">
+              {seedGroups.map((group) => (
+                <div key={group.title}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">{group.title}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {group.seeds.map((seed) => {
+                      const active = moodSeeds.includes(seed.label);
+                      return (
+                        <motion.button
+                          type="button"
+                          key={seed.label}
+                          aria-pressed={active}
+                          onClick={() => toggleSeed(seed.label)}
+                          whileTap={{ scale: 0.94 }}
+                          className={`px-3.5 py-2 rounded-full border text-sm font-medium transition-all ${
+                            active
+                              ? 'text-white'
+                              : 'text-slate-300 border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:text-white'
+                          }`}
+                          style={active ? { borderColor: 'var(--mood-accent)', background: 'var(--mood-accent-soft)' } : undefined}
+                        >
+                          {seed.label}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Intensity — with an info tooltip since "đậm nhạt cảm xúc" is otherwise vague. */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
+                  Đậm nhạt cảm xúc
+                  <span className="relative inline-flex group">
+                    <button
+                      type="button"
+                      aria-label="Đậm nhạt cảm xúc nghĩa là gì?"
+                      className="inline-flex items-center justify-center text-slate-400 hover:text-white focus-visible:text-white transition-colors"
+                    >
+                      <IconInfo className="w-4 h-4" />
+                    </button>
+                    <span
+                      role="tooltip"
+                      className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-60 px-3 py-2 rounded-xl bg-slate-900/95 border border-white/15 text-[11px] leading-relaxed text-slate-200 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shadow-xl z-20"
+                    >
+                      Mức cảm xúc này chi phối lịch trình ra sao: <b className="text-white">Nhẹ</b> chỉ là chút gia vị, <b className="text-white">Mạnh</b> sẽ dẫn dắt cả chuyến đi. Mơ tự đoán theo lựa chọn của bạn — kéo để chỉnh lại.
+                    </span>
+                  </span>
+                  {!intensityTouched && <span className="text-slate-400 font-normal">· Mơ đang tự cảm</span>}
+                </span>
+                <span className="text-xs font-semibold transition-colors" style={{ color: 'var(--mood-accent)' }}>
+                  {moodIntensity <= 0.33 ? 'Nhẹ nhàng' : moodIntensity >= 0.66 ? 'Mãnh liệt' : 'Vừa phải'}
+                </span>
+              </div>
+              <input
+                type="range"
+                id="moodIntensity"
+                min={0}
+                max={1}
+                step={0.01}
+                value={moodIntensity}
+                onChange={(e) => { setIntensityTouched(true); setMoodIntensity(Number(e.target.value)); }}
+                aria-label="Mức độ đậm nhạt của cảm xúc, từ nhẹ đến mạnh"
+                className="w-full cursor-pointer custom-range"
+              />
+              <div className="flex justify-between mt-1.5">
+                <span className="text-xs text-slate-400">Nhẹ nhàng</span>
+                <span className="text-xs text-slate-400">Mạnh mẽ</span>
+              </div>
+            </div>
+
+            {/* Optional free-text — secondary; for nuance beyond the chips. */}
+            <div className="relative">
+              <label htmlFor="moodText" className="block text-xs font-medium text-slate-300 mb-1.5">
+                Muốn nói thêm bằng lời? <span className="text-slate-400">(không bắt buộc)</span>
+              </label>
+              <textarea
+                id="moodText"
+                value={moodText}
+                onChange={(e) => setMoodText(e.target.value)}
+                placeholder={tripMode === 'short'
+                  ? 'VD: đi cùng người thương, thích quán ít khách...'
+                  : 'VD: đi cùng người thương, thích nơi ít khách, có chút phiêu lưu nhẹ...'}
+                rows={2}
+                maxLength={400}
+                className="w-full px-4 py-3 bg-white/[0.04] text-white border border-white/10 rounded-xl focus:ring-1 focus:ring-[color:var(--mood-accent)]/50 focus:border-[color:var(--mood-accent)]/40 focus:bg-white/[0.06] transition-all placeholder-white/25 outline-none text-sm leading-relaxed resize-none"
+              />
+            </div>
+
+            {/* Extra notes / constraints (was "Ý kiến cá nhân") */}
+            <div className="pt-1">
+              <label htmlFor="personalNote" className="block text-xs font-medium text-slate-300 mb-1.5">
+                Ghi chú thêm <span className="text-slate-400">(ràng buộc, sở thích — tùy chọn)</span>
               </label>
               <textarea
                 id="personalNote"
                 value={personalNote}
                 onChange={(e) => setPersonalNote(e.target.value)}
                 placeholder={personalNotePlaceholder}
-                rows={3}
+                rows={2}
                 maxLength={500}
-                className="w-full px-4 py-3.5 bg-white/[0.03] text-white border border-white/[0.06] rounded-xl focus:ring-1 focus:ring-teal-400/40 focus:border-teal-400/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm resize-none"
+                className="w-full px-4 py-3 bg-white/[0.03] text-white border border-white/[0.08] rounded-xl focus:ring-1 focus:ring-[color:var(--mood-accent)]/40 focus:border-[color:var(--mood-accent)]/30 focus:bg-white/[0.05] transition-all placeholder-white/20 outline-none text-sm resize-none"
               />
               <p className="text-right text-[10px] text-slate-400 mt-1">{personalNote.length}/500</p>
             </div>

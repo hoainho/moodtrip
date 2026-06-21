@@ -97,6 +97,10 @@ function cleanVenue(venue: string): string {
     .replace(LEADING_NUMBER_RE, '')
     .trim();
 
+  // "A -> B" / "A → B": geocode the arrival end, never the unparseable whole arrow string.
+  const arrowParts = v.split(/\s*(?:->|–>|—>|=>|→)\s*/).map((s) => s.trim()).filter(Boolean);
+  if (arrowParts.length >= 2) v = arrowParts[arrowParts.length - 1];
+
   const lowerV = v.toLowerCase();
   for (const prefix of STOP_PREFIXES) {
     if (lowerV.startsWith(prefix)) {
@@ -314,4 +318,35 @@ export function jitterAround(
     lat: center.lat + Math.sin(angle) * r,
     lng: center.lng + Math.cos(angle) * r,
   };
+}
+
+/**
+ * Decide a stop's final coordinate from its geocode hit, anchored to the region it belongs to.
+ * This is the guard against cross-region mis-geocodes (e.g. a Cà Mau venue that Nominatim places in
+ * HCM, ~250 km away): the hit is accepted ONLY when it lands near the region the stop belongs to;
+ * otherwise we keep the stop in-region with a small jitter around the anchor (flagged approximate).
+ *
+ *  - `acceptAnchor`  hit accepted only if within `radiusKm` of this. `undefined` ⇒ accept any in-VN
+ *      hit — used for the trip's departure/origin point, which is intentionally far from the
+ *      destination, so there is no tight anchor to test it against.
+ *  - `fallbackAnchor`  when the hit is missing or rejected, jitter around this anchor instead so the
+ *      stop still renders in the correct area rather than vanishing or scattering cross-country.
+ */
+export function placeGeocodeHit(
+  hit: { lat: number; lng: number } | null | undefined,
+  acceptAnchor: { lat: number; lng: number } | undefined,
+  fallbackAnchor: { lat: number; lng: number } | undefined,
+  radiusKm: number,
+  jitterIndex: number,
+): { lat: number; lng: number; approximate?: boolean } | null {
+  const hitOk = !!hit && Number.isFinite(hit.lat) && Number.isFinite(hit.lng) && inVietnamBbox(hit);
+  if (hitOk && (!acceptAnchor || haversineKm(hit, acceptAnchor) <= radiusKm)) {
+    return { lat: hit.lat, lng: hit.lng };
+  }
+  if (fallbackAnchor) {
+    const j = jitterAround(fallbackAnchor, jitterIndex);
+    return { lat: j.lat, lng: j.lng, approximate: true };
+  }
+  // No anchor to fall back to: keep an in-VN hit (better than dropping the stop), flagged approximate.
+  return hitOk ? { lat: hit.lat, lng: hit.lng, approximate: true } : null;
 }

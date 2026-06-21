@@ -23,6 +23,7 @@ import { MoNotebookModal } from './components/MoNotebookModal';
 import { PublicShareButton } from './components/PublicShareButton';
 import { PersonalWorldBadge } from './components/PersonalWorldBadge';
 import { PersonalWorldScene } from './components/PersonalWorldScene';
+import { useMoodTheme } from './hooks/useMoodTheme';
 import { AntiItineraryView } from './components/AntiItineraryView';
 
 import { generateAntiItinerary } from './services/antiItinerary';
@@ -41,6 +42,13 @@ import { hapticSuccess, spawnConfetti } from './services/haptics';
 
 // Lazy load Three.js scene to prevent blocking initial render
 const NatureScene = lazy(() => import('./components/three/NatureScene'));
+
+/** Bridges the mood theme into the (lazy) 3D backdrop. Isolated so theme updates (debounced as the
+ *  user types their mood) re-render only this wrapper + the scene's props — never the whole App. */
+function MoodReactiveScene() {
+  const moodTheme = useMoodTheme();
+  return <NatureScene moodTheme={moodTheme} />;
+}
 
 // Error boundary to catch Three.js crashes without killing the whole app.
 // Shared with the PersonalWorld modal — see components/three/sceneHelpers.tsx.
@@ -531,30 +539,27 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
           >
-            {/* Result layout: single column on mobile/tablet (map + actions stack BELOW the
-                itinerary, as before). At ≥lg it becomes a 2-column flex — the itinerary scrolls
-                on the LEFT while a STICKY sidebar on the RIGHT keeps the map + action cluster in
-                view. The map's own ResizeObserver re-fits tiles when the column width changes. */}
-            <div className="lg:flex lg:items-start lg:gap-6 lg:max-w-[1600px] lg:mx-auto lg:px-4">
-              <div className="lg:flex-1 lg:min-w-0">
-                <ItineraryErrorBoundary onRecover={handleReset}>
-                  <ItineraryDisplay
-                    itinerary={itinerary}
-                    onReset={handleReset}
-                    onExportPDF={handleExportPDF}
-                    onSaveToList={handleSaveItineraryToList}
-                    onItineraryChange={handleItineraryChange}
-                    onGoHome={handleGoHome}
-                    isSaved={isSaved || isSharedView}
-                    isExportingPDF={isExportingPDF}
-                    formData={lastFormData}
-                    onOpenQue={() => setQueModalOpen(true)}
-                    onOpenWorld={() => setWorldSceneOpen(true)}
-                  />
-                </ItineraryErrorBoundary>
-              </div>
+            {/* Result layout: single vertical column — the itinerary, then the map + action
+                cluster stacked BELOW it (centered). ItineraryDisplay self-centers its content via
+                its own `container` and keeps a full-width sticky header. */}
+            <div>
+              <ItineraryErrorBoundary onRecover={handleReset}>
+                <ItineraryDisplay
+                  itinerary={itinerary}
+                  onReset={handleReset}
+                  onExportPDF={handleExportPDF}
+                  onSaveToList={handleSaveItineraryToList}
+                  onItineraryChange={handleItineraryChange}
+                  onGoHome={handleGoHome}
+                  isSaved={isSaved || isSharedView}
+                  isExportingPDF={isExportingPDF}
+                  formData={lastFormData}
+                  onOpenQue={() => setQueModalOpen(true)}
+                  onOpenWorld={() => setWorldSceneOpen(true)}
+                />
+              </ItineraryErrorBoundary>
 
-              <aside className="max-w-3xl mx-auto px-4 mt-6 space-y-6 mb-10 lg:max-w-none lg:px-0 lg:mt-[5.5rem] lg:w-[380px] lg:flex-shrink-0 lg:sticky lg:top-4 lg:self-start">
+              <div className="max-w-3xl mx-auto px-4 mt-3 space-y-6 mb-10">
                 <PersonalWorldBadge />
 
                 <div>
@@ -581,7 +586,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-              </aside>
+              </div>
             </div>
           </motion.div>
         );
@@ -684,7 +689,7 @@ export default function App() {
       {sceneReady && !prefersReducedMotion && (
         <SceneErrorBoundary>
           <Suspense fallback={null}>
-            <NatureScene />
+            <MoodReactiveScene />
           </Suspense>
         </SceneErrorBoundary>
       )}
@@ -773,7 +778,7 @@ export default function App() {
         trip={itinerary}
         onClose={() => setNotebookOpen(false)}
       />
-      <PersonalWorldScene open={worldSceneOpen} onClose={() => setWorldSceneOpen(false)} localTrips={savedItineraries} />
+      <PersonalWorldScene open={worldSceneOpen} onClose={() => setWorldSceneOpen(false)} localTrips={savedItineraries} onOpenTrip={handleLoadItinerary} />
       <AntiItineraryView
         open={antiItineraryForm !== null}
         form={antiItineraryForm}

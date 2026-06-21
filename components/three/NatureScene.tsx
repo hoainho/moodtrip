@@ -4,6 +4,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stars, MeshReflectorMaterial, AdaptiveDpr } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useReducedMotion, PauseOnHidden, RenderCountProbe } from './sceneHelpers';
+import type { MoodTheme } from '../../hooks/useMoodTheme';
 
 // ─── Inline simplex noise (2D) ───────────────────────────────────────────────
 const GRAD3 = [
@@ -442,7 +443,7 @@ function WaterPlane() {
 }
 
 // ─── Firefly Particles ───────────────────────────────────────────────────────
-function Fireflies({ brightness, daylight, reduce }: { brightness: number; daylight: number; reduce: boolean }) {
+function Fireflies({ brightness, daylight, reduce, accentColor, speedMul }: { brightness: number; daylight: number; reduce: boolean; accentColor: string; speedMul: number }) {
   const pointsRef = useRef<THREE.Points>(null);
   const frame = useRef(0);
 
@@ -466,9 +467,11 @@ function Fireflies({ brightness, daylight, reduce }: { brightness: number; dayli
     if (frame.current % 2 !== 0) return;
     const pos = pointsRef.current.geometry.attributes.position;
     const time = clock.elapsedTime;
+    // Mood energy speeds up / slows down the firefly drift.
+    const w = 0.5 * speedMul;
     for (let i = 0; i < pos.count; i++) {
       const ix = i * 3;
-      pos.array[ix + 1] = positions[ix + 1] + Math.sin(time * 0.5 + i * 0.7) * 0.4;
+      pos.array[ix + 1] = positions[ix + 1] + Math.sin(time * w + i * 0.7) * 0.4;
     }
     pos.needsUpdate = true;
   });
@@ -483,7 +486,7 @@ function Fireflies({ brightness, daylight, reduce }: { brightness: number; dayli
       </bufferGeometry>
       <pointsMaterial
         size={0.08}
-        color="#ffd166"
+        color={accentColor}
         transparent
         opacity={brightness}
         sizeAttenuation
@@ -556,9 +559,16 @@ function DynamicFog({ fogColor }: { fogColor: string }) {
 }
 
 // ─── Scene Content ─────────────────────────────────────────────────────────────
-function SceneContent() {
+function SceneContent({ moodTheme }: { moodTheme?: MoodTheme }) {
   const reduce = useReducedMotion();
   const [sky, setSky] = useState<SkyColors>(getSkyColors);
+
+  // Mood reactivity: warmth tints fireflies, energy lifts bloom + drift speed.
+  const energy = moodTheme?.energy ?? 0.5;
+  const warmth = moodTheme?.warmth ?? 0.5;
+  const fireflyColor = warmth >= 0.5 ? '#ffd166' : '#a9c7ff';
+  const bloomIntensity = 1.0 + energy * 0.6;
+  const fireflySpeed = 0.6 + energy * 1.2;
 
   // Recalculate every 30 seconds for smooth time transitions
   useEffect(() => {
@@ -594,18 +604,18 @@ function SceneContent() {
       {/* Landscape */}
       <TerrainMesh />
       <WaterPlane />
-      <Fireflies brightness={0.3 + (1 - daylight) * 0.6} daylight={daylight} reduce={reduce} />
+      <Fireflies brightness={0.3 + (1 - daylight) * 0.6} daylight={daylight} reduce={reduce} accentColor={fireflyColor} speedMul={fireflySpeed} />
 
-      {/* Bloom lifts emissive highlights (water sheen, firefly glow) into real light. */}
+      {/* Bloom lifts emissive highlights (water sheen, firefly glow) into real light; energy lifts it. */}
       <EffectComposer>
-        <Bloom mipmapBlur luminanceThreshold={0.55} luminanceSmoothing={0.4} intensity={1.1} />
+        <Bloom mipmapBlur luminanceThreshold={0.55} luminanceSmoothing={0.4} intensity={bloomIntensity} />
       </EffectComposer>
     </>
   );
 }
 
 // ─── Main Scene Export ───────────────────────────────────────────────────────
-export function NatureScene() {
+export function NatureScene({ moodTheme }: { moodTheme?: MoodTheme } = {}) {
   return (
     <Canvas
       dpr={[1, 1.5]}
@@ -627,7 +637,7 @@ export function NatureScene() {
       }}
     >
       <AdaptiveDpr pixelated />
-      <SceneContent />
+      <SceneContent moodTheme={moodTheme} />
     </Canvas>
   );
 }

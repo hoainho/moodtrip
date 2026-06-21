@@ -82,7 +82,7 @@ export const TripDayStoryboard: React.FC<TripDayStoryboardProps> = ({ day, dayIn
 
               <article className="rounded-2xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/15 transition-colors">
                 <div className="p-4 sm:p-5">
-                  <div className="flex items-center gap-3 mb-2.5">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-2.5">
                     <span className={`inline-flex items-center gap-1.5 ${meta.iconColor}`}>
                       <Icon className="w-4 h-4 flex-shrink-0" />
                       <span className="text-[11px] font-semibold uppercase tracking-wider">{meta.label}</span>
@@ -99,37 +99,37 @@ export const TripDayStoryboard: React.FC<TripDayStoryboardProps> = ({ day, dayIn
                     )}
                   </div>
 
-                  <h4 className="text-base sm:text-lg font-semibold text-white leading-snug mb-2">{item.activity}</h4>
+                  <h4 className="text-base sm:text-lg font-semibold text-white leading-snug mb-2 break-words">{item.activity}</h4>
 
                   {item.is_trending && item.trending_reason && (
-                    <p className="text-xs text-orange-300/80 mb-2 flex items-start gap-1">
+                    <p className="text-xs text-orange-300/80 mb-2 flex items-start gap-1 min-w-0">
                       <IconSparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                      <span>{item.trending_reason}</span>
+                      <span className="min-w-0 break-words">{item.trending_reason}</span>
                     </p>
                   )}
 
                   <div className="space-y-1.5 text-sm">
                     {item.venue && (
-                      <div className="flex items-start gap-2 text-slate-300">
+                      <div className="flex items-start gap-2 text-slate-300 min-w-0">
                         <IconMapPin className="w-4 h-4 text-teal-400 flex-shrink-0 mt-0.5" />
                         {item.google_maps_link ? (
                           <a
                             href={item.google_maps_link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:underline hover:text-teal-300 transition-colors font-medium"
+                            className="hover:underline hover:text-teal-300 transition-colors font-medium min-w-0 break-words"
                           >
                             {item.venue}
                           </a>
                         ) : (
-                          <span className="font-medium">{item.venue}</span>
+                          <span className="font-medium min-w-0 break-words">{item.venue}</span>
                         )}
                       </div>
                     )}
                     {item.estimated_cost && (
-                      <div className="flex items-center gap-2 text-slate-400">
+                      <div className="flex items-center gap-2 text-slate-400 min-w-0">
                         <IconWallet className="w-4 h-4 text-yellow-400/80 flex-shrink-0" />
-                        <span>{item.estimated_cost}</span>
+                        <span className="min-w-0 break-words">{item.estimated_cost}</span>
                       </div>
                     )}
                   </div>

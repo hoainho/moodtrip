@@ -5,6 +5,8 @@ import type { Monument } from '../../services/personalWorldScene';
 interface PersonalWorldMonumentsProps {
   monuments: Monument[];
   reduceMotion?: boolean;
+  onSelect?: (id: string) => void;
+  selectedId?: string | null;
 }
 
 const ACCENT_BY_KIND: Record<string, string> = {
@@ -19,7 +21,7 @@ const ACCENT_BY_KIND: Record<string, string> = {
   tree: '#34d399',
 };
 
-export function PersonalWorldMonuments({ monuments, reduceMotion }: PersonalWorldMonumentsProps) {
+export function PersonalWorldMonuments({ monuments, reduceMotion, onSelect, selectedId }: PersonalWorldMonumentsProps) {
   return (
     <group>
       {/* Shared-geometry instancing for the repeated mound + glow ring (1 draw call each). */}
@@ -49,18 +51,39 @@ export function PersonalWorldMonuments({ monuments, reduceMotion }: PersonalWorl
       </Instances>
 
       {monuments.map((m) => (
-        <MonumentNode key={m.id} monument={m} reduceMotion={reduceMotion} />
+        <MonumentNode key={m.id} monument={m} reduceMotion={reduceMotion} onSelect={onSelect} selected={selectedId === m.id} />
       ))}
     </group>
   );
 }
 
-function MonumentNode({ monument, reduceMotion }: { monument: Monument; reduceMotion?: boolean }) {
+function MonumentNode({ monument, reduceMotion, onSelect, selected }: { monument: Monument; reduceMotion?: boolean; onSelect?: (id: string) => void; selected?: boolean }) {
   const accent = ACCENT_BY_KIND[monument.kind] ?? '#94a3b8';
   const labelY = 1.5 * monument.scale + 0.55;
+  const hitH = 2.5 * monument.scale;
 
   return (
     <group position={monument.position}>
+      {/* Invisible, generous click/hover target covering the whole monument + its floating label.
+          Raycast hits geometry regardless of opacity, so this stays clickable while never rendering. */}
+      <mesh
+        position={[0, hitH / 2, 0]}
+        onClick={(e) => { e.stopPropagation(); onSelect?.(monument.id); }}
+        onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+      >
+        <cylinderGeometry args={[0.95 * monument.scale, 0.95 * monument.scale, hitH, 8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
+      {/* Selection halo */}
+      {selected && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+          <ringGeometry args={[0.72 * monument.scale, 0.98 * monument.scale, 44]} />
+          <meshBasicMaterial color={accent} transparent opacity={0.95} blending={AdditiveBlending} depthWrite={false} />
+        </mesh>
+      )}
+
       {/* mound + glow ring rendered via the shared <Instances> above */}
       <Float speed={reduceMotion ? 0 : 1.2} rotationIntensity={0} floatIntensity={reduceMotion ? 0 : 0.4} floatingRange={[0, 0.14]}>
         <group rotation={[0, monument.rotation, 0]} scale={monument.scale} position={[0, 0.08, 0]}>
@@ -71,7 +94,7 @@ function MonumentNode({ monument, reduceMotion }: { monument: Monument; reduceMo
       <Html position={[0, labelY, 0]} center distanceFactor={9} zIndexRange={[20, 0]} occlude={false}>
         <div
           style={{ pointerEvents: 'none' }}
-          className="px-2 py-0.5 rounded-full text-[11px] font-semibold text-white/95 bg-black/45 border border-white/20 whitespace-nowrap backdrop-blur-sm shadow-lg"
+          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap backdrop-blur-sm shadow-lg border transition-colors ${selected ? 'text-white bg-black/70 border-white/40' : 'text-white/95 bg-black/45 border-white/20'}`}
         >
           {monument.destinationLabel}
         </div>

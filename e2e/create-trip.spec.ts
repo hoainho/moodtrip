@@ -48,6 +48,27 @@ test.describe('Create trip happy path (MOCK_ITINERARY)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('Flexible mood: free-text emotion + seed chip feed the trip', async ({ page }) => {
+    await gotoHome(page);
+    await clickExplore(page);
+    await page.locator('button:has-text("Tôi muốn chọn thủ công")').first().click();
+    await expect(page.locator('input[placeholder*="AI gợi ý"]').first()).toBeVisible({ timeout: 10_000 });
+
+    // The new emotion-driven mood input (replaces the 6 fixed mood buttons).
+    const emotion = page.locator('#moodText');
+    await expect(emotion).toBeVisible();
+    await emotion.fill('mình muốn chữa lành, gần biển, ít người');
+
+    // A seed chip is optional/suggestive and toggles via aria-pressed.
+    const seed = page.locator('button[aria-pressed]:has-text("phiêu lưu")').first();
+    await seed.click();
+    await expect(seed).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('input[placeholder*="AI gợi ý"]').first().fill('Nha Trang');
+    await page.locator('button:has-text("Tạo hành trình")').first().click({ force: true });
+    await expect(page.locator('text=HÀNH TRÌNH TỪ MƠ')).toBeVisible({ timeout: 60_000 });
+  });
+
   test('Result view shows 3 "why you will love it" reasons', async ({ page }) => {
     await gotoHome(page);
     await clickExplore(page);

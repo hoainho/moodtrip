@@ -5,7 +5,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { BackSide, AdditiveBlending, ACESFilmicToneMapping } from 'three';
 import { PersonalWorldMonuments } from './PersonalWorldMonuments';
 import { useReducedMotion, PauseOnHidden, RenderCountProbe } from './sceneHelpers';
-import type { Monument } from '../../services/personalWorldScene';
+import { treeGrowth, type Monument } from '../../services/personalWorldScene';
 
 interface PersonalWorldCanvasProps {
   monuments: Monument[];
@@ -13,7 +13,7 @@ interface PersonalWorldCanvasProps {
   tripCount: number;
 }
 
-export default function PersonalWorldCanvas({ monuments, ringRadius, tripCount, onContextLost }: PersonalWorldCanvasProps & { onContextLost?: () => void }) {
+export default function PersonalWorldCanvas({ monuments, ringRadius, tripCount, onContextLost, onSelectMonument, selectedMonumentId }: PersonalWorldCanvasProps & { onContextLost?: () => void; onSelectMonument?: (id: string) => void; selectedMonumentId?: string | null }) {
   const reduce = useReducedMotion();
   const camDist = ringRadius * 1.85 + 2;
 
@@ -23,6 +23,7 @@ export default function PersonalWorldCanvas({ monuments, ringRadius, tripCount, 
       gl={{ antialias: true, alpha: false, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.1 }}
       dpr={[1, 1.8]}
       style={{ background: '#04060c' }}
+      onPointerMissed={() => onSelectMonument?.('')}
       onCreated={({ gl }) => {
         gl.domElement.addEventListener(
           'webglcontextlost',
@@ -65,8 +66,8 @@ export default function PersonalWorldCanvas({ monuments, ringRadius, tripCount, 
       <Float speed={reduce ? 0 : 0.7} rotationIntensity={0} floatIntensity={reduce ? 0 : 0.55} floatingRange={[-0.15, 0.15]}>
         <Island radius={ringRadius} />
         <JourneyArcs monuments={monuments} />
-        <LifeTree tripCount={tripCount} reduce={reduce} />
-        <PersonalWorldMonuments monuments={monuments} reduceMotion={reduce} />
+        <LifeTree tripCount={tripCount} reduce={reduce} onSelect={onSelectMonument} selected={selectedMonumentId === '__tree__'} />
+        <PersonalWorldMonuments monuments={monuments} reduceMotion={reduce} onSelect={onSelectMonument} selectedId={selectedMonumentId} />
       </Float>
 
       <OrbitControls
@@ -135,35 +136,70 @@ function JourneyArcs({ monuments }: { monuments: Monument[] }) {
   );
 }
 
-function LifeTree({ tripCount, reduce }: { tripCount: number; reduce: boolean }) {
-  const s = 0.7 + (Math.min(tripCount, 25) / 25) * 1.15;
+// Foliage clusters revealed one-per-stage as the tree levels up (index 0 first).
+const TREE_CLUSTERS: { pos: [number, number, number]; r: number; c: string; e: string }[] = [
+  { pos: [0, 1.85, 0], r: 0.6, c: '#10b981', e: '#34d399' },
+  { pos: [0.42, 1.55, 0.1], r: 0.4, c: '#34d399', e: '#34d399' },
+  { pos: [-0.4, 1.5, -0.15], r: 0.38, c: '#2dd4bf', e: '#2dd4bf' },
+  { pos: [0.12, 2.18, -0.08], r: 0.34, c: '#34d399', e: '#34d399' },
+  { pos: [-0.22, 1.95, 0.26], r: 0.3, c: '#10b981', e: '#34d399' },
+];
+
+function LifeTree({ tripCount, reduce, onSelect, selected }: { tripCount: number; reduce: boolean; onSelect?: (id: string) => void; selected?: boolean }) {
+  const growth = treeGrowth(tripCount);
+  const g = growth.progress; // 0..1 toward 10 trips
+  const s = 0.55 + g * 1.25; // overall size: small seed → full canopy at 10 trips
+  const foliageCount = growth.level; // 0..5 clusters, one per stage
+
   return (
     <group position={[0, 0, 0]} scale={s}>
-      <pointLight position={[0, 1.6, 0]} color="#34d399" intensity={1.3} distance={7} />
+      {/* Click/hover target — tap the tree to see its growth progress. */}
+      <mesh
+        position={[0, 1.2, 0]}
+        onClick={(e) => { e.stopPropagation(); onSelect?.('__tree__'); }}
+        onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+      >
+        <cylinderGeometry args={[0.95, 0.95, 2.6, 10]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
+      {selected && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
+          <ringGeometry args={[1.05, 1.32, 48]} />
+          <meshBasicMaterial color="#34d399" transparent opacity={0.95} blending={AdditiveBlending} depthWrite={false} />
+        </mesh>
+      )}
+
+      <pointLight position={[0, 1.6, 0]} color="#34d399" intensity={0.5 + g * 1.1} distance={7} />
       {/* trunk */}
       <mesh position={[0, 0.8, 0]}>
         <cylinderGeometry args={[0.13, 0.22, 1.6, 8]} />
         <meshStandardMaterial color="#6b4423" roughness={0.8} />
       </mesh>
-      {/* foliage clusters */}
-      <mesh position={[0, 1.85, 0]}>
-        <icosahedronGeometry args={[0.6, 0]} />
-        <meshStandardMaterial color="#10b981" emissive="#34d399" emissiveIntensity={0.45} roughness={0.45} />
-      </mesh>
-      <mesh position={[0.42, 1.55, 0.1]}>
-        <icosahedronGeometry args={[0.4, 0]} />
-        <meshStandardMaterial color="#34d399" emissive="#34d399" emissiveIntensity={0.4} roughness={0.45} />
-      </mesh>
-      <mesh position={[-0.4, 1.5, -0.15]}>
-        <icosahedronGeometry args={[0.38, 0]} />
-        <meshStandardMaterial color="#2dd4bf" emissive="#2dd4bf" emissiveIntensity={0.4} roughness={0.45} />
-      </mesh>
+
+      {/* Earliest stage: a single bud at the trunk top. */}
+      {foliageCount === 0 && (
+        <mesh position={[0, 1.75, 0]}>
+          <icosahedronGeometry args={[0.22, 0]} />
+          <meshStandardMaterial color="#34d399" emissive="#34d399" emissiveIntensity={0.6} roughness={0.45} />
+        </mesh>
+      )}
+
+      {/* Foliage clusters appear one per growth stage. */}
+      {TREE_CLUSTERS.slice(0, foliageCount).map((c, i) => (
+        <mesh key={i} position={c.pos}>
+          <icosahedronGeometry args={[c.r, 0]} />
+          <meshStandardMaterial color={c.c} emissive={c.e} emissiveIntensity={0.42} roughness={0.45} />
+        </mesh>
+      ))}
+
       {/* base glow */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
         <circleGeometry args={[1.0, 48]} />
-        <meshBasicMaterial color="#34d399" transparent opacity={0.3} blending={AdditiveBlending} depthWrite={false} />
+        <meshBasicMaterial color="#34d399" transparent opacity={0.16 + g * 0.2} blending={AdditiveBlending} depthWrite={false} />
       </mesh>
-      <Sparkles count={26} scale={[1.8, 2.4, 1.8]} position={[0, 1.7, 0]} size={3} color="#a7f3d0" speed={reduce ? 0 : 0.4} />
+      <Sparkles count={Math.round(8 + g * 22)} scale={[1.8, 2.4, 1.8]} position={[0, 1.7, 0]} size={3} color="#a7f3d0" speed={reduce ? 0 : 0.4} />
     </group>
   );
 }
